@@ -1,8 +1,8 @@
-name: Build and publish image
+name: Build and publish images
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
   workflow_dispatch:
 
 permissions:
@@ -10,7 +10,7 @@ permissions:
   packages: write
 
 jobs:
-  image:
+  web:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,8 +19,10 @@ jobs:
         run: node tools/test.js | tee test.log && ! grep -q "level 0.6 top1 [0-8][0-9]\." test.log
 
       - uses: docker/setup-buildx-action@v3
+        if: github.ref == 'refs/heads/main'
 
       - uses: docker/login-action@v3
+        if: github.ref == 'refs/heads/main'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -30,8 +32,69 @@ jobs:
         run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
 
       - uses: docker/build-push-action@v6
+        if: github.ref == 'refs/heads/main'
         with:
           context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: kana
+          POSTGRES_USER: kana
+          POSTGRES_PASSWORD: kana
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U kana" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+
+      - name: Tests (PostgreSQL)
+        working-directory: server
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/kana
+        run: gradle test bootJar --no-daemon
+
+      - name: Keep jar for end-to-end checks
+        uses: actions/upload-artifact@v4
+        with:
+          name: kana-api-jar
+          path: server/build/libs/kana-api.jar
+          retention-days: 3
+
+      - uses: docker/setup-buildx-action@v3
+        if: github.ref == 'refs/heads/main'
+
+      - uses: docker/login-action@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image name in lower case
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}-api" >> "$GITHUB_ENV"
+
+      - uses: docker/build-push-action@v6
+        if: github.ref == 'refs/heads/main'
+        with:
+          context: server
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
