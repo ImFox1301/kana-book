@@ -1,0 +1,39 @@
+services:
+  kana-tetrad:
+    image: ghcr.io/imfox1301/kana-book:latest
+    container_name: kana-tetrad
+    restart: unless-stopped
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  # HTTPS для домена из .env (SITE_DOMAIN): сам получает и продлевает сертификат Let's Encrypt
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: kana-caddy
+    restart: unless-stopped
+    environment:
+      - SITE_DOMAIN=${SITE_DOMAIN:?укажите SITE_DOMAIN в .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - kana-tetrad
+
+  # Следит за новым образом в GHCR и перезапускает только kana-tetrad
+  watchtower:
+    image: containrrr/watchtower:1.7.1
+    container_name: kana-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # если пакет в GHCR приватный: docker login ghcr.io на сервере, затем раскомментировать
+      # - /root/.docker/config.json:/config.json:ro
+    command: --label-enable --cleanup --interval 120
+
+volumes:
+  caddy_data:
+  caddy_config:

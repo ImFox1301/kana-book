@@ -1,0 +1,298 @@
+<title>Кана-тетрадь</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=Onest:wght@400;500;600;700&display=swap">
+<style>
+/* Тетрадь для прописей: бумага с сеткой гэнко:ёси, тушь, индиго для действий, красная тушь учителя для оценок */
+:root {
+  --paper: #f5f6f2; --sheet: #fcfcfa; --ink: #1d2126; --ink-2: #565d66; --rule: #d9ddd3; --guide: #c9d3dd;
+  --indigo: #2f4f86; --indigo-soft: #e3e9f4; --on-indigo: #ffffff;
+  --ok: #3f7a4a; --ok-soft: #e2efe2; --shu: #c23b2a; --shu-soft: #f6e1dc; --stroke: #1d2126;
+  --kana: "Klee One", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --ui: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #15181c; --sheet: #1c2025; --ink: #e8eaec; --ink-2: #a3aab3; --rule: #2e343b; --guide: #34404d;
+  --indigo: #8fb0e8; --indigo-soft: #233147; --on-indigo: #0f1724;
+  --ok: #7cc28a; --ok-soft: #1f3324; --shu: #f08a78; --shu-soft: #3d2420; --stroke: #eef0f2; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #15181c; --sheet: #1c2025; --ink: #e8eaec; --ink-2: #a3aab3; --rule: #2e343b; --guide: #34404d;
+  --indigo: #8fb0e8; --indigo-soft: #233147; --on-indigo: #0f1724;
+  --ok: #7cc28a; --ok-soft: #1f3324; --shu: #f08a78; --shu-soft: #3d2420; --stroke: #eef0f2; color-scheme: dark }
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+html, body { background: var(--paper); color: var(--ink) }
+body { font-family: var(--ui); font-size: 15px; line-height: 1.5; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 40px }
+.wrap { max-width: 760px; margin: 0 auto }
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 18px 14px; flex-wrap: wrap }
+.brand { display: flex; align-items: baseline; gap: 10px }
+.brand b { font-family: var(--kana); font-size: 28px; font-weight: 600; letter-spacing: .02em }
+.brand span { font-size: 17px; font-weight: 600 }
+nav.tabs { display: flex; gap: 4px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 999px; padding: 3px }
+nav.tabs button { border: 0; background: none; color: var(--ink-2); font: 500 14px var(--ui); padding: 6px 14px; border-radius: 999px; cursor: pointer }
+nav.tabs button[aria-selected="true"] { background: var(--indigo); color: var(--on-indigo) }
+button { font-family: var(--ui) }
+:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
+
+.sheet { background: var(--sheet); border: 1px solid var(--rule); border-radius: 14px; padding: 18px }
+.step { display: grid; grid-template-columns: 34px 1fr; gap: 4px 12px; padding-block: 18px; border-top: 1px dashed var(--rule) }
+.step:first-child { border-top: 0; padding-top: 4px }
+.step .num { font-family: var(--kana); font-size: 22px; color: var(--indigo); line-height: 1.2; text-align: center }
+.step h3 { margin: 0 0 10px; font-size: 16px; font-weight: 600 }
+.step .body { min-width: 0 }
+.muted { color: var(--ink-2) }
+.small { font-size: 13px }
+
+.seg { display: flex; flex-wrap: wrap; gap: 8px }
+.opt { position: relative; display: flex; flex-direction: column; gap: 2px; border: 1.5px solid var(--rule); background: var(--sheet); border-radius: var(--r); padding: 10px 14px; cursor: pointer; text-align: left; color: var(--ink); min-width: 120px; flex: 1 1 120px }
+.opt .k { font-family: var(--kana); font-size: 24px; line-height: 1.1 }
+.opt .t { font-weight: 600; font-size: 14px }
+.opt .d { font-size: 12.5px; color: var(--ink-2) }
+.opt[aria-pressed="true"] { border-color: var(--indigo); background: var(--indigo-soft) }
+
+.groups { display: grid; gap: 14px }
+.ghead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px }
+.ghead .label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); font-weight: 600 }
+.link { border: 0; background: none; color: var(--indigo); font: 500 13px var(--ui); cursor: pointer; padding: 2px 4px }
+.chips { display: flex; flex-wrap: wrap; gap: 6px }
+.chip { border: 1.5px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 8px; padding: 6px 10px; cursor: pointer; display: flex; flex-direction: column; align-items: flex-start; gap: 0 }
+.chip .k { font-family: var(--kana); font-size: 17px; letter-spacing: .06em; line-height: 1.25 }
+.chip .n { font-size: 11.5px; color: var(--ink-2) }
+.chip[aria-pressed="true"] { border-color: var(--indigo); background: var(--indigo-soft) }
+.chip.word .k { font-size: 14px; font-family: var(--ui); font-weight: 600; letter-spacing: 0 }
+
+.count { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.stepper { display: flex; align-items: stretch; border: 1.5px solid var(--rule); border-radius: var(--r); overflow: hidden; background: var(--sheet) }
+.stepper button { border: 0; background: none; color: var(--ink); width: 40px; font-size: 20px; cursor: pointer }
+.stepper input { width: 70px; border: 0; border-inline: 1px solid var(--rule); background: none; color: var(--ink); text-align: center; font: 600 18px var(--ui); font-variant-numeric: tabular-nums; padding: 8px 0 }
+.preset { border: 1px solid var(--rule); background: none; color: var(--ink-2); border-radius: 999px; padding: 5px 11px; font-size: 13px; cursor: pointer }
+.hint { font-size: 13px; color: var(--ink-2); margin-top: 8px }
+.sub { margin-top: 14px; display: grid; gap: 8px }
+.sub .lbl { font-size: 13px; font-weight: 600; color: var(--ink-2) }
+.start { display: flex; justify-content: flex-end; padding-top: 6px }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: var(--r); padding: 11px 18px; font: 600 15px var(--ui); cursor: pointer; border: 1.5px solid transparent }
+.btn.primary { background: var(--indigo); color: var(--on-indigo) }
+.btn.ghost { background: var(--sheet); color: var(--ink); border-color: var(--rule) }
+.btn:disabled { opacity: .45; cursor: not-allowed }
+.btn svg { width: 20px; height: 20px; flex: none }
+.warn { color: var(--shu); font-size: 13px; margin-top: 6px }
+
+/* ---- квиз ---- */
+.qbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px }
+.qbar .prog { flex: 1; height: 6px; background: var(--rule); border-radius: 99px; overflow: hidden }
+.qbar .prog i { display: block; height: 100%; background: var(--indigo); width: 0; transition: width .25s }
+.qbar .ctr { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 14px }
+.qbar .tally { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; display: flex; gap: 10px }
+.iconbtn { border: 1px solid var(--rule); background: var(--sheet); color: var(--ink-2); border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 13px; display: inline-flex; gap: 6px; align-items: center }
+.iconbtn svg { width: 16px; height: 16px }
+.card { background: var(--sheet); border: 1px solid var(--rule); border-radius: 16px; padding: 20px; display: grid; gap: 16px; justify-items: center }
+.prompt { text-align: center; display: grid; gap: 4px; justify-items: center }
+.prompt .lab { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); font-weight: 600 }
+.prompt .big { font-size: 40px; font-weight: 700; line-height: 1.15; letter-spacing: .01em }
+.prompt .kana { font-family: var(--kana); font-size: 84px; line-height: 1.1; font-weight: 600 }
+.prompt .kana.word { font-size: clamp(40px, 11vw, 64px) }
+.prompt .meaning { font-size: 17px; color: var(--ink-2) }
+.prompt .tag { font-size: 12.5px; color: var(--ink-2); background: var(--paper); border: 1px solid var(--rule); border-radius: 99px; padding: 2px 10px }
+.slots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center }
+.slot { width: 46px; height: 46px; border: 1.5px solid var(--rule); border-radius: 6px; background: var(--paper); padding: 0; cursor: pointer; position: relative; display: grid; place-items: center }
+.slot canvas { width: 100%; height: 100% }
+.slot[aria-current="true"] { border-color: var(--indigo); box-shadow: 0 0 0 2px var(--indigo-soft) }
+.slot .sm { position: absolute; bottom: 1px; right: 3px; font-size: 9px; color: var(--ink-2) }
+.slot.ok { border-color: var(--ok) } .slot.bad { border-color: var(--shu) }
+.pad { position: relative; width: min(100%, 340px); aspect-ratio: 1; max-width: 100% }
+.pad canvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 6px; touch-action: none; cursor: crosshair }
+.padtools { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap }
+.answer { width: min(100%, 340px); font: 600 26px var(--ui); text-align: center; padding: 12px; border: 1.5px solid var(--rule); border-radius: var(--r); background: var(--paper); color: var(--ink) }
+.answer:focus { border-color: var(--indigo); outline: none }
+.actions { display: flex; gap: 10px; justify-content: space-between; width: 100%; flex-wrap: wrap }
+.msg { min-height: 20px; font-size: 13.5px; color: var(--shu); text-align: center }
+
+.verdict { display: grid; gap: 14px; width: 100%; justify-items: center; text-align: center }
+.mark { font-family: var(--kana); font-size: 64px; line-height: 1; font-weight: 600 }
+.mark.ok { color: var(--ok) } .mark.bad { color: var(--shu) } .mark.skip { color: var(--ink-2) }
+.vtitle { font-weight: 700; font-size: 18px }
+.compare { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; align-items: flex-start }
+.compare figure { margin: 0; display: grid; gap: 6px; justify-items: center }
+.compare figcaption { font-size: 12.5px; color: var(--ink-2) }
+.box { width: 120px; height: 120px; background: var(--paper); border: 1px solid var(--rule); border-radius: 8px }
+.glyph { font-family: var(--kana); font-size: 92px; line-height: 120px; width: 120px; height: 120px; text-align: center; background: var(--paper); border: 1px solid var(--rule); border-radius: 8px }
+.glyphs { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap }
+.glyphs .glyph { width: 84px; height: 84px; font-size: 62px; line-height: 84px }
+.glyphs canvas.box { width: 84px; height: 84px }
+.correct-reading { font-size: 30px; font-weight: 700 }
+.your { font-size: 15px; color: var(--ink-2) }
+.your s { color: var(--shu) }
+.note { font-size: 13px; color: var(--ink-2); max-width: 46ch }
+
+/* ---- итоги ---- */
+.score { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap }
+.score > div { flex: 1 1 140px; max-width: 200px; background: var(--paper); border: 1px solid var(--rule); border-radius: 12px; padding: 14px; text-align: center }
+.score .v { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1 }
+.score .l { font-size: 13px; color: var(--ink-2) }
+.score .ok .v { color: var(--ok) } .score .bad .v { color: var(--shu) }
+.mistakes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center }
+.mistakes div { border: 1px solid var(--rule); border-radius: 8px; padding: 6px 10px; text-align: center; background: var(--paper) }
+.mistakes .k { font-family: var(--kana); font-size: 26px; display: block; line-height: 1.2 }
+.mistakes .r { font-size: 12px; color: var(--ink-2) }
+
+/* ---- словарь ---- */
+.dict-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px }
+.dict-tools input[type=search] { flex: 1 1 200px; min-width: 0; padding: 9px 12px; border: 1.5px solid var(--rule); border-radius: var(--r); background: var(--sheet); color: var(--ink); font: 15px var(--ui) }
+.wlist { display: grid; gap: 18px }
+.wlist h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2) }
+.wrow { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.5fr) 32px; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 14px }
+.wrow .k { font-family: var(--kana); font-size: 20px; overflow-wrap: anywhere }
+.wrow .rd { color: var(--ink-2); overflow-wrap: anywhere }
+.wrow .m { overflow-wrap: anywhere }
+.del { border: 0; background: none; color: var(--ink-2); cursor: pointer; font-size: 18px; border-radius: 6px }
+.del:hover { color: var(--shu) }
+details.panel { background: var(--sheet); border: 1px solid var(--rule); border-radius: 12px; padding: 12px 16px; margin-bottom: 12px }
+details.panel summary { cursor: pointer; font-weight: 600 }
+.form { display: grid; gap: 10px; margin-top: 12px }
+.form .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px }
+.form label { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2) }
+.form input, .form textarea, .form select { padding: 9px 11px; border: 1.5px solid var(--rule); border-radius: 8px; background: var(--paper); color: var(--ink); font: 15px var(--ui); min-width: 0 }
+.form textarea { min-height: 120px; font-family: ui-monospace, Menlo, monospace; font-size: 13px }
+.form .k { font-family: var(--kana); font-size: 18px }
+pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 10px; font-size: 12.5px; overflow-x: auto; margin: 6px 0 }
+.okmsg { color: var(--ok); font-size: 13.5px }
+.howto { font-size: 14px; color: var(--ink-2); max-width: 65ch }
+.howto li { margin-bottom: 4px }
+@media (max-width: 520px) {
+  .wrow { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 28px; }
+  .wrow .rd { display: none }
+  .prompt .kana { font-size: 72px }
+  .step { grid-template-columns: 26px 1fr; gap: 4px 8px }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><b>かな</b><span>Кана-тетрадь</span></div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="tab-quiz" aria-selected="true" data-tab="quiz">Квиз</button>
+      <button role="tab" id="tab-dict" aria-selected="false" data-tab="dict">Словарь</button>
+    </nav>
+  </header>
+
+  <!-- НАСТРОЙКА -->
+  <section id="screen-setup" class="sheet">
+    <div class="step">
+      <div class="num">一</div>
+      <div class="body">
+        <h3>Что тренируем</h3>
+        <div class="seg" id="sel-script"></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num">二</div>
+      <div class="body">
+        <h3 id="rows-title">Ряды</h3>
+        <div id="sel-rows" class="groups"></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num">三</div>
+      <div class="body">
+        <h3>Сколько карточек</h3>
+        <div class="count">
+          <div class="stepper">
+            <button type="button" id="cnt-minus" aria-label="Меньше">−</button>
+            <input id="cnt" type="number" inputmode="numeric" min="1" value="20" aria-label="Количество карточек">
+            <button type="button" id="cnt-plus" aria-label="Больше">+</button>
+          </div>
+          <div class="chips" id="cnt-presets"></div>
+        </div>
+        <div class="hint" id="cnt-hint"></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num">四</div>
+      <div class="body">
+        <h3>Тип квиза</h3>
+        <div class="seg" id="sel-mode"></div>
+        <div class="sub">
+          <div class="lbl">Транскрипция</div>
+          <div class="seg" id="sel-sys"></div>
+        </div>
+        <div class="sub" id="lenient-wrap">
+          <div class="lbl">Проверка рисунка</div>
+          <div class="seg" id="sel-len"></div>
+        </div>
+      </div>
+    </div>
+    <div class="start">
+      <button class="btn primary" id="btn-start">Начать квиз
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+    <div class="warn" id="start-warn" hidden></div>
+  </section>
+
+  <!-- КВИЗ -->
+  <section id="screen-quiz" hidden>
+    <div class="qbar">
+      <button class="iconbtn" id="btn-quit" title="Закончить квиз и вернуться к настройке">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>Выйти</button>
+      <div class="prog"><i id="prog"></i></div>
+      <div class="ctr" id="ctr">1 / 20</div>
+    </div>
+    <div class="card" id="card"></div>
+  </section>
+
+  <!-- ИТОГИ -->
+  <section id="screen-result" class="card" hidden></section>
+
+  <!-- СЛОВАРЬ -->
+  <section id="screen-dict" hidden>
+    <details class="panel" id="add-panel">
+      <summary>Добавить слово</summary>
+      <form class="form" id="add-form">
+        <div class="row">
+          <label>Слово каной<input id="add-kana" class="k" required placeholder="さかな"></label>
+          <label>Перевод<input id="add-mean" required placeholder="рыба"></label>
+          <label>Тема<input id="add-topic" list="topics" placeholder="Еда"></label>
+        </div>
+        <label>Особое чтение (если читается не так, как пишется), латиница|кириллица<input id="add-read" placeholder="konnichiwa|коннитива"></label>
+        <div id="add-preview" class="small muted"></div>
+        <div><button class="btn primary" type="submit">Добавить</button> <span class="okmsg" id="add-ok"></span></div>
+      </form>
+      <datalist id="topics"></datalist>
+    </details>
+    <details class="panel" id="import-panel">
+      <summary>Импорт списка слов</summary>
+      <div class="form">
+        <div class="howto">Одна строка — одно слово. Поля через точку с запятой, табуляцию или запятую: <b>кана; перевод; тема; особое чтение</b>. Тема и чтение необязательны. Подойдёт экспорт колоды Anki в текст или таблица, сохранённая как CSV.</div>
+        <pre class="fmt">ねこ;кошка;Животные
+いぬ;собака;Животные
+こんにちは;здравствуйте;Вежливость;konnichiwa|коннитива</pre>
+        <label>Вставьте строки или выберите файл<textarea id="imp-text" placeholder="ねこ;кошка;Животные"></textarea></label>
+        <div class="dict-tools"><input type="file" id="imp-file" accept=".csv,.txt,.tsv"><button class="btn primary" id="imp-go" type="button">Импортировать</button></div>
+        <div id="imp-res" class="small"></div>
+      </div>
+    </details>
+    <details class="panel" id="backup-panel">
+      <summary>Резервная копия и мой почерк</summary>
+      <div class="form">
+        <div class="howto">Ваши слова и образцы почерка хранятся только в этом браузере. Скопируйте резервную копию, чтобы перенести их на другое устройство, и вставьте её туда в поле ниже.</div>
+        <div class="dict-tools">
+          <button class="btn ghost" id="bk-copy" type="button">Скопировать копию</button>
+          <button class="btn ghost" id="bk-restore" type="button">Восстановить из поля</button>
+        </div>
+        <textarea id="bk-text" aria-label="Резервная копия"></textarea>
+        <div class="small" id="bk-res"></div>
+        <div class="dict-tools"><span class="small muted" id="samples-info"></span><button class="link" id="samples-clear" type="button">Удалить образцы почерка</button><button class="link" id="dict-reset" type="button">Вернуть стартовый словарь</button></div>
+      </div>
+    </details>
+    <div class="dict-tools"><input type="search" id="dict-q" placeholder="Поиск по слову или переводу" aria-label="Поиск"><span class="small muted" id="dict-count"></span></div>
+    <div class="sheet"><div class="wlist" id="wlist"></div></div>
+  </section>
+</div>
+
+<script>/*KVG*/</script>
+<script>/*REC*/</script>
+<script>/*KANA*/</script>
+<script>/*WORDS*/</script>
+<script>/*APP*/</script>
