@@ -23,8 +23,14 @@
   // ---------- хранилище в браузере ----------
   const store = {
     get(k, d) { try { const v = localStorage.getItem('kana-tetrad:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
-    set(k, v) { try { localStorage.setItem('kana-tetrad:' + k, JSON.stringify(v)); } catch (e) { } },
+    set(k, v) {
+      try { localStorage.setItem('kana-tetrad:' + k, JSON.stringify(v)); } catch (e) { }
+      if (SYNCED.has(k) && !applying && window.KanaSync) window.KanaSync.touch();
+    },
   };
+  // то, что синхронизируется с аккаунтом
+  const SYNCED = new Set(['words', 'deleted', 'samples', 'settings', 'answers']);
+  let applying = false;
 
   // ---------- распознаватель ----------
   const rec = new KanaRec.Recognizer(KVG);
@@ -56,6 +62,10 @@
   }
   const topicsOf = ws => [...new Set(ws.map(w => w.topic || 'Без темы'))];
   const wordScript = w => /[゠-ヿ]/.test(w.kana) ? 'k' : 'h';
+
+  // ---------- история ответов ----------
+  const MAX_ANSWERS = 20000;
+  let answers = store.get('answers', []);
 
   // ---------- настройки ----------
   const def = { script: 'h', rows: { h: ['a', 'ka', 'sa'], k: ['a', 'ka', 'sa'] }, topics: null, wfilter: 'all', count: 20, mode: 'draw', sys: 'ru', len: 1 };
@@ -331,6 +341,11 @@
 
   function finish(res) {
     Q.results[Q.i] = res;
+    const a = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), ts: Date.now(), k: res.it.kana, w: res.it.kind === 'word' ? 1 : 0, m: Q.mode, r: res.status };
+    res.answerId = a.id;
+    answers.push(a);
+    if (answers.length > MAX_ANSWERS) answers.splice(0, answers.length - MAX_ANSWERS);
+    store.set('answers', answers);
     renderVerdict(res);
   }
   function renderVerdict(res) {
@@ -370,7 +385,9 @@
             p.ok = true;
           }
           store.set('samples', samples);
-          res.status = 'ok'; res.taught = true; renderVerdict(res);
+          res.status = 'ok'; res.taught = true;
+          const a = answers.find(x => x.id === res.answerId); if (a) { a.r = 'ok'; store.set('answers', answers); }
+          renderVerdict(res);
         }, 'Сохранить этот рисунок как образец вашего почерка и засчитать ответ'));
       }
       if (res.taught) v.append(h('div', { class: 'note' }, 'Рисунок сохранён как образец вашего почерка: такой вариант теперь будет приниматься.'));
@@ -413,19 +430,19 @@
   }
 
   // ---------- переключение экранов ----------
-  let lastQuiz = 'setup';
+  let lastQuiz = 'setup', current = 'setup';
+  const tabOf = name => (name === 'dict' || name === 'progress') ? name : 'quiz';
   function show(name) {
-    if (name !== 'dict') lastQuiz = name;
-    $('#screen-setup').hidden = name !== 'setup';
-    $('#screen-quiz').hidden = name !== 'quiz';
-    $('#screen-result').hidden = name !== 'result';
-    $('#screen-dict').hidden = name !== 'dict';
-    document.querySelectorAll('nav.tabs button').forEach(x => x.setAttribute('aria-selected', String((x.dataset.tab === 'dict') === (name === 'dict'))));
+    if (tabOf(name) === 'quiz') lastQuiz = name;
+    current = name;
+    for (const n of ['setup', 'quiz', 'result', 'dict', 'progress']) $('#screen-' + n).hidden = name !== n;
+    document.querySelectorAll('nav.tabs button').forEach(x => x.setAttribute('aria-selected', String(x.dataset.tab === tabOf(name))));
     if (name === 'setup') renderSetup();
     if (name === 'dict') renderDict();
+    if (name === 'progress') renderProgress();
     window.scrollTo(0, 0);
   }
-  document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => show(b.dataset.tab === 'dict' ? 'dict' : lastQuiz));
+  document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => show(b.dataset.tab === 'quiz' ? lastQuiz : b.dataset.tab));
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !$('#screen-quiz').hidden && document.activeElement && document.activeElement.tagName === 'BODY') {
       const b = $('#card .btn.primary'); if (b) b.click();
@@ -506,6 +523,117 @@
   $('#dict-reset').onclick = e => {
     if (!armReset) { armReset = true; e.target.textContent = 'Точно вернуть? Свои слова удалятся'; return; }
     userWords = []; deleted = new Set(); saveWords(); armReset = false; e.target.textContent = 'Вернуть стартовый словарь'; renderDict();
+  };
+
+  // ---------- прогресс ----------
+  function kanaStats() {
+    const m = {};
+    for (const a of answers) {
+      if (a.w) continue;
+      for (const ch of [a.k]) { const s = m[ch] = m[ch] || []; s.push(a.r === 'ok' ? 1 : 0); }
+    }
+    for (const ch in m) m[ch] = m[ch].slice(-8);   // последние 8 попыток
+    return m;
+  }
+  const dayKey = ts => { const d = new Date(ts); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
+  function renderProgress() {
+    if (window.KanaSync) window.KanaSync.renderAccount($('#account-box'));
+    const el = $('#stats'); el.replaceChildren();
+    const total = answers.length, ok = answers.filter(a => a.r === 'ok').length;
+    const weekAgo = Date.now() - 7 * 864e5, week = answers.filter(a => a.ts >= weekAgo), weekOk = week.filter(a => a.r === 'ok').length;
+    const days = new Set(answers.map(a => dayKey(a.ts)));
+    let streak = 0; const d = new Date();
+    if (!days.has(dayKey(d.getTime()))) d.setDate(d.getDate() - 1);
+    while (days.has(dayKey(d.getTime()))) { streak++; d.setDate(d.getDate() - 1); }
+    const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
+    el.append(h('div', { class: 'statrow' },
+      h('div', {}, h('div', { class: 'v' }, String(total)), h('div', { class: 'l' }, 'ответов всего')),
+      h('div', {}, h('div', { class: 'v' }, pct(ok, total)), h('div', { class: 'l' }, 'верных за всё время')),
+      h('div', {}, h('div', { class: 'v' }, pct(weekOk, week.length)), h('div', { class: 'l' }, `верных за 7 дней (${week.length})`)),
+      h('div', {}, h('div', { class: 'v' }, String(streak)), h('div', { class: 'l' }, 'дней подряд'))));
+    if (!total) { el.append(h('p', { class: 'muted' }, 'Пройдите первый квиз — здесь появится, какие знаки уже держатся, а какие путаются.')); return; }
+
+    const st = kanaStats();
+    const weak = [];
+    const grids = h('div', { class: 'kgrids' });
+    for (const [script, name] of [['h', 'Хирагана'], ['k', 'Катакана']]) {
+      const grid = h('div', { class: 'kgrid' });
+      let seen = 0;
+      for (const r of ROWS) {
+        if (r.g === 'yoon') continue;
+        // сетка 5 столбцов по гласным а-и-у-э-о; в рядах я и ва — пропуски, как в таблице годзюон
+        const chars = r.h.split(' ');
+        const cells = r.id === 'ya' ? [chars[0], '', chars[1], '', chars[2]] : r.id === 'wa' ? [chars[0], '', '', '', chars[1], chars[2], '', '', '', ''] : chars;
+        // показываем только ряды, где уже были ответы
+        if (!chars.some(c => st[script === 'k' ? toKata(c) : c])) continue;
+        for (const base of cells) {
+          if (!base) { grid.append(h('div', { class: 'kc gap', 'aria-hidden': 'true' })); continue; }
+          const ch = script === 'k' ? toKata(base) : base;
+          const s = st[ch];
+          let cls = 'none', title = 'ещё не было';
+          if (s) {
+            seen++;
+            const acc = s.reduce((x, y) => x + y, 0) / s.length;
+            cls = acc >= 0.85 ? 'good' : acc >= 0.6 ? 'mid' : 'weak';
+            title = `${Math.round(acc * 100)}% из последних ${s.length}`;
+            if (acc < 0.85 && s.length >= 2) weak.push({ ch, acc, row: r });
+          }
+          grid.append(h('div', { class: 'kc ' + cls, title: ch + ': ' + title }, h('span', {}, ch), h('small', {}, s ? `${s.reduce((x, y) => x + y, 0)}/${s.length}` : '')));
+        }
+      }
+      if (seen) grids.append(h('div', {}, h('h4', { class: 'sh' }, name), grid));
+    }
+    if (grids.children.length) el.append(grids);
+    el.append(h('div', { class: 'legend small muted' },
+      h('span', { class: 'kc good' }, ''), 'держится', h('span', { class: 'kc mid' }, ''), 'неуверенно', h('span', { class: 'kc weak' }, ''), 'путается',
+      h('span', { class: 'kc none' }, ''), 'не было · по последним 8 попыткам; показаны ряды, которые вы уже тренировали'));
+    if (weak.length) {
+      weak.sort((a, b) => a.acc - b.acc);
+      const items = weak.slice(0, 15).map(x => ({ kind: 'kana', kana: x.ch, row: x.row }));
+      el.append(h('div', { class: 'weaklist' }, h('div', {}, h('b', {}, 'Слабые знаки: '), items.map(i => i.kana).join(' ')),
+        iconBtn('btn primary', 'undo', 'Потренировать их', () => startQuiz(items, items.length * 2))));
+    }
+  }
+
+  // ---------- связь с синхронизацией ----------
+  const hash36 = str => { let x = 0x811c9dc5; for (let i = 0; i < str.length; i++) { x ^= str.charCodeAt(i); x = Math.imul(x, 0x01000193) >>> 0; } return x.toString(36); };
+  const sampleId = (ch, s) => ch + ':' + hash36(JSON.stringify(s));
+  window.KanaApp = {
+    items() {
+      const out = [];
+      for (const w of userWords) out.push({ c: 'words', id: wid(w), data: { kana: w.kana, mean: w.mean, topic: w.topic, read: w.read } });
+      for (const id of deleted) out.push({ c: 'hidden', id, data: {} });
+      for (const ch in samples) for (const s of samples[ch]) out.push({ c: 'samples', id: sampleId(ch, s), data: { ch, s } });
+      out.push({ c: 'settings', id: 'main', data: Object.assign({}, S) });
+      for (const a of answers) { const { id, ...rest } = a; out.push({ c: 'answers', id, data: rest }); }
+      return out;
+    },
+    apply(c, id, data) {
+      if (c === 'words') { userWords = userWords.filter(w => wid(w) !== id); if (data) userWords.push({ kana: data.kana, mean: data.mean, topic: data.topic, read: data.read }); }
+      else if (c === 'hidden') { if (data) deleted.add(id); else deleted.delete(id); }
+      else if (c === 'samples') {
+        const ch = data ? data.ch : id.split(':')[0];
+        const list = (samples[ch] || []).filter(s => sampleId(ch, s) !== id);
+        if (data) list.push(data.s);
+        if (list.length) samples[ch] = list; else delete samples[ch];
+      }
+      else if (c === 'settings' && data) { for (const k in S) delete S[k]; Object.assign(S, def, data); }
+      else if (c === 'answers') { answers = answers.filter(a => a.id !== id); if (data) answers.push({ id, ...data }); }
+    },
+    commit() {
+      applying = true;
+      answers.sort((a, b) => a.ts - b.ts);
+      store.set('words', userWords); store.set('deleted', [...deleted]); store.set('samples', samples); store.set('settings', S); store.set('answers', answers);
+      applying = false;
+      loadSamples();
+      if (current === 'setup') renderSetup(); else if (current === 'dict') renderDict(); else if (current === 'progress') renderProgress();
+    },
+    resetLocal() {
+      userWords = []; deleted = new Set(); samples = {}; answers = [];
+      for (const k in S) delete S[k]; Object.assign(S, JSON.parse(JSON.stringify(def)));
+      this.commit();
+    },
+    rerender() { if (current === 'progress') renderProgress(); },
   };
 
   window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next };

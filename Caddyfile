@@ -1,4 +1,11 @@
 {$SITE_DOMAIN} {
 	encode gzip
-	reverse_proxy kana-tetrad:80
+
+	handle /api/* {
+		reverse_proxy kana-api:8080
+	}
+
+	handle {
+		reverse_proxy kana-tetrad:80
+	}
 }

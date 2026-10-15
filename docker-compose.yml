@@ -6,6 +6,39 @@ services:
     labels:
       - com.centurylinklabs.watchtower.enable=true
 
+  # Аккаунты и синхронизация прогресса
+  kana-api:
+    image: ghcr.io/imfox1301/kana-book-api:latest
+    container_name: kana-api
+    restart: unless-stopped
+    environment:
+      - DB_URL=jdbc:postgresql://kana-db:5432/kana
+      - DB_USER=kana
+      - DB_PASSWORD=${DB_PASSWORD:?укажите DB_PASSWORD в .env}
+    depends_on:
+      kana-db:
+        condition: service_healthy
+    mem_limit: 384m
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  kana-db:
+    image: postgres:16-alpine
+    container_name: kana-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=kana
+      - POSTGRES_USER=kana
+      - POSTGRES_PASSWORD=${DB_PASSWORD:?укажите DB_PASSWORD в .env}
+    volumes:
+      - kana_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kana -d kana"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    mem_limit: 256m
+
   # HTTPS для домена из .env (SITE_DOMAIN): сам получает и продлевает сертификат Let's Encrypt
   caddy:
     image: caddy:2.8-alpine
@@ -22,18 +55,20 @@ services:
       - caddy_config:/config
     depends_on:
       - kana-tetrad
+      - kana-api
 
-  # Следит за новым образом в GHCR и перезапускает только kana-tetrad
+  # Следит за новыми образами в GHCR и перезапускает kana-tetrad и kana-api
   watchtower:
     image: containrrr/watchtower:1.7.1
     container_name: kana-watchtower
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      # если пакет в GHCR приватный: docker login ghcr.io на сервере, затем раскомментировать
+      # если пакеты в GHCR приватные: docker login ghcr.io на сервере, затем раскомментировать
       # - /root/.docker/config.json:/config.json:ro
     command: --label-enable --cleanup --interval 120
 
 volumes:
+  kana_pgdata:
   caddy_data:
   caddy_config:

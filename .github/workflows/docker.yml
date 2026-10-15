@@ -71,12 +71,18 @@ jobs:
           DB_URL: jdbc:postgresql://localhost:5432/kana
         run: gradle test bootJar --no-daemon
 
-      - name: Keep jar for end-to-end checks
-        uses: actions/upload-artifact@v4
-        with:
-          name: kana-api-jar
-          path: server/build/libs/kana-api.jar
-          retention-days: 3
+      - name: End-to-end sync between two devices (real API + PostgreSQL)
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/kana
+          COOKIE_SECURE: 'false'
+        run: |
+          python3 build.py
+          java -jar server/build/libs/kana-api.jar > api.log 2>&1 &
+          for i in $(seq 60); do curl -sf http://127.0.0.1:8080/api/health && break; sleep 1; done
+          API_URL=http://127.0.0.1:8080 node tools/e2e/serve.js &
+          npm i --no-save playwright@1.56.0 > /dev/null
+          npx playwright install --with-deps chromium > /dev/null
+          node tools/e2e/sync-e2e.js http://localhost:8790 || (tail -50 api.log; exit 1)
 
       - uses: docker/setup-buildx-action@v3
         if: github.ref == 'refs/heads/main'

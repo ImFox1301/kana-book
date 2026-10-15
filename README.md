@@ -19,21 +19,38 @@ git push → GitHub Actions (тест распознавателя + сборк�
 
 Серверу не нужен входящий доступ для деплоя, а репозиторию — пароль от сервера.
 
+## Аккаунты
+
+Без входа всё работает на устройстве. Аккаунт (логин и пароль) нужен, чтобы слова, образцы почерка, настройки и история ответов были на всех устройствах; при первом входе накопленное на устройстве переносится в аккаунт.
+
+- API: `server/` — Kotlin, Spring Boot, PostgreSQL. Пароли — BCrypt, сессия — случайный токен в httpOnly-cookie (`SameSite=Strict`), в базе только его SHA-256.
+- Синхронизация: `POST /api/sync` — клиент отправляет изменённые элементы и получает всё новое после своего курсора. Конфликт решается по времени изменения: побеждает более позднее.
+- Защита открытой регистрации: ограничение частоты регистраций и попыток входа по IP и по логину.
+
 ## Сервер
 
-Caddy занимает порты 80 и 443 и сам выпускает сертификат Let's Encrypt для домена сайта. Другие сервисы на сервере не затрагиваются, если они не слушают 80 и 443.
+Caddy занимает порты 80 и 443 и сам выпускает сертификат Let's Encrypt для домена сайта; `/api/*` уходит в kana-api, остальное — в статику. Другие сервисы на сервере не затрагиваются, если они не слушают 80 и 443.
 
 Первый запуск (один раз):
 
 ```bash
 mkdir -p ~/kana-tetrad && cd ~/kana-tetrad
 # положить сюда docker-compose.yml и Caddyfile из репозитория
-echo "SITE_DOMAIN=kana.example.com" > .env
+cat > .env <<EOF
+SITE_DOMAIN=kana.example.com
+DB_PASSWORD=$(openssl rand -hex 24)
+EOF
 docker compose up -d
 docker compose logs -f caddy      # ждать строку "certificate obtained successfully"
 ```
 
 DNS: A-запись домена сайта → IP сервера.
+
+Резервная копия базы:
+
+```bash
+docker exec kana-db pg_dump -U kana kana | gzip > kana-$(date +%F).sql.gz
+```
 
 Если на сервере есть другой сервис, который продлевает свой сертификат через acme.sh в режиме standalone (ему нужен порт 80), пропишите ему хуки, чтобы на время продления Caddy останавливался:
 
@@ -45,8 +62,10 @@ sudo ~/.acme.sh/acme.sh --renew -d <его домен> --force \
 ## Локальная разработка
 
 ```bash
-python3 build.py              # → dist/index.html, открыть в браузере
+python3 build.py              # → dist/
+node tools/e2e/serve.js       # dist/ + заглушка API на http://localhost:8790
 node tools/test.js            # синтетический тест точности распознавания
+cd server && gradle test      # тесты API (нужен PostgreSQL, см. DB_URL в application.yml)
 docker build -t kana-tetrad . && docker run --rm -p 8080:80 kana-tetrad
 ```
 
@@ -54,6 +73,9 @@ docker build -t kana-tetrad . && docker run --rm -p 8080:80 kana-tetrad
 
 - `src/app.html`, `src/app.js` — интерфейс квиза и словаря
 - `src/pwa.js`, `src/sw.js` — установка, офлайн-кэш и обновления
+- `src/sync.js` — аккаунт и синхронизация
+- `server/` — API аккаунтов и синхронизации
+- `tools/e2e/` — стенд и сквозная проверка синхронизации двух устройств
 - `assets/fonts` — Klee One и Onest (OFL), урезанные до каны, латиницы и кириллицы
 - `assets/icons`, `tools/make_icons.py` — иконки приложения
 - `src/recognizer.js` — распознаватель рукописной каны

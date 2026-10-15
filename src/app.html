@@ -7,7 +7,7 @@
 :root {
   --paper: #f5f6f2; --sheet: #fcfcfa; --ink: #1d2126; --ink-2: #565d66; --rule: #d9ddd3; --guide: #c9d3dd;
   --indigo: #2f4f86; --indigo-soft: #e3e9f4; --on-indigo: #ffffff;
-  --ok: #3f7a4a; --ok-soft: #e2efe2; --shu: #c23b2a; --shu-soft: #f6e1dc; --stroke: #1d2126;
+  --ok: #3f7a4a; --ok-soft: #e2efe2; --shu: #c23b2a; --shu-soft: #f6e1dc; --stroke: #1d2126; --warn: #9a6a12; --warn-soft: #f5ead2;
   --kana: "Klee One", "Hiragino Mincho ProN", "Yu Mincho", serif;
   --ui: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
   --r: 10px;
@@ -15,11 +15,11 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --paper: #15181c; --sheet: #1c2025; --ink: #e8eaec; --ink-2: #a3aab3; --rule: #2e343b; --guide: #34404d;
   --indigo: #8fb0e8; --indigo-soft: #233147; --on-indigo: #0f1724;
-  --ok: #7cc28a; --ok-soft: #1f3324; --shu: #f08a78; --shu-soft: #3d2420; --stroke: #eef0f2; color-scheme: dark } }
+  --ok: #7cc28a; --ok-soft: #1f3324; --shu: #f08a78; --shu-soft: #3d2420; --stroke: #eef0f2; --warn: #e2b35c; --warn-soft: #3a2f18; color-scheme: dark } }
 :root[data-theme="dark"] {
   --paper: #15181c; --sheet: #1c2025; --ink: #e8eaec; --ink-2: #a3aab3; --rule: #2e343b; --guide: #34404d;
   --indigo: #8fb0e8; --indigo-soft: #233147; --on-indigo: #0f1724;
-  --ok: #7cc28a; --ok-soft: #1f3324; --shu: #f08a78; --shu-soft: #3d2420; --stroke: #eef0f2; color-scheme: dark }
+  --ok: #7cc28a; --ok-soft: #1f3324; --shu: #f08a78; --shu-soft: #3d2420; --stroke: #eef0f2; --warn: #e2b35c; --warn-soft: #3a2f18; color-scheme: dark }
 * { box-sizing: border-box }
 [hidden] { display: none !important }
 html, body { background: var(--paper); color: var(--ink) }
@@ -165,6 +165,32 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
   .prompt .kana { font-size: 72px }
   .step { grid-template-columns: 26px 1fr; gap: 4px 8px }
 }
+.statrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 18px }
+.statrow > div { background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px }
+.statrow .v { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2 }
+.statrow .l { font-size: 12.5px; color: var(--ink-2) }
+.sh { margin: 14px 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2) }
+.kgrid { display: grid; grid-template-columns: repeat(5, minmax(0, 52px)); gap: 5px }
+.kc.gap { visibility: hidden }
+.kc { display: grid; justify-items: center; border-radius: 7px; padding: 4px 0 2px; border: 1px solid var(--rule); background: var(--paper) }
+.kc span { font-family: var(--kana); font-size: 22px; line-height: 1.15 }
+.kc small { font-size: 10px; color: var(--ink-2); font-variant-numeric: tabular-nums; min-height: 13px }
+.kc.good { background: var(--ok-soft); border-color: var(--ok) }
+.kc.mid { background: var(--warn-soft); border-color: var(--warn) }
+.kc.weak { background: var(--shu-soft); border-color: var(--shu) }
+.kc.none span { color: var(--ink-2); opacity: .55 }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px }
+.legend .kc { width: 14px; height: 14px; padding: 0; display: inline-block; margin-left: 6px }
+.weaklist { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--rule) }
+.weaklist > div { font-family: var(--kana); font-size: 20px }
+.weaklist b { font-family: var(--ui); font-size: 15px; font-weight: 600 }
+.kgrids { display: flex; flex-wrap: wrap; gap: 8px 32px }
+.account { margin-bottom: 12px; display: grid; gap: 10px }
+.account .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.account input { padding: 9px 11px; border: 1.5px solid var(--rule); border-radius: 8px; background: var(--paper); color: var(--ink); font: 15px var(--ui); min-width: 0; flex: 1 1 160px }
+.account .who { font-weight: 600 }
+.account .err { color: var(--shu); font-size: 13.5px }
+.account .st { font-size: 13px; color: var(--ink-2) }
 .topright { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
 .installhint { background: var(--indigo-soft); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin-bottom: 12px }
 .updbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; justify-content: center; padding: 0 max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); pointer-events: none }
@@ -183,6 +209,7 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
       <nav class="tabs" role="tablist">
         <button role="tab" id="tab-quiz" aria-selected="true" data-tab="quiz">Квиз</button>
         <button role="tab" id="tab-dict" aria-selected="false" data-tab="dict">Словарь</button>
+        <button role="tab" id="tab-progress" aria-selected="false" data-tab="progress">Прогресс</button>
       </nav>
     </div>
   </header>
@@ -302,6 +329,12 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
     </details>
     <div class="dict-tools"><input type="search" id="dict-q" placeholder="Поиск по слову или переводу" aria-label="Поиск"><span class="small muted" id="dict-count"></span></div>
     <div class="sheet"><div class="wlist" id="wlist"></div></div>
+  </section>
+
+  <!-- ПРОГРЕСС -->
+  <section id="screen-progress" hidden>
+    <div class="sheet account" id="account-box" hidden></div>
+    <div class="sheet" id="stats"></div>
   </section>
 </div>
 
