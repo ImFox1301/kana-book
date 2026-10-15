@@ -3,6 +3,7 @@ FROM python:3.12-alpine AS build
 WORKDIR /app
 COPY build.py ./
 COPY src ./src
+COPY assets ./assets
 RUN python build.py
 
 # 2) статика через nginx

@@ -165,17 +165,31 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
   .prompt .kana { font-size: 72px }
   .step { grid-template-columns: 26px 1fr; gap: 4px 8px }
 }
+.topright { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.installhint { background: var(--indigo-soft); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin-bottom: 12px }
+.updbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; justify-content: center; padding: 0 max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); pointer-events: none }
+.updbar > div { pointer-events: auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--ink); color: var(--paper); border-radius: 12px; padding: 10px 12px 10px 16px; font-size: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.18); max-width: 520px }
+.updbar button { border: 0; border-radius: 8px; padding: 7px 12px; font: 600 14px var(--ui); cursor: pointer; background: var(--paper); color: var(--ink) }
+.updbar button.later { background: none; color: var(--paper); opacity: .8 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important } }
 </style>
 
 <div class="wrap">
   <header class="top">
     <div class="brand"><b>かな</b><span>Кана-тетрадь</span></div>
-    <nav class="tabs" role="tablist">
-      <button role="tab" id="tab-quiz" aria-selected="true" data-tab="quiz">Квиз</button>
-      <button role="tab" id="tab-dict" aria-selected="false" data-tab="dict">Словарь</button>
-    </nav>
+    <div class="topright">
+      <button class="iconbtn" id="btn-install" type="button" hidden title="Установить Кана-тетрадь как приложение">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Установить</button>
+      <nav class="tabs" role="tablist">
+        <button role="tab" id="tab-quiz" aria-selected="true" data-tab="quiz">Квиз</button>
+        <button role="tab" id="tab-dict" aria-selected="false" data-tab="dict">Словарь</button>
+      </nav>
+    </div>
   </header>
+  <div class="installhint" id="install-hint" hidden>
+    <b>Установка на iPhone и iPad:</b> откройте сайт в Safari, нажмите «Поделиться» и выберите «На экран Домой».
+    <button class="link" id="install-hint-close" type="button">Понятно</button>
+  </div>
 
   <!-- НАСТРОЙКА -->
   <section id="screen-setup" class="sheet">
@@ -289,6 +303,13 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
     <div class="dict-tools"><input type="search" id="dict-q" placeholder="Поиск по слову или переводу" aria-label="Поиск"><span class="small muted" id="dict-count"></span></div>
     <div class="sheet"><div class="wlist" id="wlist"></div></div>
   </section>
+</div>
+
+<div class="updbar" id="update-bar" hidden role="status">
+  <div>Доступна новая версия Кана-тетради
+    <button type="button" id="btn-update">Обновить</button>
+    <button type="button" class="later" id="btn-update-later">Позже</button>
+  </div>
 </div>
 
 <script>/*KVG*/</script>
