@@ -71,7 +71,7 @@ window.KanaSync = (function () {
         const batch = changes.splice(0, 1000);
         const r = await api('/sync', { cursor, changes: batch });
         if (r.status === 401) { status = 'Сессия истекла — войдите снова. Данные на устройстве сохранены.'; account = null; saveState(); return; }
-        if (r.status !== 200) { status = (r.data.error || 'Сервер недоступен') + '. Повторю позже.'; return; }
+        if (r.status !== 200 || !Array.isArray(r.data.items)) { status = (r.data.error || 'Сервер недоступен') + '. Повторю позже.'; return; }
         const cur = localMap();
         for (const it of r.data.items) {
           const k = keyOf(it.c, it.id);
@@ -102,6 +102,7 @@ window.KanaSync = (function () {
     const r = await api('/auth/' + kind, { username, password });
     ui.busy = false;
     if (r.status !== 200 && r.status !== 201) { ui.error = r.data.error || 'Не получилось, попробуйте ещё раз'; rerender(); return; }
+    if (!r.data.username) { ui.error = 'Сервер аккаунтов пока недоступен. Занимайтесь без входа — данные сохраняются на устройстве.'; rerender(); return; }
     account = { username: r.data.username }; cursor = 0; snap = {}; lastSync = 0; saveState();
     ui.error = ''; ui.mode = 'login'; rerender();
     syncNow();
