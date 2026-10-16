@@ -6,7 +6,8 @@ ADD https://github.com/VOICEVOX/onnxruntime-builder/releases/download/voicevox_o
 ADD https://github.com/r9y9/open_jtalk/releases/download/v1.11.1/open_jtalk_dic_utf_8-1.11.tar.gz /dl/
 ADD https://github.com/VOICEVOX/voicevox_vvm/releases/download/${VV}/15.vvm /opt/voicevox/vvms/15.vvm
 ADD https://github.com/VOICEVOX/voicevox_vvm/releases/download/${VV}/3.vvm /opt/voicevox/vvms/3.vvm
-RUN cd /opt/voicevox && tar xzf /dl/voicevox_onnxruntime-linux-x64-1.17.3.tgz && tar xzf /dl/open_jtalk_dic_utf_8-1.11.tar.gz
+RUN cd /opt/voicevox && tar xzf /dl/voicevox_onnxruntime-linux-x64-1.17.3.tgz && tar xzf /dl/open_jtalk_dic_utf_8-1.11.tar.gz \
+ && chmod -R a+rX /opt/voicevox /dl   # файлы из ADD по URL приходят с правами 600
 
 FROM python:3.12-slim-bookworm
 COPY --from=fetch /dl/*.whl /tmp/

@@ -125,6 +125,7 @@ jobs:
       - name: Smoke test
         run: |
           docker run -d --name tts -p 8081:8081 kana-tts:test
+          trap 'docker logs tts' EXIT
           for i in $(seq 60); do curl -sf http://127.0.0.1:8081/api/tts/health && break; sleep 2; done
           curl -sf -o neko.mp3 "http://127.0.0.1:8081/api/tts?v=m&t=%E3%81%AD%E3%81%93"
           curl -sf -o hashi.mp3 "http://127.0.0.1:8081/api/tts?v=f&t=%E3%81%AF%E3%81%97&k=%E7%AE%B8"
