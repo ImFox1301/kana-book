@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
-"""Озвучка каны для вкладки «Азбука»: нейросетевой синтез Kokoro-82M (Apache-2.0), офлайн.
+"""Озвучка каны для вкладки «Азбука»: VOICEVOX CORE, офлайн.
 
-Голоса: m — jm_kumo (мужской), f — jf_alpha (женский).
+Голоса (выбраны по разборчивости: распознавание речи ReazonSpeech на каждом отдельном слоге):
+  m — VOICEVOX:青山龍星 (Аояма Рюсэй), мужской
+  f — VOICEVOX:波音リツ (Намонэ Рицу), женский
+По условиям VOICEVOX в приложении указана кредитная строка «VOICEVOX:…».
 
-Подготовка (нужен ffmpeg):
-    python3 -m venv .venv && .venv/bin/pip install kokoro-onnx "misaki[ja]" soundfile numpy
-    mkdir -p .models && cd .models
-    curl -LO https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx
-    curl -LO https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+Подготовка (Linux x64, нужен ffmpeg; всё скачивается с GitHub):
+    V=0.16.4; D=.voicevox; mkdir -p $D/vvms && cd $D
+    curl -LO https://github.com/VOICEVOX/voicevox_core/releases/download/$V/voicevox_core-$V-cp310-abi3-manylinux_2_34_x86_64.whl
+    curl -L https://github.com/VOICEVOX/onnxruntime-builder/releases/download/voicevox_onnxruntime-1.17.3/voicevox_onnxruntime-linux-x64-1.17.3.tgz | tar xz
+    curl -L https://github.com/r9y9/open_jtalk/releases/download/v1.11.1/open_jtalk_dic_utf_8-1.11.tar.gz | tar xz
+    curl -L -o vvms/15.vvm https://github.com/VOICEVOX/voicevox_vvm/releases/download/$V/15.vvm
+    curl -L -o vvms/3.vvm https://github.com/VOICEVOX/voicevox_vvm/releases/download/$V/3.vvm
+    cd .. && python3 -m venv .venv && .venv/bin/pip install $D/voicevox_core-*.whl numpy soundfile
 Запуск:
-    .venv/bin/python tools/make_audio.py .models
+    .venv/bin/python tools/make_audio.py .voicevox
 
 Результат: assets/audio/<голос>/<хирагана>.mp3. Катакана использует те же файлы — звучание одинаковое.
-Каждый файл проверяется: нет обрыва в начале и в конце, нет провала громкости внутри слога.
-Если проверка не прошла, синтез повторяется с немного другой скоростью.
 """
+import io
 import re
 import subprocess
 import sys
@@ -23,72 +28,47 @@ from pathlib import Path
 
 import numpy as np
 import soundfile as sf
-from kokoro_onnx import Kokoro
-from misaki import ja
+from voicevox_core.blocking import Onnxruntime, OpenJtalk, Synthesizer, VoiceModelFile
 
-models = Path(sys.argv[1] if len(sys.argv) > 1 else ".models")
+vv = Path(sys.argv[1] if len(sys.argv) > 1 else ".voicevox")
 root = Path(__file__).resolve().parent.parent
-VOICES = {"m": ("jm_kumo", 0.80), "f": ("jf_alpha", 0.85)}
+VOICES = {"m": ("15.vvm", 13), "f": ("3.vvm", 9)}   # файл модели, id стиля «ノーマル»
 
 kana_js = (root / "src" / "kana.js").read_text(encoding="utf-8").split("const GROUPS")[0]
 sounds = [k for m in re.finditer(r"h: '([^']+)'", kana_js) for k in m.group(1).split(" ")]
 to_kata = lambda s: "".join(chr(ord(c) + 0x60) if "ぁ" <= c <= "ゖ" else c for c in s)
+SAME = {"ヲ": "オ", "ヂ": "ジ", "ヅ": "ズ"}            # звучат одинаково; VOICEVOX их отдельно не принимает
 
-g2p = ja.JAG2P()
-def phonemes(hira):
-    # сочетания собираем сами: misaki читает みょ/りょ/ぎょ как «ми-ё»
-    if len(hira) == 2 and hira[1] in "ゃゅょ":
-        base = phonemes(hira[0])
-        return base[:-1] + {"ゃ": "a", "ゅ": "ɨ", "ょ": "o"}[hira[1]]
-    r = g2p(to_kata(hira))
-    return r[0] if isinstance(r, (tuple, list)) else r
+ort = Onnxruntime.load_once(filename=str(next(vv.glob("voicevox_onnxruntime-*/lib/libvoicevox_onnxruntime.so.*"))))
+syn = Synthesizer(ort, OpenJtalk(str(next(vv.glob("open_jtalk_dic_utf_8-*")))))
 
 def finish(x, sr):
-    """Обрезка тишины с запасом, выравнивание громкости, плавные края."""
+    """Выравнивание громкости и плавные края."""
     x = np.asarray(x, dtype=np.float64)
-    f = int(sr * 0.01)
-    env = np.array([np.sqrt(np.mean(x[i:i + f] ** 2)) for i in range(0, len(x) - f, f)])
-    voiced = np.where(env > env.max() * 0.02)[0]
-    a = max(0, voiced[0] * f - int(sr * 0.05))
-    b = min(len(x), (voiced[-1] + 1) * f + int(sr * 0.15))
-    x = x[a:b]
     rms = np.sqrt(np.mean(x[np.abs(x) > np.abs(x).max() * 0.05] ** 2))
-    x = x * (0.12 / rms)                       # одинаковая громкость у всех слогов
+    x = x * (0.12 / rms)
     peak = np.abs(x).max()
     if peak > 0.95: x *= 0.95 / peak
-    fi, fo = int(sr * 0.01), int(sr * 0.04)
+    fi, fo = int(sr * 0.005), int(sr * 0.04)
     x[:fi] *= np.linspace(0, 1, fi); x[-fo:] *= np.linspace(1, 0, fo) ** 2
     return x
 
-def problems(x, sr):
-    f = int(sr * 0.01)
-    e = np.array([np.sqrt(np.mean(x[i:i + f] ** 2)) for i in range(0, len(x) - f, f)]); e /= e.max()
-    v = np.where(e > 0.08)[0]
-    gap = run = 0
-    for val in e[v[0]:v[-1] + 1]:
-        run = run + 1 if val < 0.03 else 0; gap = max(gap, run)
-    out = []
-    if gap * 10 > 90: out.append(f"провал {gap * 10} мс")
-    if e[-3:].mean() > 0.1: out.append("обрыв в конце")
-    if e[0] > 0.2: out.append("обрыв в начале")
-    if not 0.25 <= len(x) / sr <= 1.3: out.append(f"длительность {len(x) / sr:.2f} с")
-    return out
-
-kok = Kokoro(str(models / "kokoro-v1.0.onnx"), str(models / "voices-v1.0.bin"))
-for key, (voice, speed) in VOICES.items():
+for key, (vvm, style) in VOICES.items():
+    with VoiceModelFile.open(str(vv / "vvms" / vvm)) as m:
+        syn.load_voice_model(m)
     out = root / "assets" / "audio" / key
     out.mkdir(parents=True, exist_ok=True)
     for hira in sounds:
-        ph = phonemes(hira) + "."            # точка — естественная интонация отдельного слога
-        for sp in (speed, speed - 0.04, speed + 0.04, speed - 0.08):
-            raw, sr = kok.create(ph, voice=voice, speed=sp, lang="ja", is_phonemes=True)
-            x = finish(raw, sr)
-            bad = problems(x, sr)
-            if not bad: break
-        if bad: print(f"{key} {hira} [{ph}]: {', '.join(bad)}", file=sys.stderr)
+        k = to_kata(hira); k = SAME.get(k, k)
+        aq = syn.create_audio_query_from_kana(k + "'", style)   # один слог с ударением — ровный, отчётливый
+        mora = aq.accent_phrases[0].moras[0]
+        mora.vowel_length = max(mora.vowel_length, 0.32 if mora.vowel == "N" else 0.30)   # гласная дольше, чем в беглой речи
+        aq.pre_phoneme_length, aq.post_phoneme_length = 0.06, 0.20
+        x, sr = sf.read(io.BytesIO(syn.synthesis(aq, style)), dtype="float64")
+        x = finish(x, sr)
         with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
             sf.write(tmp.name, x.astype(np.float32), sr, subtype="PCM_16")
             subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", tmp.name, "-ac", "1", "-ar", "24000",
-                            "-codec:a", "libmp3lame", "-b:a", "56k", str(out / f"{hira}.mp3")], check=True)
+                            "-codec:a", "libmp3lame", "-b:a", "64k", str(out / f"{hira}.mp3")], check=True)
     size = sum(p.stat().st_size for p in out.glob("*.mp3"))
-    print(f"{key} ({voice}): {len(sounds)} файлов, {size // 1024} КБ")
+    print(f"{key}: {len(sounds)} файлов, {size // 1024} КБ")

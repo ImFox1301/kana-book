@@ -485,6 +485,7 @@
         h('button', { type: 'button', 'aria-pressed': String(selecting), onclick: () => { S.abcMode = 'select'; save(); renderAbc(); } }, svgIcon('check'), 'Выбрать для прописей')),
       h('div', { class: 'segm', role: 'group', 'aria-label': 'Голос' },
         ...[['m', 'Мужской голос'], ['f', 'Женский голос']].map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String((S.voice === 'f' ? 'f' : 'm') === v), onclick: () => { S.voice = v; save(); renderAbc(); playKana(conv('あ')); } }, t)))));
+    el.append(h('p', { class: 'small muted abc-credit' }, 'Озвучка: VOICEVOX:青山龍星 (мужской голос), VOICEVOX:波音リツ (женский голос)'));
     el.append(h('p', { class: 'small muted abc-hint' }, selecting
       ? 'Отметьте знаки или целый ряд — нажмите на подпись ряда слева. Затем выберите число повторений внизу.'
       : 'Нажмите на знак, чтобы услышать его. Подпись ряда слева проигрывает весь ряд.'));

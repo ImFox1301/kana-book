@@ -4,7 +4,8 @@ const CACHE = 'kana-' + VERSION;
 const ASSETS = __ASSETS__;
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  // cache: 'reload' — мимо HTTP-кэша браузера, иначе после обновления могли бы остаться старые файлы
+  event.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' })))));
 });
 
 self.addEventListener('activate', event => {

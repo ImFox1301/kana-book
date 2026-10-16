@@ -6,7 +6,7 @@
 
 Таблицы хираганы и катаканы в порядке годзюон. Нажатие на знак проигрывает его произношение, подпись ряда — весь ряд. В режиме «Выбрать для прописей» отмечаются знаки или ряды целиком, задаётся число повторений (от 5) и подложка — полупрозрачный образец знака для обводки. Каждая попытка проверяется тем же распознавателем, что и в квизе; знак считается отработанным после нужного числа верных попыток. В историю ответов попадают только попытки без подложки.
 
-Озвучка: `assets/audio/{m,f}/*.mp3` — мужской и женский голос, синтезированы офлайн нейросетью Kokoro-82M (`tools/make_audio.py`); каждый файл автоматически проверяется на обрывы и провалы громкости.
+Озвучка: `assets/audio/{m,f}/*.mp3` — VOICEVOX:青山龍星 (мужской) и VOICEVOX:波音リツ (женский), синтезированы офлайн через VOICEVOX CORE (`tools/make_audio.py`). Голоса выбраны по разборчивости: каждый отдельный слог прогонялся через распознавание японской речи (ReazonSpeech), из 12 вариантов эти два узнавались лучше всего.
 
 ## Приложение (PWA)
 
@@ -85,7 +85,7 @@ docker build -t kana-tetrad . && docker run --rm -p 8080:80 kana-tetrad
 - `assets/fonts` — Klee One и Onest (OFL), урезанные до каны, латиницы и кириллицы
 - `assets/icons`, `tools/make_icons.py` — иконки приложения
 - `src/recognizer.js` — распознаватель рукописной каны
-- `assets/audio`, `tools/make_audio.py` — произношение каны: [Kokoro-82M](https://github.com/hexgrad/kokoro) (Apache-2.0), голоса jm_kumo и jf_alpha; японская фонетика — [misaki](https://github.com/hexgrad/misaki) (Apache-2.0)
+- `assets/audio`, `tools/make_audio.py` — произношение каны: [VOICEVOX](https://voicevox.hiroshiba.jp/), голоса VOICEVOX:青山龍星 и VOICEVOX:波音リツ ([условия использования](https://github.com/VOICEVOX/voicevox_vvm#readme): бесплатно с указанием «VOICEVOX:имя»)
 - `src/kvg.json` — штрихи каны из [KanjiVG](https://kanjivg.tagaini.net) (CC BY-SA 3.0, © Ulrich Apel)
 - `src/kana.js` — таблицы каны, транскрипции Хэпбёрна и Поливанова, проверка ответов
 - `src/words.js` — стартовый словарь
