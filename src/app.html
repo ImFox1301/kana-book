@@ -354,6 +354,7 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
           <label>Перевод<input id="add-mean" required placeholder="рыба"></label>
           <label>Тема<input id="add-topic" list="topics" placeholder="Еда"></label>
         </div>
+        <label>Запись иероглифами — необязательно, для правильного ударения в озвучке<input id="add-kanji" class="k" placeholder="猫"></label>
         <label>Особое чтение (если читается не так, как пишется), латиница|кириллица<input id="add-read" placeholder="konnichiwa|коннитива"></label>
         <div id="add-preview" class="small muted"></div>
         <div><button class="btn primary" type="submit">Добавить</button> <span class="okmsg" id="add-ok"></span></div>
@@ -363,7 +364,7 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
     <details class="panel" id="import-panel">
       <summary>Импорт списка слов</summary>
       <div class="form">
-        <div class="howto">Одна строка — одно слово. Поля через точку с запятой, табуляцию или запятую: <b>кана; перевод; тема; особое чтение</b>. Тема и чтение необязательны. Подойдёт экспорт колоды Anki в текст или таблица, сохранённая как CSV.</div>
+        <div class="howto">Одна строка — одно слово. Поля через точку с запятой, табуляцию или запятую: <b>кана; перевод; тема; особое чтение; иероглифы</b>. Всё после перевода необязательно. Подойдёт экспорт колоды Anki в текст или таблица, сохранённая как CSV.</div>
         <pre class="fmt">ねこ;кошка;Животные
 いぬ;собака;Животные
 こんにちは;здравствуйте;Вежливость;konnichiwa|коннитива</pre>

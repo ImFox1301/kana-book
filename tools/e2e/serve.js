@@ -42,6 +42,10 @@ function mock(req, res, body) {
 }
 
 http.createServer((req, res) => {
+  if (req.url.startsWith('/api/tts') && !API) {   // заглушка озвучки: любой mp3
+    res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'public, max-age=31536000, immutable' });
+    return fs.createReadStream(path.join(ROOT, 'audio/m/あ.mp3')).pipe(res);
+  }
   if (req.url.startsWith('/api/')) {
     if (API) {
       const u = new URL(req.url, API);

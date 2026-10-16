@@ -1,6 +1,10 @@
 {$SITE_DOMAIN} {
 	encode gzip
 
+	handle /api/tts* {
+		reverse_proxy kana-tts:8081
+	}
+
 	handle /api/* {
 		reverse_proxy kana-api:8080
 	}

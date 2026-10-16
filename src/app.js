@@ -449,35 +449,48 @@
     if (cell) { cell.classList.remove('playing'); void cell.offsetWidth; cell.classList.add('playing'); }
     return a;
   }
-  // слова: стартовый словарь — записанная озвучка, свои слова — японский голос устройства (если он есть)
+  // слова: стартовый словарь — записанная озвучка; свои слова — VOICEVOX на сервере (/api/tts),
+  // без сети или сервера — японский голос устройства, если он есть
   const WORD_AUDIO = new Set(window.WORD_AUDIO || []);
+  const KANJI_RE = /^[\u3041-\u3096\u30a1-\u30fa\u30fc\u3005\u4e00-\u9fff]{1,30}$/;
+  function ttsUrl(kana, kanji, voice) {
+    return '/api/tts?v=' + (voice || (S.voice === 'f' ? 'f' : 'm')) + '&t=' + encodeURIComponent(kana) + (kanji && KANJI_RE.test(kanji) ? '&k=' + encodeURIComponent(kanji) : '');
+  }
+  function prefetchWord(kana, kanji) { if (window.KANA_PWA && !WORD_AUDIO.has(kana)) fetch(ttsUrl(kana, kanji)).catch(() => { }); }
+  function speakDevice(kana) {
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(kana);
+      u.lang = 'ja-JP'; u.rate = 0.85;
+      const v = speechSynthesis.getVoices().find(v => /^ja/i.test(v.lang)); if (v) u.voice = v;
+      speechSynthesis.speak(u);
+    } catch (e) { }
+  }
   const hasJaVoice = () => { try { return speechSynthesis.getVoices().some(v => /^ja/i.test(v.lang)); } catch (e) { return false; } };
   try { speechSynthesis.onvoiceschanged = () => { if (current === 'dict') renderDict(); }; } catch (e) { }
-  function canSay(kana) { return WORD_AUDIO.has(kana) || ('speechSynthesis' in window && hasJaVoice()); }
-  function playWord(kana, btn) {
-    if (WORD_AUDIO.has(kana)) {
-      const voice = S.voice === 'f' ? 'f' : 'm';
-      let a = audioCache['w' + voice + kana];
-      if (!a) a = audioCache['w' + voice + kana] = new Audio('audio/words/' + voice + '/' + encodeURIComponent(kana) + '.mp3');
+  function canSay(kana) { return WORD_AUDIO.has(kana) || !!window.KANA_PWA || ('speechSynthesis' in window && hasJaVoice()); }
+  function playWord(kana, btn, kanji) {
+    const voice = S.voice === 'f' ? 'f' : 'm';
+    const builtin = WORD_AUDIO.has(kana);
+    if (!builtin && !window.KANA_PWA) { speakDevice(kana); }
+    else {
+      const key = 'w' + voice + kana + '|' + (kanji || '');
+      let a = audioCache[key];
+      if (!a) {
+        a = audioCache[key] = new Audio(builtin ? 'audio/words/' + voice + '/' + encodeURIComponent(kana) + '.mp3' : ttsUrl(kana, kanji, voice));
+        if (!builtin) a.addEventListener('error', () => { delete audioCache[key]; speakDevice(kana); });
+      }
       try { a.currentTime = 0; } catch (e) { }
-      const p = a.play(); if (p && p.catch) p.catch(() => { });
-    } else {
-      try {
-        speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(kana);
-        u.lang = 'ja-JP'; u.rate = 0.85;
-        const v = speechSynthesis.getVoices().find(v => /^ja/i.test(v.lang)); if (v) u.voice = v;
-        speechSynthesis.speak(u);
-      } catch (e) { }
+      const p = a.play(); if (p && p.catch) p.catch(() => { if (!builtin) { delete audioCache[key]; speakDevice(kana); } });
     }
     if (btn) { btn.classList.remove('playing'); void btn.offsetWidth; btn.classList.add('playing'); }
   }
   function sayButton(it, label) {
     const isWord = it.kind === 'word' || it.word;
-    const kana = it.kana;
+    const kana = it.kana, kanji = it.kanji || (it.w && it.w.kanji);
     if (isWord && !canSay(kana)) return null;
     const b = h('button', { class: 'iconbtn say', type: 'button', title: 'Прослушать', 'aria-label': 'Прослушать ' + kana,
-      onclick: () => isWord ? playWord(kana, b) : playKana(kana, b) }, svgIcon('sound'), label || null);
+      onclick: () => isWord ? playWord(kana, b, kanji) : playKana(kana, b) }, svgIcon('sound'), label || null);
     return b;
   }
   let rowTimer = null;
@@ -746,7 +759,7 @@
         h('span', { class: 'k' }, w.kana),
         h('span', { class: 'rd' }, displayReading(w.kana, 'ru', w.read) + ' · ' + displayReading(w.kana, 'lat', w.read)),
         h('span', { class: 'm' }, w.mean),
-        sayButton({ kana: w.kana, word: true }) || h('span', { class: 'say-none', title: 'Для своих слов нужен японский голос в системе устройства' }),
+        sayButton({ kana: w.kana, kanji: w.kanji, word: true }) || h('span', { class: 'say-none', title: 'Для своих слов нужен японский голос в системе устройства' }),
         h('button', { class: 'del', type: 'button', title: 'Удалить слово', 'aria-label': 'Удалить ' + w.kana, onclick: () => {
           if (w.builtin) deleted.add(wid(w)); else userWords = userWords.filter(x => wid(x) !== wid(w));
           saveWords(); renderDict();
@@ -765,8 +778,11 @@
   $('#add-form').addEventListener('submit', e => {
     e.preventDefault();
     const kana = $('#add-kana').value.trim(), mean = $('#add-mean').value.trim(), topic = $('#add-topic').value.trim() || 'Мои слова', read = $('#add-read').value.trim() || undefined;
+    const kanji = $('#add-kanji').value.trim() || undefined;
     if (!KANA_RE.test(kana)) { $('#add-ok').textContent = ''; $('#add-preview').textContent = 'Слово должно быть записано хираганой или катаканой.'; return; }
-    userWords.push({ kana, mean, topic, read }); deleted.delete(kana + '|' + mean); saveWords();
+    if (kanji && !KANJI_RE.test(kanji)) { $('#add-ok').textContent = ''; $('#add-preview').textContent = 'Запись иероглифами: только иероглифы и кана, до 30 знаков.'; return; }
+    userWords.push({ kana, mean, topic, read, kanji }); deleted.delete(kana + '|' + mean); saveWords();
+    prefetchWord(kana, kanji);
     $('#add-ok').textContent = `Добавлено: ${kana}`; e.target.reset(); $('#add-preview').textContent = ''; renderDict();
   });
   $('#imp-file').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { $('#imp-text').value = r.result; }; r.readAsText(f); });
@@ -775,9 +791,9 @@
     let added = 0, skipped = 0; const have = new Set(allWords().map(wid));
     for (const line of lines) {
       const sep = line.includes(';') ? ';' : line.includes('\t') ? '\t' : ',';
-      const [kana, mean, topic, read] = line.split(sep).map(s => (s || '').trim().replace(/^"|"$/g, ''));
+      const [kana, mean, topic, read, kanji] = line.split(sep).map(s => (s || '').trim().replace(/^"|"$/g, ''));
       if (!kana || !mean || !KANA_RE.test(kana)) { skipped++; continue; }
-      const w = { kana, mean, topic: topic || 'Импорт', read: read || undefined };
+      const w = { kana, mean, topic: topic || 'Импорт', read: read || undefined, kanji: kanji && KANJI_RE.test(kanji) ? kanji : undefined };
       if (have.has(wid(w))) { skipped++; continue; }
       have.add(wid(w)); userWords.push(w); added++;
     }
@@ -885,7 +901,7 @@
   window.KanaApp = {
     items() {
       const out = [];
-      for (const w of userWords) out.push({ c: 'words', id: wid(w), data: { kana: w.kana, mean: w.mean, topic: w.topic, read: w.read } });
+      for (const w of userWords) out.push({ c: 'words', id: wid(w), data: { kana: w.kana, mean: w.mean, topic: w.topic, read: w.read, kanji: w.kanji } });
       for (const id of deleted) out.push({ c: 'hidden', id, data: {} });
       for (const ch in samples) for (const s of samples[ch]) out.push({ c: 'samples', id: sampleId(ch, s), data: { ch, s } });
       out.push({ c: 'settings', id: 'main', data: Object.assign({}, S) });
@@ -893,7 +909,7 @@
       return out;
     },
     apply(c, id, data) {
-      if (c === 'words') { userWords = userWords.filter(w => wid(w) !== id); if (data) userWords.push({ kana: data.kana, mean: data.mean, topic: data.topic, read: data.read }); }
+      if (c === 'words') { userWords = userWords.filter(w => wid(w) !== id); if (data) userWords.push({ kana: data.kana, mean: data.mean, topic: data.topic, read: data.read, kanji: data.kanji }); }
       else if (c === 'hidden') { if (data) deleted.add(id); else deleted.delete(id); }
       else if (c === 'samples') {
         const ch = data ? data.ch : id.split(':')[0];

@@ -107,3 +107,48 @@ jobs:
           tags: |
             ${{ env.IMAGE }}:latest
             ${{ env.IMAGE }}:${{ github.sha }}
+
+  tts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: tts
+          load: true
+          tags: kana-tts:test
+
+      - name: Smoke test
+        run: |
+          docker run -d --name tts -p 8081:8081 kana-tts:test
+          for i in $(seq 60); do curl -sf http://127.0.0.1:8081/api/tts/health && break; sleep 2; done
+          curl -sf -o neko.mp3 "http://127.0.0.1:8081/api/tts?v=m&t=%E3%81%AD%E3%81%93"
+          curl -sf -o hashi.mp3 "http://127.0.0.1:8081/api/tts?v=f&t=%E3%81%AF%E3%81%97&k=%E7%AE%B8"
+          ls -l neko.mp3 hashi.mp3
+          test "$(head -c 1 neko.mp3 | od -An -tx1 | tr -d ' ')" = "ff"
+          test "$(curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:8081/api/tts?v=m&t=abc')" = 400
+          docker stats --no-stream tts
+
+      - uses: docker/login-action@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image name in lower case
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}-tts" >> "$GITHUB_ENV"
+
+      - uses: docker/build-push-action@v6
+        if: github.ref == 'refs/heads/main'
+        with:
+          context: tts
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}

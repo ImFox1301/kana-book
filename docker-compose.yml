@@ -16,7 +16,18 @@ services:
       - DB_USER=kana
       - DB_PASSWORD=${DB_PASSWORD:?укажите DB_PASSWORD в .env}
     depends_on:
-      kana-db:
+      # Озвучка своих слов через VOICEVOX (VOICEVOX:青山龍星, VOICEVOX:波音リツ)
+  kana-tts:
+    image: ghcr.io/imfox1301/kana-book-tts:latest
+    container_name: kana-tts
+    restart: unless-stopped
+    volumes:
+      - kana_tts_cache:/cache
+    mem_limit: 768m
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  kana-db:
         condition: service_healthy
     mem_limit: 384m
     labels:
@@ -56,6 +67,7 @@ services:
     depends_on:
       - kana-tetrad
       - kana-api
+      - kana-tts
 
   # Следит за новыми образами в GHCR и перезапускает kana-tetrad и kana-api
   watchtower:
@@ -71,5 +83,6 @@ services:
 
 volumes:
   kana_pgdata:
+  kana_tts_cache:
   caddy_data:
   caddy_config:

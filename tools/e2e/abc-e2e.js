@@ -88,6 +88,16 @@ async function draw(page, ch) {
   await page.click('#tab-dict');
   await page.click('button[aria-label="Прослушать みず"]'); await page.waitForTimeout(400);
   check(audio.some(([f, s]) => f === 'words/f/みず.mp3' && s === 200), 'в словаре слово みず озвучивается (выбран женский голос)');
+  // своё слово озвучивается сервером
+  const tts = [];
+  page.on('request', r => { if (r.url().includes('/api/tts')) tts.push(decodeURIComponent(r.url())); });
+  await page.click('#add-panel summary');
+  await page.fill('#add-kana', 'ねこ'); await page.fill('#add-mean', 'кошка'); await page.fill('#add-kanji', '猫');
+  await page.click('#add-form button[type=submit]');
+  await page.waitForTimeout(300);
+  check(tts.some(u => u.includes('t=ねこ') && u.includes('k=猫')), 'при добавлении слово сразу озвучивается сервером (с иероглифами)');
+  await page.click('button[aria-label="Прослушать ねこ"]'); await page.waitForTimeout(300);
+  check(await page.evaluate(() => caches.has('tts-v1')), 'озвучка своего слова сохранена для офлайна');
   await page.click('#tab-quiz');
   await page.click('.opt:has(.t:text-is("Слова"))'); await page.click('.opt:has(.t:text-is("Обратный перевод"))');
   await page.click('#btn-start');
