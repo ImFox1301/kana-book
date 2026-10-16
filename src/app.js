@@ -293,6 +293,7 @@
         h('span', { class: 'lab' }, isWord ? 'Напишите слово' : 'Нарисуйте знак'),
         isWord ? h('span', { class: 'meaning' }, it.w.mean) : null,
         h('span', { class: 'big' }, readingOf(it, Q.sys)),
+        sayButton(it, 'Прослушать'),
         !isWord && HINTS[toHira(it.kana)] ? h('span', { class: 'tag' }, HINTS[toHira(it.kana)]) : null,
         isWord ? h('span', { class: 'tag' }, wordScript(it.w) === 'k' ? 'катакана' : 'хирагана') : null,
         !isWord && units.length > 1 ? h('span', { class: 'tag' }, 'два знака: второй — маленький') : null);
@@ -362,7 +363,7 @@
     const markTxt = status === 'ok' ? '○' : status === 'bad' ? '✕' : '—';
     v.append(h('div', { class: 'mark ' + status, 'aria-hidden': 'true' }, markTxt),
       h('div', { class: 'vtitle' }, status === 'ok' ? (res.taught ? 'Засчитано' : 'Верно') : status === 'bad' ? 'Неверно' : 'Пропущено'));
-    const reading = h('div', {}, h('div', { class: 'correct-reading' }, readingOf(it, Q.sys)), h('div', { class: 'small muted' }, readingOf(it, otherSys(Q.sys))));
+    const reading = h('div', { class: 'vreading' }, h('div', { class: 'correct-reading' }, readingOf(it, Q.sys)), h('div', { class: 'small muted' }, readingOf(it, otherSys(Q.sys))), sayButton(it, 'Прослушать'));
     if (Q.mode === 'draw') {
       const units = [...it.kana];
       const cmp = h('div', { class: 'compare' });
@@ -447,6 +448,37 @@
     const p = a.play(); if (p && p.catch) p.catch(() => { });
     if (cell) { cell.classList.remove('playing'); void cell.offsetWidth; cell.classList.add('playing'); }
     return a;
+  }
+  // слова: стартовый словарь — записанная озвучка, свои слова — японский голос устройства (если он есть)
+  const WORD_AUDIO = new Set(window.WORD_AUDIO || []);
+  const hasJaVoice = () => { try { return speechSynthesis.getVoices().some(v => /^ja/i.test(v.lang)); } catch (e) { return false; } };
+  try { speechSynthesis.onvoiceschanged = () => { if (current === 'dict') renderDict(); }; } catch (e) { }
+  function canSay(kana) { return WORD_AUDIO.has(kana) || ('speechSynthesis' in window && hasJaVoice()); }
+  function playWord(kana, btn) {
+    if (WORD_AUDIO.has(kana)) {
+      const voice = S.voice === 'f' ? 'f' : 'm';
+      let a = audioCache['w' + voice + kana];
+      if (!a) a = audioCache['w' + voice + kana] = new Audio('audio/words/' + voice + '/' + encodeURIComponent(kana) + '.mp3');
+      try { a.currentTime = 0; } catch (e) { }
+      const p = a.play(); if (p && p.catch) p.catch(() => { });
+    } else {
+      try {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(kana);
+        u.lang = 'ja-JP'; u.rate = 0.85;
+        const v = speechSynthesis.getVoices().find(v => /^ja/i.test(v.lang)); if (v) u.voice = v;
+        speechSynthesis.speak(u);
+      } catch (e) { }
+    }
+    if (btn) { btn.classList.remove('playing'); void btn.offsetWidth; btn.classList.add('playing'); }
+  }
+  function sayButton(it, label) {
+    const isWord = it.kind === 'word' || it.word;
+    const kana = it.kana;
+    if (isWord && !canSay(kana)) return null;
+    const b = h('button', { class: 'iconbtn say', type: 'button', title: 'Прослушать', 'aria-label': 'Прослушать ' + kana,
+      onclick: () => isWord ? playWord(kana, b) : playKana(kana, b) }, svgIcon('sound'), label || null);
+    return b;
   }
   let rowTimer = null;
   function playRow(list, cells) {
@@ -714,6 +746,7 @@
         h('span', { class: 'k' }, w.kana),
         h('span', { class: 'rd' }, displayReading(w.kana, 'ru', w.read) + ' · ' + displayReading(w.kana, 'lat', w.read)),
         h('span', { class: 'm' }, w.mean),
+        sayButton({ kana: w.kana, word: true }) || h('span', { class: 'say-none', title: 'Для своих слов нужен японский голос в системе устройства' }),
         h('button', { class: 'del', type: 'button', title: 'Удалить слово', 'aria-label': 'Удалить ' + w.kana, onclick: () => {
           if (w.builtin) deleted.add(wid(w)); else userWords = userWords.filter(x => wid(x) !== wid(w));
           saveWords(); renderDict();

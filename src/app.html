@@ -141,10 +141,13 @@ button { font-family: var(--ui) }
 .dict-tools input[type=search] { flex: 1 1 200px; min-width: 0; padding: 9px 12px; border: 1.5px solid var(--rule); border-radius: var(--r); background: var(--sheet); color: var(--ink); font: 15px var(--ui) }
 .wlist { display: grid; gap: 18px }
 .wlist h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2) }
-.wrow { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.5fr) 32px; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 14px }
+.wrow { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.5fr) 36px 32px; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 14px }
 .wrow .k { font-family: var(--kana); font-size: 20px; overflow-wrap: anywhere }
 .wrow .rd { color: var(--ink-2); overflow-wrap: anywhere }
 .wrow .m { overflow-wrap: anywhere }
+.wrow .say { padding: 6px; justify-content: center } .wrow .say .ic svg { width: 18px; height: 18px }
+.say.playing { animation: ping .7s ease-out }
+.vreading { display: grid; justify-items: center; gap: 6px }
 .del { border: 0; background: none; color: var(--ink-2); cursor: pointer; font-size: 18px; border-radius: 6px }
 .del:hover { color: var(--shu) }
 details.panel { background: var(--sheet); border: 1px solid var(--rule); border-radius: 12px; padding: 12px 16px; margin-bottom: 12px }
@@ -160,7 +163,7 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
 .howto { font-size: 14px; color: var(--ink-2); max-width: 65ch }
 .howto li { margin-bottom: 4px }
 @media (max-width: 520px) {
-  .wrow { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 28px; }
+  .wrow { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 36px 28px; }
   .wrow .rd { display: none }
   .prompt .kana { font-size: 72px }
   .step { grid-template-columns: 26px 1fr; gap: 4px 8px }

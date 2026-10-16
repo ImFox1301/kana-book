@@ -84,6 +84,19 @@ async function draw(page, ch) {
   check((await page.locator('#write .w-row.hard').count()) >= 1, 'あ отмечен как трудный (была ошибка)');
   await page.screenshot({ path: SHOTS + '/abc-result.png', fullPage: true });
 
+  // озвучка слов: словарь и квиз
+  await page.click('#tab-dict');
+  await page.click('button[aria-label="Прослушать みず"]'); await page.waitForTimeout(400);
+  check(audio.some(([f, s]) => f === 'words/f/みず.mp3' && s === 200), 'в словаре слово みず озвучивается (выбран женский голос)');
+  await page.click('#tab-quiz');
+  await page.click('.opt:has(.t:text-is("Слова"))'); await page.click('.opt:has(.t:text-is("Обратный перевод"))');
+  await page.click('#btn-start');
+  check(await page.locator('#card .say').count() === 0, 'в обратном переводе кнопки озвучки нет до ответа');
+  await page.click('text=Пропустить');
+  await page.click('#card .say'); await page.waitForTimeout(400);
+  const w = await page.evaluate(() => __kana.Q.deck[0].kana);
+  check(audio.some(([f]) => f === 'words/f/' + w + '.mp3'), 'после ответа слово можно прослушать: ' + w);
+  await page.screenshot({ path: SHOTS + '/word-verdict.png', fullPage: true });
   await browser.close();
   console.log(failed ? `\nПровалено проверок: ${failed}` : '\nВсе проверки пройдены');
   process.exit(failed ? 1 : 0);

@@ -26,7 +26,8 @@ page = "\n".join(l for l in page.splitlines() if "fonts.googleapis.com" not in l
 for key, name in [("REC", "recognizer.js"), ("KANA", "kana.js"), ("WORDS", "words.js"), ("APP", "app.js")]:
     page = page.replace(f"/*{key}*/", (src / name).read_text(encoding="utf-8"))
 # флаг включает установку, офлайн и аккаунт; sync.js и pwa.js подключаются только в собранной версии
-page = page.replace("<script>/*KVG*/</script>", "<script>window.KANA_PWA = true;</script>\n<script>/*KVG*/</script>", 1)
+word_audio = sorted({p.stem for p in (assets / "audio" / "words" / "m").glob("*.mp3")})
+page = page.replace("<script>/*KVG*/</script>", "<script>window.KANA_PWA = true; window.WORD_AUDIO = " + json.dumps(word_audio, ensure_ascii=False) + ";</script>\n<script>/*KVG*/</script>", 1)
 page = page.replace("/*KVG*/", "const KVG = " + (src / "kvg.json").read_text(encoding="utf-8") + ";")
 page += "\n<script>" + (src / "sync.js").read_text(encoding="utf-8") + "</script>\n<script>" + (src / "pwa.js").read_text(encoding="utf-8") + "</script>\n"
 
