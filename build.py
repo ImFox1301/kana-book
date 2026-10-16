@@ -12,6 +12,7 @@ if dist.exists():
 dist.mkdir()
 shutil.copytree(assets / "fonts", dist / "fonts")
 shutil.copytree(assets / "icons", dist / "icons")
+shutil.copytree(assets / "audio", dist / "audio")   # озвучка каны (tools/make_audio.py)
 
 FONTS = """<style>
 @font-face { font-family: "Klee One"; font-weight: 400; font-display: swap; src: url("fonts/klee-one-Regular.woff2") format("woff2") }
@@ -72,7 +73,7 @@ manifest = {
 
 # список файлов для офлайна и версия = хеш их содержимого
 files = ["index.html", "manifest.webmanifest"] + sorted(
-    str(p.relative_to(dist)) for p in dist.rglob("*") if p.is_file() and p.suffix in {".woff2", ".png"})
+    str(p.relative_to(dist)) for p in dist.rglob("*") if p.is_file() and p.suffix in {".woff2", ".png", ".mp3"})
 h = hashlib.sha256()
 for f in files:
     h.update(f.encode()); h.update((dist / f).read_bytes())

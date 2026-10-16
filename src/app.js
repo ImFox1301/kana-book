@@ -68,7 +68,7 @@
   let answers = store.get('answers', []);
 
   // ---------- настройки ----------
-  const def = { script: 'h', rows: { h: ['a', 'ka', 'sa'], k: ['a', 'ka', 'sa'] }, topics: null, wfilter: 'all', count: 20, mode: 'draw', sys: 'ru', len: 1 };
+  const def = { script: 'h', rows: { h: ['a', 'ka', 'sa'], k: ['a', 'ka', 'sa'] }, topics: null, wfilter: 'all', count: 20, mode: 'draw', sys: 'ru', len: 1, abcScript: 'h', abcMode: 'listen', abcSel: { h: [], k: [] }, reps: 5, ghost: true };
   const S = Object.assign({}, def, store.get('settings', {}));
   const save = () => store.set('settings', S);
 
@@ -191,7 +191,7 @@
     const wrap = h('div', { class: 'pad' });
     const cv = h('canvas', { 'aria-label': 'Поле для рисования знака' });
     wrap.append(cv);
-    const pad = { el: wrap, strokes: [], cur: null };
+    const pad = { el: wrap, strokes: [], cur: null, ghost: null };
     const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
     pad.redraw = () => {
       const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
@@ -204,6 +204,11 @@
       g.setLineDash([6 * dpr, 6 * dpr]);
       g.beginPath(); g.moveTo(W / 2, W * 0.04); g.lineTo(W / 2, W * 0.96); g.moveTo(W * 0.04, W / 2); g.lineTo(W * 0.96, W / 2); g.stroke();
       g.setLineDash([]);
+      if (pad.ghost && KVG[pad.ghost]) {   // полупрозрачный образец, чтобы обвести
+        g.globalAlpha = 0.16;
+        drawStrokes(g, kvgStrokes(pad.ghost), W, css('--ink'), 0.07);
+        g.globalAlpha = 1;
+      }
       drawStrokes(g, pad.strokes, W, css('--stroke'), 0.034);
     };
     const pt = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }; };
@@ -222,6 +227,7 @@
     new ResizeObserver(() => pad.redraw()).observe(cv);
     return pad;
   }
+  const kvgStrokes = ch => KVG[ch].map(s => { const r = []; for (let i = 0; i < s.length; i += 2) r.push({ x: s[i] / 1090, y: s[i + 1] / 1090 }); return r; });
   function drawStrokes(g, strokes, W, color, width) {
     g.strokeStyle = color; g.fillStyle = color; g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = W * width;
     for (const s of strokes) {
@@ -429,20 +435,261 @@
     show('result');
   }
 
+  // ---------- азбука: таблицы, озвучка, прописи ----------
+  const audioCache = {};
+  function playKana(kana, cell) {
+    const key = toHira(kana);
+    if (!window.KANA_PWA) return;   // озвучка есть только в собранной версии
+    let a = audioCache[key];
+    if (!a) { a = audioCache[key] = new Audio('audio/' + encodeURIComponent(key) + '.mp3'); a.preload = 'auto'; }
+    try { a.currentTime = 0; } catch (e) { }
+    const p = a.play(); if (p && p.catch) p.catch(() => { });
+    if (cell) { cell.classList.remove('playing'); void cell.offsetWidth; cell.classList.add('playing'); }
+    return a;
+  }
+  let rowTimer = null;
+  function playRow(list, cells) {
+    clearTimeout(rowTimer);
+    let i = 0;
+    const step = () => { if (i >= list.length) return; playKana(list[i], cells[i]); i++; rowTimer = setTimeout(step, 750); };
+    step();
+  }
+
+  // раскладка как в таблице годзюон: 5 столбцов по гласным
+  function gojuonRows(group) {
+    const out = [];
+    for (const r of ROWS.filter(r => r.g === group)) {
+      const c = r.h.split(' ');
+      if (r.id === 'ya') out.push({ r, cells: [c[0], '', c[1], '', c[2]] });
+      else if (r.id === 'wa') { out.push({ r, cells: [c[0], '', '', '', c[1]] }); out.push({ r: { id: 'n', name: 'н', l: 'n' }, cells: [c[2], '', '', '', ''], single: true }); }
+      else out.push({ r, cells: c });
+    }
+    return out;
+  }
+  const VOWELS = { ru: ['а', 'и', 'у', 'э', 'о'], lat: ['a', 'i', 'u', 'e', 'o'] };
+
+  function renderAbc() {
+    const sc = S.abcScript === 'k' ? 'k' : 'h';
+    const conv = k => sc === 'k' ? toKata(k) : k;
+    const sel = new Set(S.abcSel[sc] || []);
+    const selecting = S.abcMode === 'select';
+    const el = $('#abc'); el.replaceChildren();
+    const setSel = () => { S.abcSel[sc] = [...sel]; save(); renderAbc(); };
+
+    el.append(h('div', { class: 'abc-top' },
+      h('div', { class: 'segm', role: 'group', 'aria-label': 'Азбука' },
+        ...[['h', 'Хирагана'], ['k', 'Катакана']].map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(sc === v), onclick: () => { S.abcScript = v; save(); renderAbc(); } }, t))),
+      h('div', { class: 'segm', role: 'group', 'aria-label': 'Нажатие на знак' },
+        h('button', { type: 'button', 'aria-pressed': String(!selecting), onclick: () => { S.abcMode = 'listen'; save(); renderAbc(); } }, svgIcon('sound'), 'Слушать'),
+        h('button', { type: 'button', 'aria-pressed': String(selecting), onclick: () => { S.abcMode = 'select'; save(); renderAbc(); } }, svgIcon('check'), 'Выбрать для прописей'))));
+    el.append(h('p', { class: 'small muted abc-hint' }, selecting
+      ? 'Отметьте знаки или целый ряд — нажмите на подпись ряда слева. Затем выберите число повторений внизу.'
+      : 'Нажмите на знак, чтобы услышать его. Подпись ряда слева проигрывает весь ряд.'));
+
+    for (const [group, title] of [['basic', 'Основные'], ['dakuten', 'С дакутэном и хандакутэном'], ['yoon', 'Сочетания (ёон)']]) {
+      const yoon = group === 'yoon';
+      const cols = yoon ? 3 : 5;
+      const grid = h('div', { class: 'abc-grid' + (yoon ? ' yoon' : '') });
+      grid.append(h('div', { class: 'abc-head' }));
+      if (!yoon) VOWELS[S.sys].forEach(v => grid.append(h('div', { class: 'abc-head' }, v)));
+      else ['а / я', 'у / ю', 'о / ё'].forEach((v, i) => grid.append(h('div', { class: 'abc-head' }, S.sys === 'lat' ? ['ya', 'yu', 'yo'][i] : v)));
+      const rows = yoon ? ROWS.filter(r => r.g === 'yoon').map(r => ({ r, cells: r.h.split(' ') })) : gojuonRows(group);
+      for (const { r, cells } of rows) {
+        const kanas = cells.filter(Boolean).map(conv);
+        const cellEls = [];
+        const rowSelectable = selecting && !yoon;
+        const allOn = kanas.every(k => sel.has(k));
+        const label = h('button', {
+          type: 'button', class: 'abc-row' + (rowSelectable && allOn ? ' on' : ''), disabled: selecting && yoon,
+          title: selecting ? (allOn ? 'Снять ряд' : 'Выбрать весь ряд') : 'Прослушать ряд',
+          onclick: () => {
+            if (!selecting) return playRow(kanas, cellEls);
+            if (allOn) kanas.forEach(k => sel.delete(k)); else kanas.forEach(k => sel.add(k));
+            setSel();
+          },
+        }, S.sys === 'lat' ? (r.l ? r.l.split(' ')[0] : r.id) : r.name.replace(' + н', ''));
+        grid.append(label);
+        for (let i = 0; i < cols; i++) {
+          const base = cells[i];
+          if (!base) { grid.append(h('div', { class: 'abc-cell empty', 'aria-hidden': 'true' })); continue; }
+          const k = conv(base);
+          const reading = displayReading(k, S.sys);
+          const on = sel.has(k);
+          const cell = h('button', {
+            type: 'button', class: 'abc-cell' + (selecting && on ? ' on' : ''), disabled: selecting && yoon,
+            'aria-pressed': selecting ? String(on) : null,
+            'aria-label': selecting ? `${k}, ${reading}${on ? ', выбран' : ''}` : `Прослушать ${k}, ${reading}`,
+            onclick: () => {
+              if (!selecting) return playKana(k, cell);
+              if (on) sel.delete(k); else sel.add(k);
+              setSel();
+            },
+          }, h('span', { class: 'k' }, k), h('span', { class: 'r' }, reading), selecting && on ? h('span', { class: 'tick', 'aria-hidden': 'true' }, '✓') : null);
+          cellEls.push(cell);
+          grid.append(cell);
+        }
+      }
+      el.append(h('h4', { class: 'sh' }, title), grid);
+      if (yoon && selecting) el.append(h('p', { class: 'small muted' }, 'Сочетания пишутся двумя знаками: отработайте основной знак и я, ю, ё — маленькие пишутся так же, только мельче.'));
+    }
+
+    // панель запуска прописей
+    const n = sel.size;
+    const bar = $('#abc-bar'); bar.replaceChildren();
+    bar.hidden = n === 0;
+    if (n) {
+      const reps = Math.max(5, S.reps | 0);
+      const cnt = h('input', { id: 'reps', type: 'number', inputmode: 'numeric', min: '5', max: '50', value: String(reps), 'aria-label': 'Повторений на каждый знак' });
+      cnt.addEventListener('change', () => { S.reps = Math.min(50, Math.max(5, parseInt(cnt.value) || 5)); save(); renderAbc(); });
+      bar.append(h('div', { class: 'abc-bar-in' },
+        h('div', { class: 'abc-sel' }, h('b', {}, `Выбрано: ${n}`), h('span', { class: 'k' }, [...sel].slice(0, 12).join(' ') + (n > 12 ? ' …' : '')),
+          h('button', { class: 'link', type: 'button', onclick: () => { sel.clear(); setSel(); } }, 'снять')),
+        h('div', { class: 'abc-opts' },
+          h('label', { class: 'small muted', for: 'reps' }, 'Повторений'),
+          h('div', { class: 'stepper sm' },
+            h('button', { type: 'button', 'aria-label': 'Меньше', onclick: () => { S.reps = Math.max(5, reps - 1); save(); renderAbc(); } }, '−'), cnt,
+            h('button', { type: 'button', 'aria-label': 'Больше', onclick: () => { S.reps = Math.min(50, reps + 1); save(); renderAbc(); } }, '+')),
+          ghostToggle(() => renderAbc())),
+        iconBtn('btn primary', 'next', `Начать прописи · ${n * reps}`, () => startWriting([...sel].sort((a, b) => order(a) - order(b)), reps))));
+    }
+  }
+  const ORDER = (() => { const m = {}; let i = 0; for (const r of ROWS) for (const k of r.h.split(' ')) { m[k] = i; m[toKata(k)] = i; i++; } return m; })();
+  const order = k => ORDER[k] ?? 999;
+  function ghostToggle(after) {
+    const box = h('input', { type: 'checkbox', id: 'ghost-' + Math.random().toString(36).slice(2, 7) });
+    box.checked = !!S.ghost;
+    box.addEventListener('change', () => { S.ghost = box.checked; save(); after && after(); });
+    return h('label', { class: 'check', for: box.id }, box, 'Подложка для обводки');
+  }
+  function svgIcon(name) {
+    const sp = h('span', { class: 'ic', 'aria-hidden': 'true' });
+    sp.innerHTML = {
+      sound: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>',
+      check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    }[name];
+    return sp;
+  }
+
+  // ---------- прописи ----------
+  let WR = null;
+  function startWriting(kanas, reps) {
+    WR = { kanas, reps, i: 0, done: 0, stats: kanas.map(k => ({ k, ok: 0, bad: 0, firstBad: 0, skipped: false })), seq: 0 };
+    show('write'); renderWrite(true);
+  }
+  function renderWrite(newKana) {
+    const el = $('#write'); el.replaceChildren();
+    if (WR.i >= WR.kanas.length) return renderWriteResult();
+    const k = WR.kanas[WR.i], st = WR.stats[WR.i];
+    const total = WR.kanas.length * WR.reps;
+    $('#w-ctr').textContent = `${Math.min(WR.done + 1, total)} / ${total}`;
+    $('#w-prog').style.width = (WR.done / total * 100) + '%';
+
+    const dots = h('div', { class: 'dots', 'aria-label': `Написано ${st.ok} из ${WR.reps}` },
+      ...Array.from({ length: WR.reps }, (_, j) => h('i', { class: j < st.ok ? 'on' : '' })));
+    const head = h('div', { class: 'w-head' },
+      h('div', { class: 'w-model' }, strokeOrder(k), h('span', { class: 'small muted' }, 'нажмите — порядок штрихов')),
+      h('div', { class: 'w-info' },
+        h('div', { class: 'w-kana' }, k),
+        h('div', { class: 'w-read' }, displayReading(k, S.sys), h('span', { class: 'muted' }, ' · ' + displayReading(k, otherSys(S.sys)))),
+        h('button', { class: 'iconbtn', type: 'button', onclick: () => playKana(k) }, svgIcon('sound'), 'Произношение'),
+        h('div', { class: 'small muted' }, `Знак ${WR.i + 1} из ${WR.kanas.length} · написано ${st.ok} из ${WR.reps}`),
+        dots));
+    const msg = h('div', { class: 'msg w-msg', role: 'status' });
+    const pad = makePad(() => { msg.textContent = ''; msg.className = 'msg w-msg'; pad.el.classList.remove('ok', 'bad'); });
+    pad.ghost = S.ghost ? bigOf(k) : null;
+    const check = iconBtn('btn primary', 'next', 'Проверить', () => submit(), 'Проверить написанный знак');
+    const skipBtn = iconBtn('btn ghost', 'skip', 'Пропустить', () => { st.skipped = true; WR.done += WR.reps - st.ok; WR.i++; renderWrite(true); }, 'Перейти к следующему знаку');
+    const tools = h('div', { class: 'padtools' },
+      iconBtn('iconbtn', 'undo', 'Отменить штрих', () => pad.undo()),
+      iconBtn('iconbtn', 'clear', 'Стереть', () => pad.clear()),
+      ghostToggle(() => { pad.ghost = S.ghost ? bigOf(k) : null; pad.redraw(); }));
+    const actions = h('div', { class: 'actions' }, skipBtn, check);
+    el.append(head, pad.el, tools, msg, actions);
+    if (newKana) setTimeout(() => playKana(k), 250);
+
+    let busy = false;
+    function submit() {
+      if (busy) return;
+      if (!pad.strokes.length) { msg.textContent = 'Сначала напишите знак в поле.'; return; }
+      const strokes = pad.strokes.map(s => s.slice());
+      const res = judgeChar(strokes, bigOf(k), S.len);
+      const ghostUsed = !!pad.ghost;
+      // в историю ответов — только попытки без подложки: обводка не показывает, помнит ли рука знак
+      let rec_ = null;
+      if (!ghostUsed) {
+        rec_ = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), ts: Date.now(), k, w: 0, m: 'write', r: res.ok ? 'ok' : 'bad' };
+        answers.push(rec_); if (answers.length > MAX_ANSWERS) answers.splice(0, answers.length - MAX_ANSWERS);
+        store.set('answers', answers);
+      }
+      if (res.ok) return accept(false);
+      st.bad++; if (st.ok === 0 && st.bad === 1) st.firstBad = 1;
+      pad.el.classList.add('bad');
+      msg.className = 'msg w-msg bad';
+      msg.replaceChildren(h('b', {}, '✕ Не похоже'), ` — распознано как «${res.best}». Попробуйте ещё раз.`);
+      actions.replaceChildren(
+        iconBtn('btn ghost', 'undo', 'Мой знак верный', () => {
+          (samples[bigOf(k)] = samples[bigOf(k)] || []).push(pack(strokes));
+          if (samples[bigOf(k)].length > 12) samples[bigOf(k)].shift();
+          store.set('samples', samples);
+          rec.addUserSample(bigOf(k), strokes.map(s => s.map(q => ({ x: q.x * 100, y: q.y * 100 }))));
+          st.bad--; if (rec_) { rec_.r = 'ok'; store.set('answers', answers); }
+          accept(true);
+        }, 'Сохранить рисунок как образец вашего почерка и засчитать'),
+        iconBtn('btn primary', 'clear', 'Ещё раз', () => { pad.clear(); actions.replaceChildren(skipBtn, check); }));
+    }
+    function accept(taught) {
+      busy = true;
+      st.ok++; WR.done++;
+      pad.el.classList.remove('bad'); pad.el.classList.add('ok');
+      msg.className = 'msg w-msg ok';
+      msg.replaceChildren(h('b', {}, '○ Верно'), taught ? ' — образец почерка сохранён' : '');
+      dots.children[st.ok - 1] && dots.children[st.ok - 1].classList.add('on');
+      setTimeout(() => {
+        if (st.ok >= WR.reps) { WR.i++; renderWrite(true); }
+        else renderWrite(false);
+      }, taught ? 900 : 550);
+    }
+    WR.submit = submit;
+  }
+  function renderWriteResult() {
+    $('#w-prog').style.width = '100%';
+    const el = $('#write'); el.replaceChildren();
+    const totalOk = WR.stats.reduce((a, s) => a + s.ok, 0), totalBad = WR.stats.reduce((a, s) => a + s.bad, 0);
+    const hard = WR.stats.filter(s => s.bad > 0 || s.skipped);
+    el.append(h('div', { class: 'prompt' }, h('span', { class: 'lab' }, 'Прописи завершены'),
+      h('span', { class: 'big' }, `${totalOk} верных`),
+      h('span', { class: 'small muted' }, totalBad ? `и ${totalBad} неудачных попыток` : 'без единой ошибки')));
+    el.append(h('div', { class: 'w-table' }, ...WR.stats.map(s => h('div', { class: 'w-row' + (s.bad || s.skipped ? ' hard' : '') },
+      h('span', { class: 'k' }, s.k),
+      h('span', { class: 'r' }, displayReading(s.k, S.sys)),
+      h('span', {}, s.skipped ? `пропущен, написано ${s.ok}` : `${s.ok} верно`),
+      h('span', { class: s.bad ? 'bad' : 'muted' }, s.bad ? `${s.bad} ошиб.` : '—')))));
+    el.append(h('div', { class: 'actions', style: 'justify-content:center' },
+      hard.length ? iconBtn('btn primary', 'undo', `Повторить трудные (${hard.length})`, () => startWriting(hard.map(s => s.k), WR.reps)) : null,
+      iconBtn('btn ghost', 'undo', 'Ещё раз все', () => startWriting(WR.kanas, WR.reps)),
+      h('button', { class: 'btn ghost', type: 'button', onclick: () => { WR = null; show('abc'); } }, 'К азбуке')));
+  }
+  $('#btn-wquit').onclick = () => { if (WR && WR.done > 0 && WR.i < WR.kanas.length) { WR.i = WR.kanas.length; renderWrite(); } else { WR = null; show('abc'); } };
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && current === 'write' && WR && WR.submit && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); WR.submit(); }
+  });
+
   // ---------- переключение экранов ----------
-  let lastQuiz = 'setup', current = 'setup';
-  const tabOf = name => (name === 'dict' || name === 'progress') ? name : 'quiz';
+  let current = 'setup';
+  const lastOf = { quiz: 'setup', abc: 'abc' };
+  const tabOf = name => (name === 'dict' || name === 'progress') ? name : (name === 'abc' || name === 'write') ? 'abc' : 'quiz';
   function show(name) {
-    if (tabOf(name) === 'quiz') lastQuiz = name;
+    if (lastOf[tabOf(name)]) lastOf[tabOf(name)] = name;
     current = name;
-    for (const n of ['setup', 'quiz', 'result', 'dict', 'progress']) $('#screen-' + n).hidden = name !== n;
+    for (const n of ['setup', 'quiz', 'result', 'dict', 'progress', 'abc', 'write']) $('#screen-' + n).hidden = name !== n;
     document.querySelectorAll('nav.tabs button').forEach(x => x.setAttribute('aria-selected', String(x.dataset.tab === tabOf(name))));
     if (name === 'setup') renderSetup();
     if (name === 'dict') renderDict();
     if (name === 'progress') renderProgress();
+    if (name === 'abc') renderAbc();
     window.scrollTo(0, 0);
   }
-  document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => show(b.dataset.tab === 'quiz' ? lastQuiz : b.dataset.tab));
+  document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => show(lastOf[b.dataset.tab] || b.dataset.tab));
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !$('#screen-quiz').hidden && document.activeElement && document.activeElement.tagName === 'BODY') {
       const b = $('#card .btn.primary'); if (b) b.click();
@@ -626,7 +873,7 @@
       store.set('words', userWords); store.set('deleted', [...deleted]); store.set('samples', samples); store.set('settings', S); store.set('answers', answers);
       applying = false;
       loadSamples();
-      if (current === 'setup') renderSetup(); else if (current === 'dict') renderDict(); else if (current === 'progress') renderProgress();
+      if (current === 'setup') renderSetup(); else if (current === 'dict') renderDict(); else if (current === 'progress') renderProgress(); else if (current === 'abc') renderAbc();
     },
     resetLocal() {
       userWords = []; deleted = new Set(); samples = {}; answers = [];

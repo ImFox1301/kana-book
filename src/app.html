@@ -191,6 +191,59 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
 .account .who { font-weight: 600 }
 .account .err { color: var(--shu); font-size: 13.5px }
 .account .st { font-size: 13px; color: var(--ink-2) }
+/* азбука */
+.abc-top { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between }
+.segm { display: inline-flex; background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap }
+.segm button { border: 0; background: none; color: var(--ink-2); font: 500 14px var(--ui); padding: 7px 12px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px }
+.segm button[aria-pressed="true"] { background: var(--sheet); color: var(--ink); box-shadow: 0 0 0 1.5px var(--indigo) }
+.ic { display: inline-flex } .ic svg { width: 17px; height: 17px }
+.abc-hint { margin: 10px 0 0 }
+.abc-grid { display: grid; grid-template-columns: 34px repeat(5, minmax(0, 1fr)); gap: 5px; max-width: 520px }
+.abc-grid.yoon { grid-template-columns: 34px repeat(3, minmax(0, 1fr)); max-width: 340px }
+.abc-head { font-size: 11.5px; color: var(--ink-2); text-align: center; text-transform: uppercase; letter-spacing: .06em; padding-bottom: 2px }
+.abc-row { border: 0; background: none; color: var(--indigo); font: 600 12.5px var(--ui); cursor: pointer; border-radius: 8px; padding: 0 2px; text-align: center }
+.abc-row:hover:not(:disabled) { background: var(--indigo-soft) }
+.abc-row.on { background: var(--indigo); color: var(--on-indigo) }
+.abc-row:disabled { color: var(--ink-2); cursor: default; opacity: .6 }
+.abc-cell { position: relative; display: grid; justify-items: center; align-content: center; gap: 0; border: 1.5px solid var(--rule); background: var(--paper); color: var(--ink); border-radius: 9px; padding: 6px 0 4px; cursor: pointer; min-height: 58px }
+.abc-cell.empty { border: 0; background: none; cursor: default }
+.abc-cell .k { font-family: var(--kana); font-size: 26px; line-height: 1.1 }
+.abc-grid.yoon .abc-cell .k { font-size: 22px }
+.abc-cell .r { font-size: 11.5px; color: var(--ink-2); line-height: 1.3 }
+.abc-cell.on { border-color: var(--indigo); background: var(--indigo-soft) }
+.abc-cell .tick { position: absolute; top: 2px; right: 5px; font-size: 11px; color: var(--indigo); font-weight: 700 }
+.abc-cell:disabled { cursor: default; opacity: .5 }
+.abc-cell.playing { animation: ping .7s ease-out }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 var(--indigo); border-color: var(--indigo) } 100% { box-shadow: 0 0 0 10px transparent } }
+.abc-bar { position: sticky; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); margin-top: 12px; z-index: 5 }
+.abc-bar-in { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; justify-content: space-between; background: var(--sheet); border: 1.5px solid var(--indigo); border-radius: 14px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(20, 30, 50, .14) }
+.abc-sel { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0 }
+.abc-sel .k { font-family: var(--kana); font-size: 18px; overflow-wrap: anywhere }
+.abc-opts { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap }
+.stepper.sm button { width: 34px; font-size: 18px }
+.stepper.sm input { width: 50px; font-size: 16px; padding: 6px 0 }
+.check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; user-select: none }
+.check input { width: 18px; height: 18px; accent-color: var(--indigo) }
+/* прописи */
+.w-head { display: flex; gap: 16px; align-items: center; justify-content: center; flex-wrap: wrap; width: 100% }
+.w-model { display: grid; gap: 4px; justify-items: center }
+.w-model canvas.box { width: 96px; height: 96px; cursor: pointer }
+.w-info { display: grid; gap: 6px; justify-items: start; min-width: 0 }
+.w-kana { font-family: var(--kana); font-size: 44px; line-height: 1; font-weight: 600 }
+.w-read { font-size: 22px; font-weight: 700 }
+.w-read .muted { font-size: 15px; font-weight: 400 }
+.dots { display: flex; gap: 5px; flex-wrap: wrap; max-width: 220px }
+.dots i { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--indigo); display: block }
+.dots i.on { background: var(--indigo) }
+.pad.ok canvas { box-shadow: 0 0 0 3px var(--ok) }
+.pad.bad canvas { box-shadow: 0 0 0 3px var(--shu) }
+.w-msg.ok { color: var(--ok) } .w-msg.bad { color: var(--shu) }
+.w-table { display: grid; gap: 4px; width: min(100%, 420px) }
+.w-row { display: grid; grid-template-columns: 44px 60px 1fr auto; gap: 10px; align-items: center; padding: 4px 8px; border-radius: 8px; font-size: 14px }
+.w-row .k { font-family: var(--kana); font-size: 26px }
+.w-row .r { color: var(--ink-2) }
+.w-row.hard { background: var(--shu-soft) }
+.w-row .bad { color: var(--shu); font-weight: 600 }
 .topright { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
 .installhint { background: var(--indigo-soft); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin-bottom: 12px }
 .updbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; justify-content: center; padding: 0 max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); pointer-events: none }
@@ -208,6 +261,7 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Установить</button>
       <nav class="tabs" role="tablist">
         <button role="tab" id="tab-quiz" aria-selected="true" data-tab="quiz">Квиз</button>
+        <button role="tab" id="tab-abc" aria-selected="false" data-tab="abc">Азбука</button>
         <button role="tab" id="tab-dict" aria-selected="false" data-tab="dict">Словарь</button>
         <button role="tab" id="tab-progress" aria-selected="false" data-tab="progress">Прогресс</button>
       </nav>
@@ -329,6 +383,23 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
     </details>
     <div class="dict-tools"><input type="search" id="dict-q" placeholder="Поиск по слову или переводу" aria-label="Поиск"><span class="small muted" id="dict-count"></span></div>
     <div class="sheet"><div class="wlist" id="wlist"></div></div>
+  </section>
+
+  <!-- АЗБУКА -->
+  <section id="screen-abc" hidden>
+    <div class="sheet" id="abc"></div>
+    <div class="abc-bar" id="abc-bar" hidden></div>
+  </section>
+
+  <!-- ПРОПИСИ -->
+  <section id="screen-write" hidden>
+    <div class="qbar">
+      <button class="iconbtn" id="btn-wquit" type="button" title="Закончить прописи">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>Закончить</button>
+      <div class="prog"><i id="w-prog"></i></div>
+      <div class="ctr" id="w-ctr"></div>
+    </div>
+    <div class="card" id="write"></div>
   </section>
 
   <!-- ПРОГРЕСС -->
