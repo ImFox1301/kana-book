@@ -6,7 +6,7 @@
 
 Таблицы хираганы и катаканы в порядке годзюон. Нажатие на знак проигрывает его произношение, подпись ряда — весь ряд. В режиме «Выбрать для прописей» отмечаются знаки или ряды целиком, задаётся число повторений (от 5) и подложка — полупрозрачный образец знака для обводки. Каждая попытка проверяется тем же распознавателем, что и в квизе; знак считается отработанным после нужного числа верных попыток. В историю ответов попадают только попытки без подложки.
 
-Озвучка: `assets/audio/*.mp3`, синтезирована офлайн через Open JTalk с голосом Mei (`tools/make_audio.py`).
+Озвучка: `assets/audio/{m,f}/*.mp3` — мужской и женский голос, синтезированы офлайн нейросетью Kokoro-82M (`tools/make_audio.py`); каждый файл автоматически проверяется на обрывы и провалы громкости.
 
 ## Приложение (PWA)
 
@@ -85,7 +85,7 @@ docker build -t kana-tetrad . && docker run --rm -p 8080:80 kana-tetrad
 - `assets/fonts` — Klee One и Onest (OFL), урезанные до каны, латиницы и кириллицы
 - `assets/icons`, `tools/make_icons.py` — иконки приложения
 - `src/recognizer.js` — распознаватель рукописной каны
-- `assets/audio`, `tools/make_audio.py` — произношение каны: Open JTalk (BSD), голос HTS Voice "Mei" © Nagoya Institute of Technology, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)
+- `assets/audio`, `tools/make_audio.py` — произношение каны: [Kokoro-82M](https://github.com/hexgrad/kokoro) (Apache-2.0), голоса jm_kumo и jf_alpha; японская фонетика — [misaki](https://github.com/hexgrad/misaki) (Apache-2.0)
 - `src/kvg.json` — штрихи каны из [KanjiVG](https://kanjivg.tagaini.net) (CC BY-SA 3.0, © Ulrich Apel)
 - `src/kana.js` — таблицы каны, транскрипции Хэпбёрна и Поливанова, проверка ответов
 - `src/words.js` — стартовый словарь

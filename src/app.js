@@ -68,7 +68,7 @@
   let answers = store.get('answers', []);
 
   // ---------- настройки ----------
-  const def = { script: 'h', rows: { h: ['a', 'ka', 'sa'], k: ['a', 'ka', 'sa'] }, topics: null, wfilter: 'all', count: 20, mode: 'draw', sys: 'ru', len: 1, abcScript: 'h', abcMode: 'listen', abcSel: { h: [], k: [] }, reps: 5, ghost: true };
+  const def = { script: 'h', rows: { h: ['a', 'ka', 'sa'], k: ['a', 'ka', 'sa'] }, topics: null, wfilter: 'all', count: 20, mode: 'draw', sys: 'ru', len: 1, abcScript: 'h', abcMode: 'listen', abcSel: { h: [], k: [] }, reps: 5, ghost: true, voice: 'm' };
   const S = Object.assign({}, def, store.get('settings', {}));
   const save = () => store.set('settings', S);
 
@@ -440,8 +440,9 @@
   function playKana(kana, cell) {
     const key = toHira(kana);
     if (!window.KANA_PWA) return;   // озвучка есть только в собранной версии
-    let a = audioCache[key];
-    if (!a) { a = audioCache[key] = new Audio('audio/' + encodeURIComponent(key) + '.mp3'); a.preload = 'auto'; }
+    const voice = S.voice === 'f' ? 'f' : 'm';
+    let a = audioCache[voice + key];
+    if (!a) { a = audioCache[voice + key] = new Audio('audio/' + voice + '/' + encodeURIComponent(key) + '.mp3'); a.preload = 'auto'; }
     try { a.currentTime = 0; } catch (e) { }
     const p = a.play(); if (p && p.catch) p.catch(() => { });
     if (cell) { cell.classList.remove('playing'); void cell.offsetWidth; cell.classList.add('playing'); }
@@ -481,7 +482,9 @@
         ...[['h', 'Хирагана'], ['k', 'Катакана']].map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(sc === v), onclick: () => { S.abcScript = v; save(); renderAbc(); } }, t))),
       h('div', { class: 'segm', role: 'group', 'aria-label': 'Нажатие на знак' },
         h('button', { type: 'button', 'aria-pressed': String(!selecting), onclick: () => { S.abcMode = 'listen'; save(); renderAbc(); } }, svgIcon('sound'), 'Слушать'),
-        h('button', { type: 'button', 'aria-pressed': String(selecting), onclick: () => { S.abcMode = 'select'; save(); renderAbc(); } }, svgIcon('check'), 'Выбрать для прописей'))));
+        h('button', { type: 'button', 'aria-pressed': String(selecting), onclick: () => { S.abcMode = 'select'; save(); renderAbc(); } }, svgIcon('check'), 'Выбрать для прописей')),
+      h('div', { class: 'segm', role: 'group', 'aria-label': 'Голос' },
+        ...[['m', 'Мужской голос'], ['f', 'Женский голос']].map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String((S.voice === 'f' ? 'f' : 'm') === v), onclick: () => { S.voice = v; save(); renderAbc(); playKana(conv('あ')); } }, t)))));
     el.append(h('p', { class: 'small muted abc-hint' }, selecting
       ? 'Отметьте знаки или целый ряд — нажмите на подпись ряда слева. Затем выберите число повторений внизу.'
       : 'Нажмите на знак, чтобы услышать его. Подпись ряда слева проигрывает весь ряд.'));

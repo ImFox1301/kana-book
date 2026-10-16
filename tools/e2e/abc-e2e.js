@@ -31,13 +31,16 @@ async function draw(page, ch) {
   check(await page.locator('#abc .abc-cell:not(.empty)').count() === 104, 'таблица хираганы: 104 знака и сочетания');
   await page.click('#abc .abc-cell[aria-label^="Прослушать か"]');
   await page.waitForTimeout(400);
-  check(audio.some(([f, s]) => f === 'か.mp3' && s === 200), 'нажатие на か загружает его озвучку');
+  check(audio.some(([f, s]) => f === 'm/か.mp3' && s === 200), 'нажатие на か загружает его озвучку (мужской голос)');
   await page.screenshot({ path: SHOTS + '/abc-listen.png', fullPage: true });
 
   await page.click('#abc .segm button:has-text("Катакана")');
   await page.click('#abc .abc-cell[aria-label^="Прослушать カ"]');
   await page.waitForTimeout(300);
-  check(audio.filter(([f]) => f === 'か.mp3').length >= 1, 'катакана カ звучит тем же файлом');
+  check(audio.filter(([f]) => f === 'm/か.mp3').length >= 1, 'катакана カ звучит тем же файлом');
+  await page.click('#abc .segm button:has-text("Женский")');
+  await page.click('#abc .abc-cell[aria-label^="Прослушать カ"]'); await page.waitForTimeout(300);
+  check(audio.some(([f, s]) => f === 'f/か.mp3' && s === 200), 'переключение на женский голос');
   await page.click('#abc .segm button:has-text("Хирагана")');
 
   // выбор: ряд ка целиком + отдельный знак あ
