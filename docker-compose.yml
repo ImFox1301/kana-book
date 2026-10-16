@@ -16,7 +16,13 @@ services:
       - DB_USER=kana
       - DB_PASSWORD=${DB_PASSWORD:?укажите DB_PASSWORD в .env}
     depends_on:
-      # Озвучка своих слов через VOICEVOX (VOICEVOX:青山龍星, VOICEVOX:波音リツ)
+      kana-db:
+        condition: service_healthy
+    mem_limit: 384m
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  # Озвучка своих слов через VOICEVOX (VOICEVOX:青山龍星, VOICEVOX:波音リツ)
   kana-tts:
     image: ghcr.io/imfox1301/kana-book-tts:latest
     container_name: kana-tts
@@ -24,12 +30,6 @@ services:
     volumes:
       - kana_tts_cache:/cache
     mem_limit: 768m
-    labels:
-      - com.centurylinklabs.watchtower.enable=true
-
-  kana-db:
-        condition: service_healthy
-    mem_limit: 384m
     labels:
       - com.centurylinklabs.watchtower.enable=true
 
@@ -69,7 +69,7 @@ services:
       - kana-api
       - kana-tts
 
-  # Следит за новыми образами в GHCR и перезапускает kana-tetrad и kana-api
+  # Следит за новыми образами в GHCR и перезапускает kana-tetrad, kana-api и kana-tts
   watchtower:
     # поддерживаемый форк: оригинальный containrrr/watchtower не работает с Docker 29 (слишком старая версия API)
     image: nickfedor/watchtower:1.23.0
