@@ -59,7 +59,8 @@ services:
 
   # Следит за новыми образами в GHCR и перезапускает kana-tetrad и kana-api
   watchtower:
-    image: containrrr/watchtower:1.7.1
+    # поддерживаемый форк: оригинальный containrrr/watchtower не работает с Docker 29 (слишком старая версия API)
+    image: nickfedor/watchtower:1.23.0
     container_name: kana-watchtower
     restart: unless-stopped
     volumes:
