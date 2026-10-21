@@ -101,7 +101,7 @@ jobs:
             cat $t.log
           done
           node tools/e2e/haptics-ios.js http://localhost:8790/ || { fail=1; echo '::error title=haptics-ios::iPhone haptics check failed'; }
-          [ $fail = 0 ] || { tail -30 api.log; exit 1; }
+          [ $fail = 0 ] || { grep -iE "WARN|ERROR|Exception" api.log | grep -v "Telegram getUpdates" | tail -12 | cut -c1-300 | sed "s/^/::error title=api.log::/"; tail -30 api.log; exit 1; }
 
       - uses: docker/setup-buildx-action@v3
         if: github.ref == 'refs/heads/main'
