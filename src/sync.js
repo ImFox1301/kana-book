@@ -9,7 +9,7 @@ window.KanaSync = (function () {
     get(k, d) { try { const v = localStorage.getItem(K + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { if (v == null) localStorage.removeItem(K + k); else localStorage.setItem(K + k, JSON.stringify(v)); } catch (e) { } },
   };
-  let account = ls.get('account', null);   // { username }
+  let account = ls.get('account', null);   // { username, displayName }
   let cursor = ls.get('sync-cursor', 0);
   let snap = ls.get('sync-snap', {});        // что уже есть на сервере: ключ -> хеш данных
   let lastSync = ls.get('sync-last', 0);
@@ -97,23 +97,35 @@ window.KanaSync = (function () {
   }
 
   // ---------- вход, регистрация, выход ----------
-  async function auth(kind, username, password) {
+  async function auth(kind, username, password, displayName) {
     ui.busy = true; ui.error = ''; rerender();
-    const r = await api('/auth/' + kind, { username, password });
+    const r = await api('/auth/' + kind, kind === 'register' ? { username, password, displayName } : { username, password });
     ui.busy = false;
     if (r.status !== 200 && r.status !== 201) { ui.error = r.data.error || 'Не получилось, попробуйте ещё раз'; rerender(); return; }
     if (!r.data.username) { ui.error = 'Сервер аккаунтов пока недоступен. Занимайтесь без входа — данные сохраняются на устройстве.'; rerender(); return; }
-    account = { username: r.data.username }; cursor = 0; snap = {}; lastSync = 0; saveState();
-    ui.error = ''; ui.mode = 'login'; rerender();
+    account = { username: r.data.username, displayName: r.data.displayName || null }; cursor = 0; snap = {}; lastSync = 0; saveState();
+    ui.error = ''; ui.editName = false;
+    if (window.KanaApp && window.KanaApp.open) window.KanaApp.open('me'); else rerender();
     syncNow();
+  }
+  async function setName(name) {
+    ui.busy = true; ui.error = ''; rerender();
+    const r = await api('/auth/name', { displayName: name });
+    ui.busy = false;
+    if (r.status !== 200) { ui.error = r.data.error || 'Не получилось сохранить имя'; rerender(); return; }
+    account.displayName = r.data.displayName; saveState(); ui.editName = false; rerender();
+  }
+  async function refreshMe() {   // имя могли поменять на другом устройстве
+    const r = await api('/auth/me');
+    if (r.status === 200 && account && r.data.username) { account.displayName = r.data.displayName || null; saveState(); rerender(); }
   }
   async function logout() {
     await syncNow();
     if (window.KanaPush) await window.KanaPush.forget();   // напоминания этого устройства привязаны к аккаунту
     await api('/auth/logout', {});
     account = null; cursor = 0; snap = {}; lastSync = 0; status = ''; saveState();
-    window.KanaApp.resetLocal();
-    ui.confirm = null; rerender();
+    ui.confirm = null; ui.error = '';
+    window.KanaApp.resetLocal();   // перерисует «Я» уже без аккаунта
   }
   async function deleteAccount(password) {
     ui.busy = true; ui.error = ''; rerender();
@@ -133,34 +145,42 @@ window.KanaSync = (function () {
     for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(c));
     return el;
   }
-  function rerender() { if (box && !box.closest('[hidden]')) renderAccount(box); }
+  let rerender = function () { if (box && !box.closest('[hidden]')) renderAccount(box); };
   function renderAccount(el) {
     box = el;
     if (!enabled) { el.hidden = true; return; }
     el.hidden = false; el.replaceChildren();
     const add = (...xs) => el.append(...xs.filter(x => x != null && x !== false));
+    const open = name => { ui.error = ''; window.KanaApp.open(name); };
     if (!account) {
-      const isReg = ui.mode === 'register';
-      const user = h('input', { id: 'acc-user', autocomplete: 'username', autocapitalize: 'off', spellcheck: 'false', placeholder: 'Логин', 'aria-label': 'Логин' });
-      const pass = h('input', { id: 'acc-pass', type: 'password', autocomplete: isReg ? 'new-password' : 'current-password', placeholder: isReg ? 'Пароль, от 8 символов' : 'Пароль', 'aria-label': 'Пароль' });
-      const form = h('form', { class: 'row', onsubmit: e => { e.preventDefault(); auth(isReg ? 'register' : 'login', user.value.trim(), pass.value); } },
-        user, pass, h('button', { class: 'btn primary', type: 'submit', disabled: ui.busy }, isReg ? 'Создать аккаунт' : 'Войти'));
       add(
         h('div', {}, h('b', {}, 'Сохранять прогресс между устройствами'),
           h('div', { class: 'st' }, 'Без аккаунта всё хранится только на этом устройстве. Войдите, и слова, образцы почерка, настройки и история ответов будут на всех ваших устройствах. Уже накопленное здесь перенесётся в аккаунт.')),
-        form,
-        ui.error ? h('div', { class: 'err', role: 'alert' }, ui.error) : null,
         status ? h('div', { class: 'st' }, status) : null,
-        h('div', { class: 'row' }, h('button', { class: 'link', type: 'button', onclick: () => { ui.mode = isReg ? 'login' : 'register'; ui.error = ''; rerender(); } },
-          isReg ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Создать')));
+        h('div', { class: 'row' },
+          h('button', { class: 'btn primary', type: 'button', id: 'btn-to-login', onclick: () => open('login') }, 'Войти'),
+          h('button', { class: 'btn ghost', type: 'button', id: 'btn-to-register', onclick: () => open('register') }, 'Создать аккаунт')));
       return;
     }
+    const nameForm = () => {
+      const inp = h('input', { id: 'acc-name-edit', maxlength: 40, autocomplete: 'nickname', value: account.displayName || '', placeholder: 'Например, Павел', 'aria-label': 'Как к вам обращаться' });
+      setTimeout(() => inp.focus(), 30);
+      return h('form', { class: 'row', onsubmit: e => { e.preventDefault(); setName(inp.value); } }, inp,
+        h('button', { class: 'btn primary', type: 'submit', disabled: ui.busy }, 'Сохранить'),
+        account.displayName ? h('button', { class: 'link', type: 'button', onclick: () => { ui.editName = false; ui.error = ''; rerender(); } }, 'Отмена') : null);
+    };
+    if (!account.displayName) {
+      el.append(h('div', { class: 'ask-name' }, h('b', {}, 'Как к вам обращаться?'), h('div', { class: 'st' }, 'Это имя увидят друзья.'), nameForm()));
+    }
     el.append(h('div', { class: 'row', style: 'justify-content:space-between' },
-      h('div', {}, h('span', { class: 'who' }, account.username),
+      h('div', {}, h('span', { class: 'who' }, account.displayName || account.username),
+        account.displayName ? h('span', { class: 'st login' }, ' @' + account.username) : null,
+        account.displayName && !ui.editName ? h('button', { class: 'link', type: 'button', id: 'btn-edit-name', onclick: () => { ui.editName = true; rerender(); } }, 'изменить имя') : null,
         h('div', { class: 'st' }, status || ('Синхронизировано: ' + fmtTime(lastSync)))),
       h('div', { class: 'row' },
         h('button', { class: 'btn ghost', type: 'button', disabled: running, onclick: () => syncNow() }, 'Синхронизировать'),
         h('button', { class: 'btn ghost', type: 'button', onclick: () => { ui.confirm = 'logout'; ui.error = ''; rerender(); } }, 'Выйти'))));
+    if (ui.editName && account.displayName) el.append(nameForm());
     if (ui.confirm === 'logout') {
       el.append(h('div', { class: 'row' }, h('span', { class: 'st' }, 'Прогресс сохранён в аккаунте. С этого устройства он будет удалён, пока вы снова не войдёте.'),
         h('button', { class: 'btn primary', type: 'button', onclick: logout }, 'Выйти'),
@@ -177,13 +197,47 @@ window.KanaSync = (function () {
     if (ui.error) el.append(h('div', { class: 'err', role: 'alert' }, ui.error));
   }
 
+  // ---------- отдельные экраны входа и регистрации ----------
+  let page = null, pageKind = 'login';
+  function renderAuthPage(el, kind) {
+    page = el; pageKind = kind; el.replaceChildren();
+    const isReg = kind === 'register';
+    const back = h('div', { class: 'backbar' }, h('button', { class: 'link back', type: 'button', onclick: () => { ui.error = ''; window.KanaApp.open('me'); } }, '← Назад'));
+    if (account) { el.append(back, h('p', {}, 'Вы уже вошли как ', h('b', {}, account.displayName || account.username), '.')); return; }
+    const field = (id, label, attrs, hint) => h('label', { class: 'fld', for: id }, h('span', { class: 'lbl' }, label), h('input', Object.assign({ id }, attrs)), hint ? h('span', { class: 'st' }, hint) : null);
+    const name = isReg ? field('acc-name', 'Как к вам обращаться', { maxlength: 40, autocomplete: 'nickname', placeholder: 'Например, Павел', required: true }, 'Это имя увидят друзья. Его можно поменять потом.') : null;
+    const user = field('acc-user', 'Логин', { autocomplete: 'username', autocapitalize: 'off', spellcheck: 'false', required: true, placeholder: isReg ? 'латиницей, от 3 символов' : '' }, isReg ? 'Для входа. Латинские буквы, цифры, точка, дефис, подчёркивание.' : null);
+    const pass = field('acc-pass', 'Пароль', { type: 'password', autocomplete: isReg ? 'new-password' : 'current-password', required: true, minlength: isReg ? 8 : null, placeholder: isReg ? 'от 8 символов' : '' });
+    const val = id => el.querySelector('#' + id).value;
+    const form = h('form', { class: 'authform', onsubmit: e => { e.preventDefault(); auth(kind, val('acc-user').trim(), val('acc-pass'), isReg ? val('acc-name').trim() : undefined); } },
+      name, user, pass,
+      ui.error ? h('div', { class: 'err', role: 'alert' }, ui.error) : null,
+      h('button', { class: 'btn primary', type: 'submit', disabled: ui.busy }, ui.busy ? 'Подождите…' : isReg ? 'Создать аккаунт' : 'Войти'));
+    el.append(back, h('h1', { class: 'h1' }, isReg ? 'Регистрация' : 'Вход'),
+      h('p', { class: 'small muted' }, isReg ? 'Аккаунт хранит прогресс, слова и настройки на всех ваших устройствах и нужен для напоминаний. Уже накопленное на этом устройстве перенесётся в аккаунт.' : 'Войдите, чтобы прогресс был на всех ваших устройствах.'),
+      h('div', { class: 'sheet' }, form),
+      h('p', { class: 'small' }, isReg ? 'Уже есть аккаунт? ' : 'Нет аккаунта? ',
+        h('button', { class: 'link', type: 'button', onclick: () => { ui.error = ''; window.KanaApp.open(isReg ? 'login' : 'register'); } }, isReg ? 'Войти' : 'Создать')));
+    // при перерисовке (ошибка) сохраняем введённое
+  }
+  const prevRerender = rerender;
+  rerender = function () {
+    if (page && !page.hidden) {
+      const keep = {}; page.querySelectorAll('input').forEach(i => keep[i.id] = i.value);
+      renderAuthPage(page, pageKind);
+      for (const id in keep) { const i = page.querySelector('#' + id); if (i) i.value = keep[id]; }
+      return;
+    }
+    prevRerender();
+  };
+
   // ---------- когда синхронизироваться ----------
   if (enabled) {
     window.addEventListener('online', () => touch());
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') touch(); });
     setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 120000);
-    if (account) setTimeout(syncNow, 800);
+    if (account) setTimeout(() => { syncNow(); refreshMe(); }, 800);
   }
 
-  return { touch, syncNow, renderAccount, api, get account() { return account; } };
+  return { touch, syncNow, renderAccount, renderAuthPage, api, get account() { return account; } };
 })();

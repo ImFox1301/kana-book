@@ -43,22 +43,38 @@ async function answerCards(page, n) {
   await addWord(A.page, 'ねこ', 'кошка');
   await answerCards(A.page, 3);
   await A.page.click('#tab-me');
-  check(await A.page.isVisible('#acc-user'), 'A: на вкладке «Прогресс» есть форма входа');
+  check(await A.page.isVisible('#btn-to-login') && await A.page.isVisible('#btn-to-register'), 'A: в «Я» — кнопки «Войти» и «Создать аккаунт»');
   check((await A.page.textContent('#stats')).includes('ответов всего'), 'A: статистика видна и без аккаунта');
-  await A.page.click('text=Нет аккаунта? Создать');
+  await A.page.click('#btn-to-register');
+  check(await A.page.isVisible('#screen-register') && await A.page.isVisible('#acc-name'), 'A: регистрация — отдельный экран с полем «Как к вам обращаться»');
+  await A.page.screenshot({ path: (process.env.SHOTS || '/tmp') + '/register.png', fullPage: true });
   await A.page.fill('#acc-user', user); await A.page.fill('#acc-pass', pass);
-  await A.page.click('#account-box button[type=submit]');
+  await A.page.evaluate(() => { document.querySelector('#acc-name').required = false; });
+  await A.page.click('#screen-register button[type=submit]');
+  await A.page.waitForSelector('#screen-register .err');
+  check((await A.page.textContent('#screen-register .err')).includes('как к вам обращаться'), 'A: без имени не регистрирует');
+  check(await A.page.inputValue('#acc-user') === user, 'A: введённое не теряется после ошибки');
+  await A.page.fill('#acc-name', 'Павел');
+  await A.page.click('#screen-register button[type=submit]');
   await A.page.waitForSelector('#account-box .who');
+  check(await A.page.isVisible('#screen-me'), 'A: после регистрации — снова «Я»');
+  check((await A.page.textContent('#account-box .who')) === 'Павел' && (await A.page.textContent('#account-box')).includes('@' + user), 'A: показано имя и логин');
   await synced(A.page);
   check((await A.page.textContent('#account-box')).includes('Синхронизировано'), 'A: зарегистрирован и синхронизирован');
+  await A.page.click('#btn-edit-name'); await A.page.fill('#acc-name-edit', 'Паша'); await A.page.click('#account-box form button[type=submit]');
+  await A.page.waitForFunction(() => document.querySelector('#account-box .who').textContent === 'Паша');
+  check(true, 'A: имя можно изменить');
 
   // Устройство B: входит в тот же аккаунт и получает всё
   const B = await device(browser, 'B');
   check((await words(B.page)).length === 0, 'B: до входа своих слов нет');
   await B.page.click('#tab-me');
+  await B.page.click('#btn-to-login');
+  check(await B.page.isVisible('#screen-login') && !(await B.page.isVisible('#acc-name')), 'B: вход — отдельный экран, без поля имени');
   await B.page.fill('#acc-user', user); await B.page.fill('#acc-pass', pass);
-  await B.page.click('#account-box button[type=submit]');
+  await B.page.click('#screen-login button[type=submit]');
   await B.page.waitForSelector('#account-box .who');
+  check((await B.page.textContent('#account-box .who')) === 'Паша', 'B: имя пришло с аккаунтом');
   await synced(B.page);
   check((await words(B.page)).includes('ねこ'), 'B: слово с устройства A пришло');
   check(await answers(B.page) === 3, 'B: история ответов пришла (3)');
@@ -83,16 +99,18 @@ async function answerCards(page, n) {
   await A.page.click('#tab-me');
   await A.page.click('#account-box >> text=Выйти');
   await A.page.click('#account-box .btn.primary:has-text("Выйти")');
-  await A.page.waitForSelector('#acc-user');
+  await A.page.waitForSelector('#btn-to-login');
   check((await words(A.page)).length === 0 && await answers(A.page) === 0, 'A: после выхода устройство очищено');
   await synced(B.page);
   check((await words(B.page)).includes('いぬ') && await answers(B.page) === 3, 'B: в аккаунте всё на месте');
 
   // Неверный пароль
+  await A.page.click('#btn-to-login');
   await A.page.fill('#acc-user', user); await A.page.fill('#acc-pass', 'wrong-pass-1');
-  await A.page.click('#account-box button[type=submit]');
-  await A.page.waitForSelector('#account-box .err');
-  check((await A.page.textContent('#account-box .err')).includes('Неверный'), 'A: неверный пароль — понятная ошибка');
+  await A.page.click('#screen-login button[type=submit]');
+  await A.page.waitForSelector('#screen-login .err');
+  check((await A.page.textContent('#screen-login .err')).includes('Неверный'), 'A: неверный пароль — понятная ошибка');
+  await A.page.screenshot({ path: (process.env.SHOTS || '/tmp') + '/login-error.png', fullPage: true });
 
   await B.page.screenshot({ path: process.env.SHOT || '/tmp/kana-e2e.png', fullPage: true });
   await browser.close();

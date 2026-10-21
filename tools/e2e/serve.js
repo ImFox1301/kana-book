@@ -19,13 +19,14 @@ function mock(req, res, body) {
     const u = body.username.toLowerCase();
     if (users.has(u)) return send(res, 409, { error: 'Этот логин уже занят' });
     if (body.password.length < 8) return send(res, 400, { error: 'Пароль должен быть не короче 8 символов' });
-    users.set(u, { name: body.username, pass: body.password });
-    return send(res, 201, { username: body.username }, newSession(u));
+    if (!(body.displayName || '').trim()) return send(res, 400, { error: 'Укажите, как к вам обращаться' });
+    users.set(u, { name: body.username, pass: body.password, displayName: body.displayName.trim() });
+    return send(res, 201, { username: body.username, displayName: body.displayName.trim() }, newSession(u));
   }
   if (p === '/api/auth/login') {
     const u = users.get((body.username || '').toLowerCase());
     if (!u || u.pass !== body.password) return send(res, 401, { error: 'Неверный логин или пароль' });
-    return send(res, 200, { username: u.name }, newSession(body.username.toLowerCase()));
+    return send(res, 200, { username: u.name, displayName: u.displayName }, newSession(body.username.toLowerCase()));
   }
   if (p === '/api/auth/logout') { if (cookie) sessions.delete(cookie.split('=')[1]); return send(res, 200, { ok: true }, 'kana_session=; Path=/api; Max-Age=0'); }
   if (p === '/api/push/key') return send(res, 200, { key: PUSH_KEY });
@@ -42,7 +43,8 @@ function mock(req, res, body) {
     if (p === '/api/push/prefs') { if (req.method === 'POST') pushPrefs.set(uid, Object.assign(prefs(), Object.fromEntries(Object.entries(body).filter(([, v]) => v != null)))); return send(res, 200, prefs()); }
     if (p === '/api/push/test') return send(res, 200, { sent: prefs().devices });
   }
-  if (p === '/api/auth/me') return send(res, 200, { username: users.get(uid).name });
+  if (p === '/api/auth/me') return send(res, 200, { username: users.get(uid).name, displayName: users.get(uid).displayName });
+  if (p === '/api/auth/name') { const n = (body.displayName || '').trim(); if (!n) return send(res, 400, { error: 'Укажите, как к вам обращаться' }); users.get(uid).displayName = n; return send(res, 200, { username: users.get(uid).name, displayName: n }); }
   if (p === '/api/sync') {
     for (const ch of body.changes || []) {
       const k = uid + '\u0000' + ch.c + '\u0000' + ch.id, cur = items.get(k);

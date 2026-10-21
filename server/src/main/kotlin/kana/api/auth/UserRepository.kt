@@ -5,31 +5,33 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.RowMapper
 import org.springframework.stereotype.Repository
 
-data class UserRow(val id: Long, val username: String, val passwordHash: String)
+data class UserRow(val id: Long, val username: String, val passwordHash: String, val displayName: String? = null)
 
 @Repository
 class UserRepository(private val jdbc: JdbcTemplate) {
-    private val mapper = RowMapper { rs, _ -> UserRow(rs.getLong("id"), rs.getString("username"), rs.getString("password_hash")) }
+    private val mapper = RowMapper { rs, _ -> UserRow(rs.getLong("id"), rs.getString("username"), rs.getString("password_hash"), rs.getString("display_name")) }
 
     /** null — логин уже занят (без учёта регистра). */
-    fun create(username: String, passwordHash: String): Long? = try {
+    fun create(username: String, passwordHash: String, displayName: String?): Long? = try {
         jdbc.queryForObject(
-            "insert into users (username, password_hash) values (?, ?) returning id",
-            Long::class.java, username, passwordHash,
+            "insert into users (username, password_hash, display_name) values (?, ?, ?) returning id",
+            Long::class.java, username, passwordHash, displayName,
         )
     } catch (e: DuplicateKeyException) {
         null
     }
 
     fun findByUsername(username: String): UserRow? =
-        jdbc.query("select id, username, password_hash from users where lower(username) = lower(?)", mapper, username).firstOrNull()
+        jdbc.query("select id, username, password_hash, display_name from users where lower(username) = lower(?)", mapper, username).firstOrNull()
 
     fun findById(id: Long): UserRow? =
-        jdbc.query("select id, username, password_hash from users where id = ?", mapper, id).firstOrNull()
+        jdbc.query("select id, username, password_hash, display_name from users where id = ?", mapper, id).firstOrNull()
 
     fun updatePassword(id: Long, passwordHash: String) {
         jdbc.update("update users set password_hash = ? where id = ?", passwordHash, id)
     }
+
+    fun updateDisplayName(id: Long, name: String) { jdbc.update("update users set display_name = ? where id = ?", name, id) }
 
     fun delete(id: Long) { jdbc.update("delete from users where id = ?", id) }
 }

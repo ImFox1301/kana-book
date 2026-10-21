@@ -59,7 +59,7 @@ class PushTest(@Autowired val mvc: MockMvc, @Autowired val om: ObjectMapper, @Au
     private fun register(): Pair<Cookie, Long> {
         val name = "p_" + UUID.randomUUID().toString().take(8)
         val r = mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
-            .content(om.writeValueAsString(mapOf("username" to name, "password" to "secret-pass")))).andReturn().response
+            .content(om.writeValueAsString(mapOf("username" to name, "password" to "secret-pass", "displayName" to "Тест")))).andReturn().response
         assertEquals(201, r.status)
         return r.getCookie("kana_session")!! to jdbc.queryForObject("select id from users where username = ?", Long::class.java, name)!!
     }

@@ -100,9 +100,9 @@ async function build(page, wrong) {
   await pp.click('#tab-me');
   check(await pp.isDisabled('#set-notify'), 'без входа напоминания недоступны');
   check((await pp.textContent('#settings')).includes('Войдите в аккаунт'), '…и объяснено почему');
-  await pp.click('text=Нет аккаунта? Создать');
-  await pp.fill('#acc-user', 'push_' + crypto.randomBytes(3).toString('hex')); await pp.fill('#acc-pass', 'secret-pass-1');
-  await pp.click('#account-box button[type=submit]');
+  await pp.click('#btn-to-register');
+  await pp.fill('#acc-name', 'Тест'); await pp.fill('#acc-user', 'push_' + crypto.randomBytes(3).toString('hex')); await pp.fill('#acc-pass', 'secret-pass-1');
+  await pp.click('#screen-register button[type=submit]');
   await pp.waitForSelector('#account-box .who');
   await pp.waitForFunction(() => !document.querySelector('#set-notify').disabled);
   await pp.click('#settings .tgl:has(#set-notify)');
@@ -127,7 +127,7 @@ async function build(page, wrong) {
   await pp.click('#settings .tgl:has(#set-notify)'); await pp.waitForSelector('#remind-time');
   calls.length = 0;
   await pp.click('#account-box >> text=Выйти'); await pp.click('#account-box .btn.primary:has-text("Выйти")');
-  await pp.waitForSelector('#acc-user');
+  await pp.waitForSelector('#btn-to-login');
   check(calls.includes('unsubscribe'), 'при выходе подписка снята');
   check(await pp.isDisabled('#set-notify'), 'после выхода напоминания снова недоступны');
 

@@ -965,8 +965,8 @@
 
   // ---------- переключение экранов ----------
   let current = 'home';
-  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me', 'similar', 'reading', 'builder'];
-  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice', reading: 'practice', builder: 'practice' };
+  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me', 'similar', 'reading', 'builder', 'login', 'register'];
+  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice', reading: 'practice', builder: 'practice', login: 'me', register: 'me' };
   const tabOf = name => (FLOW && ['quiz', 'result', 'write'].includes(name)) ? 'lessons' : TAB_OF[name];
   const lastOf = { home: 'home', lessons: 'lessons', practice: 'practice', dict: 'dict', me: 'me' };
   function show(name) {
@@ -977,7 +977,10 @@
     document.querySelectorAll('.backbar[data-for]').forEach(b => { b.hidden = b.dataset.for !== name; });
     $('#bnav').hidden = name === 'onboard';
     document.querySelectorAll('#bnav button').forEach(x => { if (x.dataset.tab === tab) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current'); });
-    ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, onboard: renderOnboard, similar: renderSimilar, reading: renderReading, builder: renderBuilder })[name]?.();
+    ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, onboard: renderOnboard, similar: renderSimilar, reading: renderReading, builder: renderBuilder,
+      login: () => window.KanaSync && window.KanaSync.renderAuthPage($('#screen-login'), 'login'),
+      register: () => window.KanaSync && window.KanaSync.renderAuthPage($('#screen-register'), 'register') })[name]?.();
+    if (name === 'login' || name === 'register') setTimeout(() => { const f = $('#screen-' + name + ' input'); if (f) f.focus(); }, 50);
     renderStreak();
     window.scrollTo(0, 0);
   }
@@ -1797,6 +1800,7 @@
       this.commit();
     },
     rerender() { if (current === 'me') renderMe(); },
+    open(name) { show(name); },
   };
 
   window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next, show, openLesson, get lessonsDone() { return lessonsDone; }, dayTotals, todayKey, buzz, srsState, srsDue, srsForecast, startReview, startSim, confusions, startReading, startBuilder };

@@ -37,7 +37,7 @@ class ApiTest(@Autowired val mvc: MockMvc, @Autowired val om: ObjectMapper) {
     }
 
     private fun register(u: String, p: String = "secret-pass"): Cookie {
-        val r = call(json(post("/api/auth/register"), mapOf("username" to u, "password" to p)))
+        val r = call(json(post("/api/auth/register"), mapOf("username" to u, "password" to p, "displayName" to "Тест $u")))
         assertEquals(201, r.status, r.body.toString())
         return assertNotNull(r.cookie)
     }
@@ -51,6 +51,12 @@ class ApiTest(@Autowired val mvc: MockMvc, @Autowired val om: ObjectMapper) {
         val c = register(u)
         assertTrue(c.isHttpOnly)
         assertEquals(u, call(get("/api/auth/me").cookie(c)).body!!["username"].asText())
+        assertEquals("Тест $u", call(get("/api/auth/me").cookie(c)).body!!["displayName"].asText())
+        // имя обязательно при регистрации, его можно сменить
+        assertEquals(400, call(json(post("/api/auth/register"), mapOf("username" to uname(), "password" to "secret-pass"))).status)
+        assertEquals(400, call(json(post("/api/auth/register"), mapOf("username" to uname(), "password" to "secret-pass", "displayName" to "   "))).status)
+        assertEquals("Павел", call(json(post("/api/auth/name"), mapOf("displayName" to "  Павел "), c)).body!!["displayName"].asText())
+        assertEquals(400, call(json(post("/api/auth/name"), mapOf("displayName" to "x".repeat(41)), c)).status)
 
         assertEquals(409, call(json(post("/api/auth/register"), mapOf("username" to u.uppercase(), "password" to "another-pass"))).status)
         assertEquals(400, call(json(post("/api/auth/register"), mapOf("username" to "a", "password" to "secret-pass"))).status)
@@ -59,6 +65,7 @@ class ApiTest(@Autowired val mvc: MockMvc, @Autowired val om: ObjectMapper) {
         assertEquals(401, call(json(post("/api/auth/login"), mapOf("username" to u, "password" to "wrong-pass"))).status)
         val login = call(json(post("/api/auth/login"), mapOf("username" to u.uppercase(), "password" to "secret-pass")))
         assertEquals(200, login.status)
+        assertEquals("Павел", login.body!!["displayName"].asText())
         val c2 = assertNotNull(login.cookie)
 
         assertEquals(200, call(post("/api/auth/logout").cookie(c2)).status)

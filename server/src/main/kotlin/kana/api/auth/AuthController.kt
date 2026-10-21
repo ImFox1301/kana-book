@@ -13,10 +13,11 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
-data class Credentials(val username: String = "", val password: String = "")
+data class Credentials(val username: String = "", val password: String = "", val displayName: String? = null)
+data class NameChange(val displayName: String = "")
 data class PasswordChange(val oldPassword: String = "", val newPassword: String = "")
 data class PasswordConfirm(val password: String = "")
-data class Me(val username: String)
+data class Me(val username: String, val displayName: String? = null)
 
 @RestController
 @RequestMapping("/api/auth")
@@ -36,11 +37,12 @@ class AuthController(
         val username = body.username.trim()
         validateUsername(username)
         validatePassword(body.password)
+        val name = displayName(body.displayName)
         if (!limiter.tryAcquire("reg:${req.remoteAddr}", props.registerPerHour, 3_600_000))
             throw ApiException(HttpStatus.TOO_MANY_REQUESTS, "Слишком много регистраций с вашего адреса. Попробуйте через час")
-        val id = users.create(username, encoder.encode(body.password))
+        val id = users.create(username, encoder.encode(body.password), name)
             ?: throw ApiException(HttpStatus.CONFLICT, "Этот логин уже занят")
-        return withSession(HttpStatus.CREATED, id, username)
+        return withSession(HttpStatus.CREATED, id, username, name)
     }
 
     @PostMapping("/login")
@@ -57,7 +59,7 @@ class AuthController(
             throw ApiException(HttpStatus.UNAUTHORIZED, "Неверный логин или пароль")
         }
         limiter.reset(userKey)
-        return withSession(HttpStatus.OK, user.id, user.username)
+        return withSession(HttpStatus.OK, user.id, user.username, user.displayName)
     }
 
     @PostMapping("/logout")
@@ -69,7 +71,16 @@ class AuthController(
     @GetMapping("/me")
     fun me(req: HttpServletRequest): Me {
         val user = req.userId()?.let(users::findById) ?: throw ApiException(HttpStatus.UNAUTHORIZED, "Вы не вошли")
-        return Me(user.username)
+        return Me(user.username, user.displayName)
+    }
+
+    /** «Как к вам обращаться» — имя, которое видят друзья. */
+    @PostMapping("/name")
+    fun changeName(@RequestBody body: NameChange, req: HttpServletRequest): Me {
+        val user = req.userId()?.let(users::findById) ?: throw ApiException(HttpStatus.UNAUTHORIZED, "Вы не вошли")
+        val name = displayName(body.displayName)
+        users.updateDisplayName(user.id, name)
+        return Me(user.username, name)
     }
 
     @PostMapping("/password")
@@ -90,9 +101,17 @@ class AuthController(
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, sessions.clearCookie().toString()).body(mapOf("ok" to true))
     }
 
-    private fun withSession(status: HttpStatus, userId: Long, username: String): ResponseEntity<Me> {
+    private fun withSession(status: HttpStatus, userId: Long, username: String, displayName: String?): ResponseEntity<Me> {
         val token = sessions.create(userId)
-        return ResponseEntity.status(status).header(HttpHeaders.SET_COOKIE, sessions.cookie(token).toString()).body(Me(username))
+        return ResponseEntity.status(status).header(HttpHeaders.SET_COOKIE, sessions.cookie(token).toString()).body(Me(username, displayName))
+    }
+
+    private fun displayName(raw: String?): String {
+        val n = (raw ?: "").trim().replace(Regex("\\s+"), " ")
+        if (n.isEmpty()) throw ApiException(HttpStatus.BAD_REQUEST, "Укажите, как к вам обращаться")
+        if (n.codePointCount(0, n.length) > 40) throw ApiException(HttpStatus.BAD_REQUEST, "Имя слишком длинное: не больше 40 символов")
+        if (n.any { Character.isISOControl(it) || it in "<>" }) throw ApiException(HttpStatus.BAD_REQUEST, "В имени есть недопустимые символы")
+        return n
     }
 
     private fun validateUsername(u: String) {
