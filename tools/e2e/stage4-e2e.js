@@ -106,6 +106,7 @@ async function build(page, wrong) {
   await pp.waitForSelector('#screen-onboard:not([hidden]) .btn.primary');
   // разрешение на уведомления спрашивается сразу после входа — ради заявок в друзья; напоминания при этом выключены
   await pp.waitForFunction(() => window.__pushKey === 65, null, { timeout: 10000 });
+  await pp.waitForFunction(() => fetch('/api/push/prefs').then(r => r.json()).then(p => p.devices === 1), null, { timeout: 10000, polling: 300 }).catch(() => { });
   let pr = await pp.evaluate(() => fetch('/api/push/prefs').then(r => r.json()));
   check(pr.devices === 1 && pr.enabled === false, 'после регистрации устройство подписано на уведомления, напоминания выключены: ' + JSON.stringify(pr));
   await pp.click('#screen-onboard .btn.primary');
