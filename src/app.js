@@ -1747,7 +1747,7 @@
   // после входа — сразу спросить разрешение: иначе не придут приглашения в друзья.
   // Safari разрешает спросить только по нажатию — тогда на «Сегодня» появится кнопка «Разрешить».
   async function autoPush() {
-    try { await pushSubscribe(null, true); } catch (e) { }
+    try { await pushSubscribe(null, true); } catch (e) { console.warn('Уведомления не включились:', e && e.message); }
     PS.checked = false; if (current === 'home') renderHome();
   }
   async function pushEnable() {
