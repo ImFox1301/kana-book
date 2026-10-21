@@ -157,6 +157,14 @@ async function openBot(page, sel) {
   await start(tgIds.ivan, nonce, 'Иван', 'ivan_' + sfx);
   await A.page.waitForFunction(() => (document.querySelector('#tg-status') || {}).textContent?.includes('Подтвердите'));
   check(true, 'Иван: бот просит подтвердить вход');
+  await start(tgIds.ivan, nonce, 'Иван', 'ivan_' + sfx);   // ссылку открыли ещё раз
+  const sent = await (await fetch(TG + '/__tg/sent')).json();
+  const last = (sent.result || sent).filter(m => m.chat_id === tgIds.ivan).pop();
+  check(last && /Войти/.test(last.text) && !/устарела/.test(last.text), 'Иван: повторный /start — бот снова спрашивает, а не «ссылка устарела»: ' + (last && last.text));
+  // приложение перезапустилось, пока человек в Telegram, — вход продолжается сам
+  await A.page.reload();
+  await A.page.waitForSelector('#screen-login:not([hidden]) #tg-status');
+  check(true, 'Иван: после перезагрузки приложение ждёт подтверждения');
   await press(tgIds.ivan, 'ok:' + nonce);
   await A.page.waitForSelector('#account-box .who', { timeout: 15000 });
   check((await A.page.textContent('#account-box .who')) === 'Иван', 'Иван: снова вошёл в свой аккаунт');

@@ -118,19 +118,25 @@ window.KanaSync = (function () {
   // Приложение создаёт попытку, пользователь открывает бота по ссылке, бот просит номер (или подтверждение),
   // приложение раз в 2 секунды узнаёт результат.
   let tgEnabled = null, tg = null;   // tg: { kind, nonce, secret, link, state, msg, timer }
+  // начатый вход переживает перезагрузку страницы (iPhone часто перезапускает приложение, пока вы в Telegram)
+  const ss = { get() { try { return JSON.parse(sessionStorage.getItem('kana-tetrad:tg') || 'null'); } catch (e) { return null; } },
+               set(v) { try { if (v) sessionStorage.setItem('kana-tetrad:tg', JSON.stringify(v)); else sessionStorage.removeItem('kana-tetrad:tg'); } catch (e) { } } };
+  const TG_FRESH = 7 * 60000, TG_TTL = 14 * 60000;
+  function tgSave() { ss.set(tg && tg.nonce && tg.state !== 'ready' ? { kind: tg.kind, nonce: tg.nonce, secret: tg.secret, link: tg.link, state: tg.state, at: tg.at } : null); }
   async function tgConfig() { if (tgEnabled === null) { const r = await api('/tg/config'); tgEnabled = r.status === 200 && !!r.data.enabled; } return tgEnabled; }
   async function tgPrepare(kind) {
-    if (tg && tg.kind === kind && tg.link && Date.now() - tg.at < 8 * 60000) return;
+    if (tg && tg.kind === kind && tg.link && Date.now() - tg.at < TG_FRESH) return;
     stopTg();
     const r = await api(kind === 'login' ? '/tg/login' : '/tg/link', {});
     if (r.status !== 200) { tg = { kind, state: 'error', msg: r.data.error || 'Telegram сейчас недоступен' }; rerender(); return; }
     tg = { kind, nonce: r.data.nonce, secret: r.data.secret, link: r.data.link, state: 'ready', at: Date.now() };
     rerender();
   }
-  function stopTg() { if (tg && tg.timer) clearInterval(tg.timer); tg = null; }
+  function stopTg() { if (tg && tg.timer) clearInterval(tg.timer); tg = null; ss.set(null); }
   function tgOpened() {
     if (!tg || !tg.nonce) return;
-    tg.state = 'waiting'; rerender();
+    if (tg.state === 'ready') tg.state = 'waiting';
+    tgSave(); rerender();
     if (tg.timer) return;
     tg.timer = setInterval(tgPoll, 2000);
   }
@@ -149,16 +155,19 @@ window.KanaSync = (function () {
     if (tg !== cur) return;
     if (r.status !== 200) { if (r.status === 404) { stopTg(); rerender(); } return; }
     const st = r.data.status;
-    if (st === 'ok') { clearInterval(cur.timer); tg = null; signedIn(r.data); return; }
-    if (st === 'linked') { clearInterval(cur.timer); tg = null; await refreshMe(); ui.notice = 'Телефон привязан. Теперь доступны друзья.'; rerender(); if (window.KanaApp) window.KanaApp.rerender(); return; }
+    if (st === 'ok') { clearInterval(cur.timer); tg = null; ss.set(null); signedIn(r.data); return; }
+    if (st === 'linked') { clearInterval(cur.timer); tg = null; ss.set(null); await refreshMe(); ui.notice = 'Телефон привязан. Теперь доступны друзья.'; rerender(); if (window.KanaApp) window.KanaApp.rerender(); return; }
     if (st === 'new') return;
     cur.state = st; cur.msg = r.data.message || null;
-    if (['denied', 'expired', 'used', 'error'].includes(st)) { clearInterval(cur.timer); cur.timer = null; cur.link = null; }
+    if (['denied', 'expired', 'used', 'error'].includes(st)) { clearInterval(cur.timer); cur.timer = null; cur.link = null; ss.set(null); }
+    else tgSave();
     rerender();
   }
   function tgBlock(kind) {
     if (!tgEnabled) return null;
     if (!tg || tg.kind !== kind) { tgPrepare(kind); return h('div', { class: 'tgbox' }, h('span', { class: 'st' }, 'Готовлю вход через Telegram…')); }
+    // ссылку приготовили заранее, а экран долго был открыт — берём свежую, чтобы бот не ответил «устарела»
+    if (tg.state === 'ready' && Date.now() - tg.at > TG_FRESH) { stopTg(); tgPrepare(kind); return h('div', { class: 'tgbox' }, h('span', { class: 'st' }, 'Готовлю вход через Telegram…')); }
     const done = ['denied', 'expired', 'used', 'error'].includes(tg.state);
     const btn = tg.link ? h('a', { class: 'btn tg', id: kind === 'login' ? 'btn-tg-login' : 'btn-tg-link', href: tg.link, target: '_blank', rel: 'noopener', onclick: tgOpened },
       kind === 'login' ? 'Войти через Telegram' : 'Привязать телефон через Telegram') : null;
@@ -321,6 +330,12 @@ window.KanaSync = (function () {
 
   // ---------- когда синхронизироваться ----------
   if (enabled) {
+    // продолжить начатый вход через Telegram после перезагрузки
+    const saved = ss.get();
+    if (saved && Date.now() - saved.at < TG_TTL && (saved.kind === 'link') === !!account) { tg = Object.assign(saved, { timer: setInterval(tgPoll, 2000) }); tgEnabled = true; ui.linking = saved.kind === 'link';
+      setTimeout(() => { if (tg && window.KanaApp) window.KanaApp.open(tg.kind === 'login' ? 'login' : 'me'); tgPoll(); }, 0); }
+    else ss.set(null);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && tg && tg.timer) tgPoll(); });
     window.addEventListener('online', () => touch());
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') touch(); });
     setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 120000);

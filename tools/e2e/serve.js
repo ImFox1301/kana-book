@@ -41,10 +41,15 @@ function tgHandle(u) {
     return tgReply(from.id, 'Готово!');
   }
   const nonce = (m.text || '').replace('/start', '').trim(), r = tgLogins.get(nonce);
-  if (!r || r.status !== 'new') return tgReply(from.id, 'Ссылка устарела');
+  if (!r) return tgReply(from.id, 'Ссылка не найдена');
+  if (r.status !== 'new') {   // ту же ссылку открыли ещё раз — повторить вопрос
+    if (r.tgId === from.id && r.status === 'confirm') return tgReply(from.id, 'Войти в Кана-тетрадь?', { inline_keyboard: [[{ text: 'Войти', callback_data: 'ok:' + nonce }]] });
+    if (r.tgId === from.id && r.status === 'need_contact') return tgReply(from.id, 'Поделитесь номером', { keyboard: [[{ text: 'Поделиться номером', request_contact: true }]] });
+    return tgReply(from.id, r.status === 'approved' || r.status === 'done' ? 'Вход уже выполнен' : 'Ссылка устарела');
+  }
   r.tgId = from.id;
   const owner = userByTg(from.id);
-  if (r.kind === 'login') { r.status = owner ? 'confirm' : 'need_contact'; tgReply(from.id, owner ? 'Войти?' : 'Поделитесь номером', owner ? { inline_keyboard: [[{ text: 'Войти', callback_data: 'ok:' + nonce }, { text: 'Это не я', callback_data: 'no:' + nonce }]] } : { keyboard: [[{ text: 'Поделиться номером', request_contact: true }]] }); }
+  if (r.kind === 'login') { r.status = owner ? 'confirm' : 'need_contact'; tgReply(from.id, owner ? 'Войти в Кана-тетрадь?' : 'Поделитесь номером', owner ? { inline_keyboard: [[{ text: 'Войти', callback_data: 'ok:' + nonce }, { text: 'Это не я', callback_data: 'no:' + nonce }]] } : { keyboard: [[{ text: 'Поделиться номером', request_contact: true }]] }); }
   else if (owner && owner !== r.user) { r.status = 'error'; r.message = 'Этот Telegram уже привязан к другому аккаунту'; }
   else if (owner) { r.status = 'approved'; r.result = r.user; }
   else { r.status = 'need_contact'; tgReply(from.id, 'Поделитесь номером', { keyboard: [[{ text: 'Поделиться номером', request_contact: true }]] }); }

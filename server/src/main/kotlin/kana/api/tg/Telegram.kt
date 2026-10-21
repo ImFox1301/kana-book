@@ -41,7 +41,7 @@ data class TgProps(
     /** опрашивать Telegram (long polling); в тестах обновления подаются напрямую */
     val poll: Boolean = true,
     /** сколько живёт ссылка входа */
-    val ttlMinutes: Long = 10,
+    val ttlMinutes: Long = 15,
     /** попыток входа через Telegram с одного адреса за 10 минут (экран входа создаёт попытку заранее) */
     val loginLimit: Int = 40,
 ) { val enabled get() = token.isNotBlank() }
@@ -124,30 +124,58 @@ class TgService(private val jdbc: JdbcTemplate, private val api: TgApi, private 
 
     private fun userByTg(tgId: Long) = jdbc.queryForList("select id, coalesce(display_name, username) as name from users where tg_id = ?", tgId).firstOrNull()
 
+    private fun confirmMarkup(nonce: String) = mapOf("inline_keyboard" to listOf(listOf(
+        mapOf("text" to "Войти", "callback_data" to "ok:$nonce"), mapOf("text" to "Это не я", "callback_data" to "no:$nonce"))))
+
+    /** Подсказка для незавершённой попытки: повторный /start не должен её «ломать». */
+    private fun prompt(chat: Long, r: Row) {
+        val linked = r.tgId?.let(::userByTg)
+        when (r.status) {
+            "confirm" -> api.send(chat, "Войти в Кана-тетрадь как «${linked?.get("name") ?: "вы"}»?\nЕсли вы не начинали вход сами, нажмите «Это не я».", confirmMarkup(r.nonce))
+            "need_contact" -> api.send(chat, if (r.kind == "login")
+                "Чтобы войти, поделитесь номером телефона — нажмите кнопку ниже. Номер нужен, чтобы привязать к нему аккаунт; другим пользователям он не показывается."
+                else "Чтобы привязать номер телефона к аккаунту, нажмите кнопку ниже. Другим пользователям номер не показывается.", contactKeyboard)
+        }
+    }
+
     private fun onStart(chat: Long, from: JsonNode, nonce: String) {
         val tgId = from["id"].asLong()
-        val r = if (nonce.isEmpty()) null else row("nonce = ?", nonce)
-        if (r == null || !r.fresh || r.status != "new") {
+        // /start без кода (или код потерялся): продолжить незавершённый вход этого пользователя, если он есть
+        val r = if (nonce.isNotEmpty()) row("nonce = ?", nonce)
+                else row("tg_id = ? and status in ('need_contact', 'confirm') order by created_at desc limit 1", tgId)?.takeIf { it.fresh }
+        if (r == null) {
             api.send(chat, if (nonce.isEmpty()) "Здравствуйте! Это бот Кана-тетради. Чтобы войти, откройте приложение → «Я» → «Войти через Telegram»."
-                           else "Ссылка устарела. Начните вход в приложении ещё раз.", noKeyboard)
+                           else "Ссылка не найдена. Начните вход в приложении ещё раз.", noKeyboard)
             return
         }
+        if (r.status != "new") {
+            // ту же ссылку открыли ещё раз — продолжаем с того шага, где остановились
+            when {
+                r.tgId != null && r.tgId != tgId -> api.send(chat, "Эту ссылку уже открыли в другом Telegram. Начните вход в приложении ещё раз.", noKeyboard)
+                r.status in setOf("approved", "done") -> api.send(chat, if (r.kind == "login") "Вход уже выполнен — вернитесь в приложение." else "Телефон уже привязан — вернитесь в приложение.", noKeyboard)
+                r.status == "denied" -> api.send(chat, "Вход по этой ссылке отменён. Если это были вы — начните вход в приложении ещё раз.", noKeyboard)
+                r.status == "error" -> api.send(chat, r.message ?: "Не получилось. Начните вход в приложении ещё раз.", noKeyboard)
+                !r.fresh -> api.send(chat, "Ссылка устарела. Начните вход в приложении ещё раз.", noKeyboard)
+                else -> prompt(chat, r)
+            }
+            return
+        }
+        if (!r.fresh) { api.send(chat, "Ссылка устарела. Начните вход в приложении ещё раз.", noKeyboard); return }
         val linked = userByTg(tgId)
         if (r.kind == "login") {
             if (linked != null) {
                 set(r.nonce, "confirm", tgId = tgId)
-                api.send(chat, "Войти в Кана-тетрадь как «${linked["name"]}»?\nЕсли вы не начинали вход сами, нажмите «Это не я».",
-                    mapOf("inline_keyboard" to listOf(listOf(mapOf("text" to "Войти", "callback_data" to "ok:${r.nonce}"), mapOf("text" to "Это не я", "callback_data" to "no:${r.nonce}")))))
+                api.send(chat, "Войти в Кана-тетрадь как «${linked["name"]}»?\nЕсли вы не начинали вход сами, нажмите «Это не я».", confirmMarkup(r.nonce))
             } else {
                 set(r.nonce, "need_contact", tgId = tgId)
-                api.send(chat, "Чтобы войти, поделитесь номером телефона — нажмите кнопку ниже. Номер нужен, чтобы привязать к нему аккаунт; другим пользователям он не показывается.", contactKeyboard)
+                prompt(chat, r.copy(status = "need_contact", tgId = tgId))
             }
         } else {
             val owner = linked?.get("id") as Number?
             when {
                 owner != null && owner.toLong() == r.userId -> { set(r.nonce, "approved", tgId = tgId, result = r.userId); api.send(chat, "Этот Telegram уже привязан к вашему аккаунту.", noKeyboard) }
                 owner != null -> { set(r.nonce, "error", "Этот Telegram уже привязан к другому аккаунту", tgId); api.send(chat, "Этот Telegram уже привязан к другому аккаунту Кана-тетради.", noKeyboard) }
-                else -> { set(r.nonce, "need_contact", tgId = tgId); api.send(chat, "Чтобы привязать номер телефона к аккаунту, нажмите кнопку ниже. Другим пользователям номер не показывается.", contactKeyboard) }
+                else -> { set(r.nonce, "need_contact", tgId = tgId); prompt(chat, r.copy(status = "need_contact", tgId = tgId)) }
             }
         }
     }
