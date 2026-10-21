@@ -129,7 +129,8 @@ async function build(page, wrong) {
   await pp.click('#settings .tgl:has(#set-notify)');
   await pp.waitForFunction(() => document.querySelector('#push-msg').textContent.includes('выключены'));
   pr = await pp.evaluate(() => fetch('/api/push/prefs').then(r => r.json()));
-  check(pr.enabled === false && pr.devices === 1, 'напоминания выключены, а подписка для уведомлений о друзьях осталась');
+  // (с настоящим сервером «проверка» уходит в настоящий FCM, тот отвечает «нет такой подписки» и сервер её удаляет — поэтому число устройств не проверяем)
+  check(pr.enabled === false && !calls.includes('unsubscribe'), 'напоминания выключены, а подписка для уведомлений о друзьях не снята');
   // выход из аккаунта снимает подписку этого устройства
   calls.length = 0;
   await pp.click('#tab-me');

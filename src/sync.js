@@ -131,8 +131,15 @@ window.KanaSync = (function () {
     if (r.status === 200) { tgEnabled = !!r.data.enabled; ls.set('tg-enabled', tgEnabled); }
     return tgEnabled;
   }
-  async function tgPrepare(kind) {
-    if (tg && tg.kind === kind && tg.link && Date.now() - tg.at < TG_FRESH) return;
+  let tgPending = null;   // запрос ссылки уже идёт — не создаём вторую попытку (иначе ссылка на экране и ожидаемая разойдутся)
+  function tgPrepare(kind) {
+    if (tg && tg.kind === kind && tg.link && Date.now() - tg.at < TG_FRESH) return Promise.resolve();
+    if (tgPending && tgPending.kind === kind) return tgPending.p;
+    const p = tgPrepareNow(kind).finally(() => { if (tgPending && tgPending.p === p) tgPending = null; });
+    tgPending = { kind, p };
+    return p;
+  }
+  async function tgPrepareNow(kind) {
     stopTg();
     const r = await api(kind === 'login' ? '/tg/login' : '/tg/link', {});
     if (r.status !== 200) { tg = { kind, state: 'error', msg: r.data.error || 'Telegram сейчас недоступен' }; rerender(); return; }
