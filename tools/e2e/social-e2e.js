@@ -52,8 +52,13 @@ async function openBot(page, sel) {
   check(await G.page.locator('#screen-home .cta').count() >= 5, 'гость: тренировки доступны');
   await G.page.click('#tab-lessons');
   check((await G.page.textContent('#screen-lessons')).includes('доступны с аккаунтом') && await G.page.locator('#screen-lessons .lrow').count() === 5, 'гость: уроки закрыты, чтение в поездке открыто');
+  await G.page.click('#btn-settings');
+  check(!(await G.page.textContent('#settings')).includes('Цель') && !(await G.page.textContent('#settings')).includes('Напоминания'), 'гость: в настройках нет цели и напоминаний');
+  await G.page.click('#tab-dict');
+  check(await G.page.isVisible('#dict-guest') && await G.page.isHidden('#add-panel') && await G.page.isHidden('#import-panel') && await G.page.isHidden('#backup-panel'), 'гость: добавление, импорт и копия слов — только с аккаунтом');
+  check(await G.page.locator('#wlist .del').count() === 0, 'гость: удалять слова нельзя');
   await G.page.click('#tab-me');
-  check(await G.page.isHidden('#stats') && !(await G.page.textContent('#settings')).includes('Цель'), 'гость: в «Я» нет прогресса и цели');
+  check(await G.page.isHidden('#stats'), 'гость: в «Я» нет прогресса');
   check(!/null|undefined/.test(await G.page.textContent('#screen-me')), 'гость: в «Я» нет «null» и «undefined»');
   check(await G.page.isHidden('#tab-friends'), 'гость: вкладки «Друзья» нет');
   check(await G.page.isHidden('#streak'), 'гость: серии дней нет');
@@ -63,7 +68,7 @@ async function openBot(page, sel) {
   const A = await device(browser, 'Иван');
   await A.page.goto(BASE + '/');
   await A.page.click('#btn-welcome-register');
-  await A.page.waitForSelector('#screen-register .tgsheet:not([hidden])');
+  await A.page.waitForSelector('#screen-register .tgunder:not([hidden]) #btn-tg-login');
   await A.page.screenshot({ path: SHOTS + '/register-tg.png', fullPage: true });
   let nonce = await openBot(A.page, '#btn-tg-login');
   await A.page.waitForSelector('#tg-status');
@@ -89,14 +94,14 @@ async function openBot(page, sel) {
   await B.page.goto(BASE + '/');
   await B.page.waitForSelector('#btn-guest');
   const maria = await signup(B.page, { name: 'Мария', user: 'maria_' + sfx });
-  check(await B.page.isHidden('#tab-friends'), 'Мария: без телефона вкладки «Друзья» нет');
+  check(await B.page.isVisible('#tab-friends'), 'Мария: «Друзья» доступны и без привязки телефона');
   await B.page.click('#tab-me');
   await B.page.click('#btn-link-start');
   nonce = await openBot(B.page, '#btn-tg-link');
   await start(tgIds.maria, nonce, 'Маша');
   await contact(tgIds.maria, tgIds.maria, 'Маша');
-  await B.page.waitForSelector('#tab-friends:not([hidden])', { timeout: 15000 });
-  check((await B.page.textContent('#account-box')).includes('Телефон привязан'), 'Мария: телефон привязан, «Друзья» появились');
+  await B.page.waitForFunction(() => document.querySelector('#account-box').textContent.includes('Телефон привязан'), null, { timeout: 15000 });
+  check(true, 'Мария: телефон привязан');
   check((await B.page.textContent('#account-box .who')) === 'Мария', 'Мария: имя осталось своё');
 
   // --- приглашение ссылкой: Иван → Мария ---
@@ -124,10 +129,13 @@ async function openBot(page, sel) {
   const C = await device(browser, 'Олег');
   await C.page.goto(BASE + '/'); await C.page.waitForSelector('#btn-guest');
   await signup(C.page, { name: 'Олег', user: 'oleg_' + sfx });
-  await C.page.click('#tab-me'); await C.page.click('#btn-link-start');
-  nonce = await openBot(C.page, '#btn-tg-link');
-  await start(tgIds.oleg, nonce, 'Олег'); await contact(tgIds.oleg, tgIds.oleg, 'Олег');
-  await C.page.waitForSelector('#tab-friends:not([hidden])', { timeout: 15000 });
+  // фото профиля с устройства
+  await C.page.click('#tab-me');
+  const png = require('path').resolve(__dirname, '../../assets/icons/icon-192.png');
+  await C.page.setInputFiles('#avatar-file', png);
+  await C.page.waitForSelector('#btn-avatar img');
+  check(await C.page.isVisible('#btn-avatar-del'), 'Олег: фото профиля загружено');
+  await C.page.screenshot({ path: SHOTS + '/me-avatar.png', fullPage: true });
   await C.page.click('#tab-friends');
   await C.page.fill('#friend-q', 'ivan_' + sfx.slice(0, 2));
   await C.page.click('#btn-friend-search');
@@ -147,6 +155,8 @@ async function openBot(page, sel) {
   await A.page.click('#incoming .btn:has-text("Принять")');
   await A.page.waitForFunction(() => document.querySelectorAll('#screen-friends .fcard').length === 2);
   check(await A.page.isHidden('#friends-dot'), 'Иван: заявка принята, двое друзей');
+  await A.page.waitForFunction(() => [...document.querySelectorAll('#screen-friends .fcard')].some(c => c.textContent.includes('Олег') && c.querySelector('.ava img') && c.querySelector('.ava img').naturalWidth > 0));
+  check(true, 'Иван: у Олега в карточке его фото');
   await A.page.screenshot({ path: SHOTS + '/friends.png', fullPage: true });
 
   // --- повторный вход через Telegram: без номера, кнопкой «Войти» ---

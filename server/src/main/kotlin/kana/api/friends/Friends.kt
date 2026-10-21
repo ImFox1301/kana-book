@@ -22,10 +22,10 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Base64
 
-data class Person(val id: Long, val name: String, val username: String)
+data class Person(val id: Long, val name: String, val username: String, val avatar: String? = null)
 data class Stats(val streak: Int, val todayMin: Int, val todayCards: Int, val goalMin: Int, val goalCards: Int,
                  val lessonsH: Int, val lessonsK: Int, val weekAnswers: Int, val weekAccuracy: Int?)
-data class Friend(val id: Long, val name: String, val username: String, val since: Long, val stats: Stats)
+data class Friend(val id: Long, val name: String, val username: String, val since: Long, val stats: Stats, val avatar: String? = null)
 data class UserRef(val userId: Long = 0)
 data class SearchRequest(val q: String = "")
 
@@ -57,39 +57,40 @@ class Progress(private val jdbc: JdbcTemplate, private val mapper: ObjectMapper)
     }
 }
 
+fun avatarUrl(id: Long, ver: Int, has: Boolean): String? = if (has) "/api/avatar/$id?v=$ver" else null
+
 @Service
 class FriendsService(private val jdbc: JdbcTemplate, private val progress: Progress, private val push: PushService) {
     private val rnd = SecureRandom()
     private fun sha(s: String) = MessageDigest.getInstance("SHA-256").digest(s.toByteArray())
     private fun pair(x: Long, y: Long) = if (x < y) x to y else y to x
 
-    private fun person(id: Long): Person? = jdbc.query("select id, coalesce(display_name, username), username from users where id = ?",
-        { rs, _ -> Person(rs.getLong(1), rs.getString(2), rs.getString(3)) }, id).firstOrNull()
-    private fun linked(id: Long) = jdbc.queryForObject("select tg_id is not null from users where id = ?", Boolean::class.java, id) == true
+    private val PERSON = "u.id, coalesce(u.display_name, u.username), u.username, u.avatar_ver, u.avatar is not null"
+    private fun personOf(rs: java.sql.ResultSet) = Person(rs.getLong(1), rs.getString(2), rs.getString(3), avatarUrl(rs.getLong(1), rs.getInt(4), rs.getBoolean(5)))
+    private fun person(id: Long): Person? = jdbc.query("select $PERSON from users u where u.id = ?", { rs, _ -> personOf(rs) }, id).firstOrNull()
+    private fun exists(id: Long) = jdbc.queryForObject("select count(*) from users where id = ?", Long::class.java, id)!! > 0
 
-    /** Друзья доступны после привязки телефона. */
-    fun requireLinked(id: Long) { if (!linked(id)) throw ApiException(HttpStatus.FORBIDDEN, "Сначала привяжите телефон через Telegram") }
+    /** Кому можно показывать фото: себе, друзьям и тем, с кем есть заявка. */
+    fun canSeeAvatar(viewer: Long, owner: Long) = viewer == owner || areFriends(viewer, owner) ||
+        jdbc.queryForObject("select count(*) from friend_requests where (from_id = ? and to_id = ?) or (from_id = ? and to_id = ?)", Long::class.java, viewer, owner, owner, viewer)!! > 0
 
     fun areFriends(x: Long, y: Long): Boolean { val (a, b) = pair(x, y); return jdbc.queryForObject("select count(*) from friends where a = ? and b = ?", Long::class.java, a, b)!! > 0 }
 
     fun list(me: Long): Map<String, Any> {
         val friends = jdbc.query("""
-            select u.id, coalesce(u.display_name, u.username), u.username, extract(epoch from f.created_at) * 1000
+            select $PERSON, extract(epoch from f.created_at) * 1000
             from friends f join users u on u.id = case when f.a = ? then f.b else f.a end
             where f.a = ? or f.b = ? order by coalesce(u.display_name, u.username)
-        """.trimIndent(), { rs, _ -> Friend(rs.getLong(1), rs.getString(2), rs.getString(3), rs.getLong(4), progress.of(rs.getLong(1))) }, me, me, me)
-        val incoming = jdbc.query("select u.id, coalesce(u.display_name, u.username), u.username from friend_requests r join users u on u.id = r.from_id where r.to_id = ? order by r.created_at desc",
-            { rs, _ -> Person(rs.getLong(1), rs.getString(2), rs.getString(3)) }, me)
-        val outgoing = jdbc.query("select u.id, coalesce(u.display_name, u.username), u.username from friend_requests r join users u on u.id = r.to_id where r.from_id = ? order by r.created_at desc",
-            { rs, _ -> Person(rs.getLong(1), rs.getString(2), rs.getString(3)) }, me)
+        """.trimIndent(), { rs, _ -> val p = personOf(rs); Friend(p.id, p.name, p.username, rs.getLong(6), progress.of(p.id), p.avatar) }, me, me, me)
+        val incoming = jdbc.query("select $PERSON from friend_requests r join users u on u.id = r.from_id where r.to_id = ? order by r.created_at desc", { rs, _ -> personOf(rs) }, me)
+        val outgoing = jdbc.query("select $PERSON from friend_requests r join users u on u.id = r.to_id where r.from_id = ? order by r.created_at desc", { rs, _ -> personOf(rs) }, me)
         return mapOf("friends" to friends, "incoming" to incoming, "outgoing" to outgoing, "me" to progress.of(me))
     }
 
-    /** Поиск только по точному логину и только среди тех, у кого привязан телефон. */
+    /** Поиск только по точному логину. Фото найденного не показываем — только имя и логин. */
     fun search(me: Long, q: String): Map<String, Any?> {
         val login = q.trim().removePrefix("@")
-        val p = jdbc.query("select id, coalesce(display_name, username), username from users where lower(username) = lower(?) and tg_id is not null",
-            { rs, _ -> Person(rs.getLong(1), rs.getString(2), rs.getString(3)) }, login).firstOrNull()
+        val p = jdbc.query("select $PERSON from users u where lower(u.username) = lower(?)", { rs, _ -> personOf(rs).copy(avatar = null) }, login).firstOrNull()
             ?: throw ApiException(HttpStatus.NOT_FOUND, "Никого не нашли. Проверьте логин — нужен точный, например pavel_k")
         val state = when {
             p.id == me -> "me"
@@ -104,7 +105,7 @@ class FriendsService(private val jdbc: JdbcTemplate, private val progress: Progr
 
     fun request(me: Long, to: Long) {
         if (me == to) throw ApiException(HttpStatus.BAD_REQUEST, "Это вы")
-        if (!linked(to)) throw ApiException(HttpStatus.NOT_FOUND, "Пользователь не найден")
+        if (!exists(to)) throw ApiException(HttpStatus.NOT_FOUND, "Пользователь не найден")
         if (areFriends(me, to)) return
         if (exists(to, me)) { accept(me, to); return }   // встречная заявка — сразу дружим
         if (jdbc.queryForObject("select count(*) from friend_requests where from_id = ?", Long::class.java, me)!! >= 50)
@@ -161,10 +162,7 @@ class FriendsService(private val jdbc: JdbcTemplate, private val progress: Progr
 @RestController
 @RequestMapping("/api/friends")
 class FriendsController(private val friends: FriendsService, private val limiter: RateLimiter) {
-    private fun me(req: HttpServletRequest): Long {
-        val u = req.userId() ?: throw ApiException(HttpStatus.UNAUTHORIZED, "Вы не вошли")
-        friends.requireLinked(u); return u
-    }
+    private fun me(req: HttpServletRequest): Long = req.userId() ?: throw ApiException(HttpStatus.UNAUTHORIZED, "Вы не вошли")
     private fun limit(key: String, n: Int, ms: Long) { if (!limiter.tryAcquire(key, n, ms)) throw ApiException(HttpStatus.TOO_MANY_REQUESTS, "Слишком часто — попробуйте чуть позже") }
 
     @GetMapping

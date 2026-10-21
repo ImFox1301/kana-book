@@ -123,8 +123,8 @@ async function draw(page, ch) {
   check(JSON.stringify(vib) === JSON.stringify([30, [30, 90, 30]]), 'вибрация: верно — 1 импульс, ошибка — 2, выключенная молчит');
 
   // раздел «Я»
-  await page.click('#tab-me');
-  check((await page.textContent('#settings')).includes('Вибрация'), 'в настройках есть вибрация');
+  await page.click('#btn-settings');
+  check(await page.isVisible('#screen-settings') && (await page.textContent('#settings')).includes('Вибрация'), 'настройки — отдельный экран, в них есть вибрация');
   await page.screenshot({ path: SHOTS + '/s7-me.png', fullPage: true });
 
   // компьютер: панель слева

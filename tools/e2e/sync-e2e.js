@@ -41,7 +41,6 @@ async function answerCards(page, n) {
   // после регистрации слово уходит в аккаунт
   const A = await device(browser, 'A');
   check(await A.page.evaluate(() => KanaSync.account === null), 'A: без входа приложение работает, аккаунта нет');
-  await addWord(A.page, 'ねこ', 'кошка');
   await answerCards(A.page, 2);
   check(await answers(A.page) === 0 && await A.page.evaluate(() => !localStorage.getItem('kana-tetrad:answers') || localStorage.getItem('kana-tetrad:answers') === '[]'), 'A: ответы гостя не хранятся');
   await A.page.click('#tab-me');
@@ -61,6 +60,7 @@ async function answerCards(page, n) {
   await A.page.waitForSelector('#screen-onboard:not([hidden]) .btn.primary');
   check(true, 'A: после регистрации — настройка цели');
   await A.page.click('#screen-onboard .btn.primary');
+  await addWord(A.page, 'ねこ', 'кошка');
   await answerCards(A.page, 3);
   await A.page.click('#tab-me');
   await A.page.waitForSelector('#account-box .who');

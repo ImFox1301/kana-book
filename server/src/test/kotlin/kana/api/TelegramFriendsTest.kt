@@ -163,9 +163,8 @@ class TelegramFriendsTest(@Autowired val mvc: MockMvc, @Autowired val om: Object
     @Test
     fun `друзья — поиск по логину, заявка, приглашение, прогресс`() {
         val (ca, a) = register("Аня"); val (cb, b) = register("Боря"); val (cc, c) = register("Вика"); val (cd, d) = register("Гоша")
-        linkDirect(a); linkDirect(b); linkDirect(d)
-        assertEquals(403, res(get("/api/friends").cookie(cc)).status, "без привязки телефона друзья недоступны")
-        assertEquals(404, res(json(post("/api/friends/search"), mapOf("q" to username(c)), ca)).status, "без телефона в поиске не виден")
+        assertEquals(200, res(get("/api/friends").cookie(cc)).status, "друзья доступны и без привязки телефона")
+        assertEquals("Вика", body(json(post("/api/friends/search"), mapOf("q" to username(c)), ca))["user"]["name"].asText(), "и в поиске виден")
         assertEquals(404, res(json(post("/api/friends/search"), mapOf("q" to username(b).take(5)), ca)).status, "только точный логин")
         val found = body(json(post("/api/friends/search"), mapOf("q" to "@" + username(b).uppercase()), ca))
         assertEquals("Боря", found["user"]["name"].asText()); assertEquals("none", found["state"].asText())
@@ -200,5 +199,50 @@ class TelegramFriendsTest(@Autowired val mvc: MockMvc, @Autowired val om: Object
         assertEquals(2, body(get("/api/friends").cookie(cb))["friends"].size())
         body(json(post("/api/friends/remove"), mapOf("userId" to d), cb))
         assertEquals(1, body(get("/api/friends").cookie(cb))["friends"].size())
+    }
+
+    @Test
+    fun `привязка Telegram объединяет его аккаунт с аккаунтом по паролю`() {
+        val tgId = 4_000_000_000L + (System.nanoTime() % 1_000_000)
+        // сначала вошли через Telegram — появился отдельный аккаунт, в нём немного прогресса
+        val n = startLogin(); startCmd(tgId, n.first); contact(tgId, tgId)
+        val tgCookie = status(n).getCookie("kana_session")!!
+        mvc.perform(json(post("/api/sync"), mapOf("cursor" to 0, "changes" to listOf(
+            mapOf("c" to "lessons", "id" to "h2", "t" to 5, "data" to mapOf("done" to 1)),
+            mapOf("c" to "answers", "id" to "tg1", "t" to 5, "data" to mapOf("ts" to 5, "k" to "か", "r" to "ok")))), tgCookie))
+        // основной аккаунт с паролем и своим прогрессом
+        val (c, id) = register("Павел")
+        mvc.perform(json(post("/api/sync"), mapOf("cursor" to 0, "changes" to listOf(
+            mapOf("c" to "lessons", "id" to "h1", "t" to 3, "data" to mapOf("done" to 1)),
+            mapOf("c" to "answers", "id" to "pw1", "t" to 3, "data" to mapOf("ts" to 3, "k" to "あ", "r" to "ok")))), c))
+        // привязываем тот же Telegram к основному — аккаунты объединяются
+        val r = body(post("/api/tg/link").cookie(c))
+        startCmd(tgId, r["nonce"].asText())
+        assertTrue(lastTo(tgId)["reply_markup"]["keyboard"][0][0]["request_contact"].asBoolean(), "бот просит номер, а не отвечает «уже привязан»")
+        contact(tgId, tgId)
+        assertEquals("linked", om.readTree(status(r["nonce"].asText() to r["secret"].asText()).contentAsString)["status"].asText())
+        assertTrue(lastTo(tgId)["text"].asText().contains("объединён"))
+        val items = body(json(post("/api/sync"), mapOf("cursor" to 0), c))["items"].map { it["c"].asText() + ":" + it["id"].asText() }.toSet()
+        assertTrue(items.containsAll(listOf("lessons:h1", "lessons:h2", "answers:pw1", "answers:tg1")), items.toString())
+        assertEquals(401, res(get("/api/auth/me").cookie(tgCookie)).status, "старый Telegram-аккаунт удалён")
+        // теперь вход через Telegram ведёт в основной аккаунт
+        val l = startLogin(); startCmd(tgId, l.first); callback(tgId, "ok:${l.first}")
+        assertEquals(username(id), om.readTree(status(l).contentAsString)["username"].asText())
+    }
+
+    @Test
+    fun `фото профиля видят только друзья`() {
+        val (ca, a) = register("Аня"); val (cb, b) = register("Боря"); val (cc, _) = register("Вика")
+        val png = java.util.Base64.getEncoder().encodeToString(byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte(), 13, 10, 26, 10, 0, 0, 0, 0))
+        assertEquals(400, res(json(post("/api/auth/avatar"), mapOf("data" to java.util.Base64.getEncoder().encodeToString("hello".toByteArray())), ca)).status, "не картинка")
+        val me = body(json(post("/api/auth/avatar"), mapOf("data" to "data:image/png;base64,$png"), ca))
+        val url = me["avatar"].asText()
+        assertTrue(url.startsWith("/api/avatar/$a?v="))
+        assertEquals(200, res(get(url.substringBefore('?')).cookie(ca)).status)
+        assertEquals(404, res(get(url.substringBefore('?')).cookie(cb)).status, "не друг — не видит")
+        body(json(post("/api/friends/request"), mapOf("userId" to a), cb))
+        assertEquals("image/png", res(get(url.substringBefore('?')).cookie(cb)).contentType, "заявка — видит")
+        assertEquals(404, res(get(url.substringBefore('?')).cookie(cc)).status)
+        assertNull(body(post("/api/auth/avatar/delete").cookie(ca))["avatar"])
     }
 }

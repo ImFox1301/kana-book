@@ -105,7 +105,7 @@ window.KanaSync = (function () {
     if (!r.data.username) { ui.error = 'Сервер аккаунтов пока недоступен. Занимайтесь без входа — данные сохраняются на устройстве.'; rerender(); return; }
     signedIn(r.data);
   }
-  const fromMe = d => ({ username: d.username, displayName: d.displayName || null, linked: !!d.linked, telegram: d.telegram || null, hasPassword: d.hasPassword !== false });
+  const fromMe = d => ({ username: d.username, displayName: d.displayName || null, linked: !!d.linked, telegram: d.telegram || null, hasPassword: d.hasPassword !== false, avatar: d.avatar || null });
   async function signedIn(data) {
     account = fromMe(data); cursor = 0; snap = {}; lastSync = 0; saveState();
     ui.error = ''; ui.editName = false; stopTg();
@@ -117,13 +117,20 @@ window.KanaSync = (function () {
   // ---------- Telegram: вход и привязка телефона ----------
   // Приложение создаёт попытку, пользователь открывает бота по ссылке, бот просит номер (или подтверждение),
   // приложение раз в 2 секунды узнаёт результат.
-  let tgEnabled = null, tg = null;   // tg: { kind, nonce, secret, link, state, msg, timer }
+  let tgEnabled = ls.get('tg-enabled', null), tgChecked = false, tg = null;   // tg: { kind, nonce, secret, link, state, msg, timer }
   // начатый вход переживает перезагрузку страницы (iPhone часто перезапускает приложение, пока вы в Telegram)
   const ss = { get() { try { return JSON.parse(sessionStorage.getItem('kana-tetrad:tg') || 'null'); } catch (e) { return null; } },
                set(v) { try { if (v) sessionStorage.setItem('kana-tetrad:tg', JSON.stringify(v)); else sessionStorage.removeItem('kana-tetrad:tg'); } catch (e) { } } };
   const TG_FRESH = 7 * 60000, TG_TTL = 14 * 60000;
   function tgSave() { ss.set(tg && tg.nonce && tg.state !== 'ready' ? { kind: tg.kind, nonce: tg.nonce, secret: tg.secret, link: tg.link, state: tg.state, at: tg.at } : null); }
-  async function tgConfig() { if (tgEnabled === null) { const r = await api('/tg/config'); tgEnabled = r.status === 200 && !!r.data.enabled; } return tgEnabled; }
+  // включён ли вход через Telegram: запоминаем, чтобы кнопка была видна сразу, без ожидания ответа сервера
+  async function tgConfig() {
+    if (tgChecked) return tgEnabled;
+    tgChecked = true;
+    const r = await api('/tg/config');
+    if (r.status === 200) { tgEnabled = !!r.data.enabled; ls.set('tg-enabled', tgEnabled); }
+    return tgEnabled;
+  }
   async function tgPrepare(kind) {
     if (tg && tg.kind === kind && tg.link && Date.now() - tg.at < TG_FRESH) return;
     stopTg();
@@ -156,29 +163,58 @@ window.KanaSync = (function () {
     if (r.status !== 200) { if (r.status === 404) { stopTg(); rerender(); } return; }
     const st = r.data.status;
     if (st === 'ok') { clearInterval(cur.timer); tg = null; ss.set(null); signedIn(r.data); return; }
-    if (st === 'linked') { clearInterval(cur.timer); tg = null; ss.set(null); await refreshMe(); ui.notice = 'Телефон привязан. Теперь доступны друзья.'; rerender(); if (window.KanaApp) window.KanaApp.rerender(); return; }
+    if (st === 'linked') { clearInterval(cur.timer); tg = null; ss.set(null); await refreshMe(); ui.notice = 'Telegram привязан — теперь можно входить через него.'; rerender(); if (window.KanaApp) window.KanaApp.rerender(); return; }
     if (st === 'new') return;
     cur.state = st; cur.msg = r.data.message || null;
     if (['denied', 'expired', 'used', 'error'].includes(st)) { clearInterval(cur.timer); cur.timer = null; cur.link = null; ss.set(null); }
     else tgSave();
     rerender();
   }
-  function tgBlock(kind) {
-    if (!tgEnabled) return null;
-    if (!tg || tg.kind !== kind) { tgPrepare(kind); return h('div', { class: 'tgbox' }, h('span', { class: 'st' }, 'Готовлю вход через Telegram…')); }
-    // ссылку приготовили заранее, а экран долго был открыт — берём свежую, чтобы бот не ответил «устарела»
-    if (tg.state === 'ready' && Date.now() - tg.at > TG_FRESH) { stopTg(); tgPrepare(kind); return h('div', { class: 'tgbox' }, h('span', { class: 'st' }, 'Готовлю вход через Telegram…')); }
-    const done = ['denied', 'expired', 'used', 'error'].includes(tg.state);
-    const btn = tg.link ? h('a', { class: 'btn tg', id: kind === 'login' ? 'btn-tg-login' : 'btn-tg-link', href: tg.link, target: '_blank', rel: 'noopener', onclick: tgOpened },
-      kind === 'login' ? 'Войти через Telegram' : 'Привязать телефон через Telegram') : null;
-    return h('div', { class: 'tgbox' }, btn,
+  const TG_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.9 4.6 18.7 19.7c-.2 1.1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.4-5 9-8.2c.4-.4-.1-.6-.6-.2L6.3 13.3l-4.8-1.5c-1-.3-1.1-1 .2-1.5L20.5 3.1c.9-.3 1.6.2 1.4 1.5z"/></svg>';
+  // Кнопка показывается сразу. Ссылку на бота готовим заранее; если её ещё нет — открываем окно и подставляем ссылку, когда придёт.
+  function tgBlock(kind, compact) {
+    if (tgEnabled === false) return null;
+    const ready = tg && tg.kind === kind && tg.link && !(tg.state === 'ready' && Date.now() - tg.at > TG_FRESH);
+    if (!ready && !(tg && tg.kind === kind && tg.state && tg.state !== 'ready' && !tg.link)) { if (tg && tg.kind === kind && tg.state === 'ready') stopTg(); if (!tg || tg.kind !== kind) tgPrepare(kind); }
+    const label = kind === 'login' ? 'Войти через Telegram' : 'Привязать телефон через Telegram';
+    const btn = h('a', { class: compact ? 'tgicon' : 'btn tg', id: kind === 'login' ? 'btn-tg-login' : 'btn-tg-link', href: ready ? tg.link : '#', target: '_blank', rel: 'noopener', 'aria-label': label,
+      onclick: async e => {
+        if (ready) return tgOpened();
+        e.preventDefault();
+        const w = window.open('about:blank', '_blank');   // окно открываем сразу — иначе браузер заблокирует его как всплывающее
+        if (!tg || tg.kind !== kind || !tg.link) { stopTg(); await tgPrepare(kind); }
+        if (tg && tg.link) { if (w) w.location.href = tg.link; else location.href = tg.link; tgOpened(); } else if (w) w.close();
+      } });
+    btn.innerHTML = TG_ICON; btn.append(h('span', {}, compact ? 'Telegram' : label));
+    const done = tg && tg.kind === kind && ['denied', 'expired', 'used', 'error'].includes(tg.state);
+    return h('div', { class: 'tgbox' + (compact ? ' compact' : '') }, btn,
       done ? h('button', { class: 'link', type: 'button', onclick: () => { stopTg(); tgPrepare(kind); } }, 'Попробовать ещё раз') : null,
-      tg.state !== 'ready' ? h('div', { class: 'st', role: 'status', id: 'tg-status' }, tg.msg || TG_TEXT[tg.state] || '') : null);
+      tg && tg.kind === kind && tg.state && tg.state !== 'ready' ? h('div', { class: 'st', role: 'status', id: 'tg-status' }, tg.msg || TG_TEXT[tg.state] || '') : null);
   }
   async function unlinkTg() {
     const r = await api('/auth/unlink-telegram', {});
     if (r.status !== 200) { ui.error = r.data.error || 'Не получилось отвязать'; rerender(); return; }
     account = Object.assign(account, fromMe(r.data)); saveState(); rerender(); if (window.KanaApp) window.KanaApp.rerender();
+  }
+  // фото: уменьшаем на устройстве до 256×256 (обрезка по центру), JPEG ~20–40 КБ
+  async function uploadAvatar(file) {
+    ui.error = ''; ui.notice = 'Загружаю фото…'; rerender();
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Не удалось открыть картинку')); i.src = URL.createObjectURL(file); });
+      const side = Math.min(img.naturalWidth, img.naturalHeight), c = document.createElement('canvas');
+      c.width = c.height = 256;
+      c.getContext('2d').drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 256, 256);
+      URL.revokeObjectURL(img.src);
+      const r = await api('/auth/avatar', { data: c.toDataURL('image/jpeg', 0.85) });
+      if (r.status !== 200) throw new Error(r.data.error || 'Не получилось загрузить фото');
+      account = Object.assign(account, fromMe(r.data)); saveState(); ui.notice = '';
+    } catch (e) { ui.notice = ''; ui.error = e.message; }
+    rerender();
+  }
+  async function deleteAvatar() {
+    const r = await api('/auth/avatar/delete', {});
+    if (r.status === 200) { account = Object.assign(account, fromMe(r.data)); saveState(); }
+    rerender();
   }
   async function setName(name) {
     ui.busy = true; ui.error = ''; rerender();
@@ -248,23 +284,28 @@ window.KanaSync = (function () {
     if (!account.displayName) {
       el.append(h('div', { class: 'ask-name' }, h('b', {}, 'Как к вам обращаться?'), h('div', { class: 'st' }, 'Это имя увидят друзья.'), nameForm()));
     }
-    el.append(h('div', { class: 'row', style: 'justify-content:space-between' },
+    const fileIn = h('input', { type: 'file', accept: 'image/*', id: 'avatar-file', hidden: true, onchange: () => { if (fileIn.files[0]) uploadAvatar(fileIn.files[0]); } });
+    const ava = (window.KanaAvatar ? window.KanaAvatar(account.displayName || account.username, account.avatar, 'big') : h('span'));
+    el.append(h('div', { class: 'profile' },
+      h('div', { class: 'ava-edit' }, h('button', { type: 'button', class: 'ava-btn', id: 'btn-avatar', title: 'Сменить фото', 'aria-label': 'Сменить фото', onclick: () => fileIn.click() }, ava), fileIn,
+        account.avatar ? h('button', { class: 'link', type: 'button', id: 'btn-avatar-del', onclick: deleteAvatar }, 'убрать фото') : h('button', { class: 'link', type: 'button', onclick: () => fileIn.click() }, 'добавить фото')),
       h('div', {}, h('span', { class: 'who' }, account.displayName || account.username),
         account.displayName ? h('span', { class: 'st login' }, ' @' + account.username) : null,
         account.displayName && !ui.editName ? h('button', { class: 'link', type: 'button', id: 'btn-edit-name', onclick: () => { ui.editName = true; rerender(); } }, 'изменить имя') : null,
-        h('div', { class: 'st' }, status || ('Синхронизировано: ' + fmtTime(lastSync)))),
-      h('div', { class: 'row' },
+        h('div', { class: 'st' }, status || ('Синхронизировано: ' + fmtTime(lastSync))))),
+      h('div', { class: 'row', style: 'margin-top:12px' },
         h('button', { class: 'btn ghost', type: 'button', disabled: running, onclick: () => syncNow() }, 'Синхронизировать'),
-        h('button', { class: 'btn ghost', type: 'button', onclick: () => { ui.confirm = 'logout'; ui.error = ''; rerender(); } }, 'Выйти'))));
+        h('button', { class: 'btn ghost', type: 'button', onclick: () => { ui.confirm = 'logout'; ui.error = ''; rerender(); } }, 'Выйти')));
     if (ui.editName && account.displayName) el.append(nameForm());
     if (ui.notice) el.append(h('div', { class: 'okmsg', role: 'status' }, ui.notice));
     if (account.linked) {
       el.append(h('div', { class: 'row tgline' }, h('span', { class: 'st' }, 'Телефон привязан через Telegram' + (account.telegram ? ' (@' + account.telegram + ')' : '')),
         account.hasPassword ? h('button', { class: 'link', type: 'button', onclick: unlinkTg }, 'отвязать') : null));
-    } else if (tgEnabled) {
-      el.append(h('div', { class: 'tglink' }, h('div', { class: 'st' }, 'Привяжите номер телефона через Telegram — откроются друзья и вход в один шаг.'),
+    } else if (tgEnabled !== false) {
+      el.append(h('div', { class: 'tglink' }, h('div', { class: 'st' }, 'Привяжите Telegram — сможете входить в один шаг, без пароля. Номер другим пользователям не показывается.'),
         ui.linking ? tgBlock('link') : h('button', { class: 'btn ghost', type: 'button', id: 'btn-link-start', onclick: () => { ui.linking = true; rerender(); } }, 'Привязать телефон')));
-    } else tgConfig().then(v => { if (v) rerender(); });
+    }
+    if (!tgChecked) tgConfig().then(() => rerender());
     if (ui.confirm === 'logout') {
       el.append(h('div', { class: 'row' }, h('span', { class: 'st' }, 'Прогресс сохранён в аккаунте. С этого устройства он будет удалён, пока вы снова не войдёте.'),
         h('button', { class: 'btn primary', type: 'button', onclick: logout }, 'Выйти'),
@@ -300,27 +341,25 @@ window.KanaSync = (function () {
     const submit = h('button', { class: 'btn primary', type: 'submit' }, isReg ? 'Создать аккаунт' : 'Войти');
     const form = h('form', { class: 'authform', onsubmit: e => { e.preventDefault(); auth(kind, val('acc-user').trim(), val('acc-pass'), isReg ? val('acc-name').trim() : undefined); } },
       name, user, pass, err, submit);
-    const tgHolder = h('div', { class: 'sheet tgsheet', hidden: true }, h('b', {}, isReg ? 'Быстрее — через Telegram' : 'Через Telegram'),
-      h('div', { class: 'st' }, isReg ? 'Без логина и пароля: бот попросит поделиться номером телефона, имя возьмём из Telegram.' : 'Если аккаунт создан через Telegram или к нему привязан телефон.'),
-      h('div', { class: 'tgslot' }));
-    const orLine = h('div', { class: 'small muted', style: 'text-align:center', hidden: true }, isReg ? 'или с логином и паролем' : 'или по логину и паролю');
+    const tgHolder = h('div', { class: 'tgunder', hidden: true }, h('div', { class: 'orline' }, h('span', {}, 'или')), h('div', { class: 'tgslot' }),
+      h('div', { class: 'st' }, isReg ? 'Без логина и пароля: бот попросит поделиться номером, имя возьмём из Telegram.' : 'Если аккаунт создан через Telegram или к нему привязан телефон.'));
+    const orLine = null;
     el.append(back, h('h1', { class: 'h1' }, isReg ? 'Регистрация' : 'Вход'),
       h('p', { class: 'small muted' }, isReg ? 'Аккаунт хранит прогресс, слова и настройки на всех ваших устройствах и нужен для напоминаний. Уже накопленное на этом устройстве перенесётся в аккаунт.' : 'Войдите, чтобы прогресс был на всех ваших устройствах.'),
-      tgHolder, orLine,
-      h('div', { class: 'sheet' }, form),
+      h('div', { class: 'sheet' }, form, tgHolder),
       h('p', { class: 'small' }, isReg ? 'Уже есть аккаунт? ' : 'Нет аккаунта? ',
         h('button', { class: 'link', type: 'button', onclick: () => { ui.error = ''; window.KanaApp.open(isReg ? 'login' : 'register'); } }, isReg ? 'Войти' : 'Создать')));
     parts = { err, submit, tgHolder, orLine, isReg };
     updateAuthPage();
-    if (tgEnabled === null) tgConfig().then(updateAuthPage);
+    tgConfig().then(updateAuthPage);
   }
   function updateAuthPage() {
     if (!parts || !page || page.hidden) return;
     parts.err.hidden = !ui.error; parts.err.textContent = ui.error || '';
     parts.submit.disabled = !!ui.busy;
     parts.submit.textContent = ui.busy ? 'Подождите…' : parts.isReg ? 'Создать аккаунт' : 'Войти';
-    parts.tgHolder.hidden = parts.orLine.hidden = !tgEnabled;
-    if (tgEnabled) parts.tgHolder.querySelector('.tgslot').replaceChildren(tgBlock('login') || '');
+    parts.tgHolder.hidden = tgEnabled === false;
+    if (tgEnabled !== false) parts.tgHolder.querySelector('.tgslot').replaceChildren(tgBlock('login', true) || '');
   }
   const prevRerender = rerender;
   rerender = function () {

@@ -64,7 +64,7 @@ class PushTest(@Autowired val mvc: MockMvc, @Autowired val om: ObjectMapper, @Au
         return r.getCookie("kana_session")!! to jdbc.queryForObject("select id from users where username = ?", Long::class.java, name)!!
     }
     private fun subscribe(c: Cookie, path: String, time: String = "19:00", tz: String = "Europe/Moscow") =
-        mvc.perform(json(post("/api/push/subscribe"), mapOf("endpoint" to base + path, "keys" to mapOf("p256dh" to WebPush.b64(uaPub), "auth" to WebPush.b64(authSecret)), "time" to time, "tz" to tz), c)).andReturn().response
+        mvc.perform(json(post("/api/push/subscribe"), mapOf("endpoint" to base + path, "keys" to mapOf("p256dh" to WebPush.b64(uaPub), "auth" to WebPush.b64(authSecret)), "time" to time, "tz" to tz, "remind" to true), c)).andReturn().response
 
     @Test
     fun `шифрование и подпись совместимы с браузером`() {

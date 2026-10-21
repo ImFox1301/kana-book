@@ -17,8 +17,9 @@ data class Credentials(val username: String = "", val password: String = "", val
 data class NameChange(val displayName: String = "")
 data class PasswordChange(val oldPassword: String = "", val newPassword: String = "")
 data class PasswordConfirm(val password: String = "")
-data class Me(val username: String, val displayName: String? = null, val linked: Boolean = false, val telegram: String? = null, val hasPassword: Boolean = true)
-fun UserRow.me() = Me(username, displayName, tgId != null, tgUsername, !passwordHash.startsWith("!"))
+data class Me(val username: String, val displayName: String? = null, val linked: Boolean = false, val telegram: String? = null, val hasPassword: Boolean = true, val avatar: String? = null)
+fun UserRow.me() = Me(username, displayName, tgId != null, tgUsername, !passwordHash.startsWith("!"), kana.api.friends.avatarUrl(id, avatarVer, hasAvatar))
+data class AvatarUpload(val data: String = "")
 
 @RestController
 @RequestMapping("/api/auth")
@@ -73,6 +74,33 @@ class AuthController(
     fun me(req: HttpServletRequest): Me {
         val user = req.userId()?.let(users::findById) ?: throw ApiException(HttpStatus.UNAUTHORIZED, "Вы не вошли")
         return user.me()
+    }
+
+    /** Фото профиля: картинка JPEG, PNG или WebP до 300 КБ (приложение само уменьшает до 256×256). */
+    @PostMapping("/avatar")
+    fun setAvatar(@RequestBody body: AvatarUpload, req: HttpServletRequest): Me {
+        val user = req.userId()?.let(users::findById) ?: throw ApiException(HttpStatus.UNAUTHORIZED, "Вы не вошли")
+        if (!limiter.tryAcquire("avatar:${user.id}", 20, 3_600_000)) throw ApiException(HttpStatus.TOO_MANY_REQUESTS, "Слишком часто — попробуйте позже")
+        val bytes = runCatching { java.util.Base64.getDecoder().decode(body.data.substringAfter("base64,")) }.getOrNull()
+            ?: throw ApiException(HttpStatus.BAD_REQUEST, "Не удалось прочитать картинку")
+        if (bytes.size > 300_000) throw ApiException(HttpStatus.PAYLOAD_TOO_LARGE, "Картинка слишком большая")
+        val type = imageType(bytes) ?: throw ApiException(HttpStatus.BAD_REQUEST, "Нужна картинка JPEG, PNG или WebP")
+        users.setAvatar(user.id, bytes, type)
+        return users.findById(user.id)!!.me()
+    }
+
+    @PostMapping("/avatar/delete")
+    fun deleteAvatar(req: HttpServletRequest): Me {
+        val user = req.userId()?.let(users::findById) ?: throw ApiException(HttpStatus.UNAUTHORIZED, "Вы не вошли")
+        users.setAvatar(user.id, null, null)
+        return users.findById(user.id)!!.me()
+    }
+
+    private fun imageType(b: ByteArray): String? = when {
+        b.size > 3 && b[0] == 0xFF.toByte() && b[1] == 0xD8.toByte() -> "image/jpeg"
+        b.size > 8 && b[0] == 0x89.toByte() && b[1] == 'P'.code.toByte() && b[2] == 'N'.code.toByte() -> "image/png"
+        b.size > 12 && String(b, 0, 4) == "RIFF" && String(b, 8, 4) == "WEBP" -> "image/webp"
+        else -> null
     }
 
     @PostMapping("/unlink-telegram")

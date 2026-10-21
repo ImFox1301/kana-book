@@ -97,21 +97,26 @@ async function build(page, wrong) {
   const calls = [];
   pp.on('request', r => { if (r.url().includes('/api/push/')) calls.push(r.url().split('/api/push/')[1]); });
   await pp.goto(BASE + '/'); await ready(pp);
+  await pp.click('#btn-settings');
+  check(await pp.locator('#set-notify').count() === 0, 'без входа пункта «Напоминания о занятиях» нет');
   await pp.click('#tab-me');
-  check(await pp.isDisabled('#set-notify'), 'без входа напоминания недоступны');
-  check((await pp.textContent('#settings')).includes('Войдите в аккаунт'), '…и объяснено почему');
   await pp.click('#btn-to-register');
   await pp.fill('#acc-name', 'Тест'); await pp.fill('#acc-user', 'push_' + crypto.randomBytes(3).toString('hex')); await pp.fill('#acc-pass', 'secret-pass-1');
   await pp.click('#screen-register button[type=submit]');
-  await pp.waitForSelector('#screen-onboard:not([hidden]) .btn.primary'); await pp.click('#screen-onboard .btn.primary');
-  await pp.click('#tab-me');
-  await pp.waitForSelector('#account-box .who');
-  await pp.waitForFunction(() => !document.querySelector('#set-notify').disabled);
+  await pp.waitForSelector('#screen-onboard:not([hidden]) .btn.primary');
+  // разрешение на уведомления спрашивается сразу после входа — ради заявок в друзья; напоминания при этом выключены
+  await pp.waitForFunction(() => window.__pushKey === 65, null, { timeout: 10000 });
+  let pr = await pp.evaluate(() => fetch('/api/push/prefs').then(r => r.json()));
+  check(pr.devices === 1 && pr.enabled === false, 'после регистрации устройство подписано на уведомления, напоминания выключены: ' + JSON.stringify(pr));
+  await pp.click('#screen-onboard .btn.primary');
+  await pp.click('#btn-settings');
+  await pp.waitForFunction(() => document.querySelector('#set-notify') && !document.querySelector('#set-notify').disabled);
+  check(!(await pp.isChecked('#set-notify')), 'переключатель напоминаний выключен');
   await pp.click('#settings .tgl:has(#set-notify)');
   await pp.waitForSelector('#remind-time');
   check((await pp.textContent('#push-msg')).includes('напомним в 19:00'), 'напоминания включены на 19:00');
   check(await pp.evaluate(() => window.__pushKey) === 65, 'подписка с открытым ключом сервера (65 байт)');
-  let pr = await pp.evaluate(() => fetch('/api/push/prefs').then(r => r.json()));
+  pr = await pp.evaluate(() => fetch('/api/push/prefs').then(r => r.json()));
   check(pr.enabled === true && pr.devices === 1 && pr.time === '19:00' && !!pr.tz, 'сервер: подписка есть, время и часовой пояс сохранены: ' + JSON.stringify(pr));
   await pp.fill('#remind-time', '08:30'); await pp.dispatchEvent('#remind-time', 'change');
   await pp.waitForFunction(() => document.querySelector('#push-msg').textContent.includes('08:30'));
@@ -124,14 +129,15 @@ async function build(page, wrong) {
   await pp.click('#settings .tgl:has(#set-notify)');
   await pp.waitForFunction(() => document.querySelector('#push-msg').textContent.includes('выключены'));
   pr = await pp.evaluate(() => fetch('/api/push/prefs').then(r => r.json()));
-  check(pr.devices === 0, 'выключено — подписка удалена на сервере');
+  check(pr.enabled === false && pr.devices === 1, 'напоминания выключены, а подписка для уведомлений о друзьях осталась');
   // выход из аккаунта снимает подписку этого устройства
-  await pp.click('#settings .tgl:has(#set-notify)'); await pp.waitForSelector('#remind-time');
   calls.length = 0;
+  await pp.click('#tab-me');
   await pp.click('#account-box >> text=Выйти'); await pp.click('#account-box .btn.primary:has-text("Выйти")');
   await pp.waitForSelector('#btn-to-login');
   check(calls.includes('unsubscribe'), 'при выходе подписка снята');
-  check(await pp.isDisabled('#set-notify'), 'после выхода напоминания снова недоступны');
+  await pp.click('#btn-settings');
+  check(await pp.locator('#set-notify').count() === 0, 'после выхода пункта напоминаний нет');
 
   await browser.close();
   console.log(failed ? `\nПровалено проверок: ${failed}` : '\nВсе проверки пройдены');

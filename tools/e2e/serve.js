@@ -10,9 +10,10 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 const users = new Map(), sessions = new Map(), items = new Map(), pushSubs = new Map(), pushPrefs = new Map(); let seq = 0;
 // Telegram и друзья (заглушка повторяет логику сервера в упрощённом виде)
 const tgLogins = new Map(), tgSent = [], friendsSet = new Set(), friendReq = new Set(), invites = new Map();
-const meOf = u => { const x = users.get(u); return { username: x.name, displayName: x.displayName, linked: !!x.tgId, telegram: x.tgUser || null, hasPassword: !!x.pass }; };
+const avatarOf = u => users.get(u).avatar ? '/api/avatar/' + encodeURIComponent(u) + '?v=' + users.get(u).avVer : null;
+const meOf = u => { const x = users.get(u); return { username: x.name, displayName: x.displayName, linked: !!x.tgId, telegram: x.tgUser || null, hasPassword: !!x.pass, avatar: avatarOf(u) }; };
 const fkey = (a, b) => [a, b].sort().join('|');
-const personOf = u => ({ id: u, name: users.get(u).displayName || users.get(u).name, username: users.get(u).name });
+const personOf = u => ({ id: u, name: users.get(u).displayName || users.get(u).name, username: users.get(u).name, avatar: avatarOf(u) });
 const zeroStats = { streak: 0, todayMin: 0, todayCards: 0, goalMin: 30, goalCards: 50, lessonsH: 0, lessonsK: 0, weekAnswers: 0, weekAccuracy: null };
 function friendsOf(u) {
   const fr = [...friendsSet].filter(k => k.split('|').includes(u)).map(k => k.split('|').find(x => x !== u));
@@ -95,7 +96,8 @@ function mock(req, res, body) {
     if (p === '/api/push/subscribe') {
       if (!/^https:\/\/fcm\.googleapis\.com\//.test(body.endpoint || '') || !body.keys || !body.keys.p256dh) return send(res, 400, { error: 'Некорректная подписка' });
       pushSubs.set(body.endpoint, { uid, endpoint: body.endpoint });
-      pushPrefs.set(uid, { enabled: true, time: body.time || '19:00', tz: body.tz });
+      const old = pushPrefs.get(uid);
+      pushPrefs.set(uid, { enabled: body.remind != null ? body.remind : old ? old.enabled : false, time: body.time || (old && old.time) || '19:00', tz: body.tz });
       return send(res, 200, prefs());
     }
     if (p === '/api/push/unsubscribe') { pushSubs.delete(body.endpoint); return send(res, 200, prefs()); }
@@ -104,14 +106,16 @@ function mock(req, res, body) {
   }
   if (p === '/api/auth/me') return send(res, 200, meOf(uid));
   if (p === '/api/auth/name') { const n = (body.displayName || '').trim(); if (!n) return send(res, 400, { error: 'Укажите, как к вам обращаться' }); users.get(uid).displayName = n; return send(res, 200, meOf(uid)); }
+  if (p === '/api/auth/avatar') { const x = users.get(uid); x.avatar = Buffer.from(String(body.data).split('base64,').pop(), 'base64'); x.avVer = (x.avVer || 0) + 1; return send(res, 200, meOf(uid)); }
+  if (p === '/api/auth/avatar/delete') { const x = users.get(uid); x.avatar = null; x.avVer = (x.avVer || 0) + 1; return send(res, 200, meOf(uid)); }
+  if (p.startsWith('/api/avatar/')) { const x = users.get(decodeURIComponent(p.split('/')[3].split('?')[0])); if (!x || !x.avatar) return send(res, 404, {}); res.writeHead(200, { 'Content-Type': 'image/jpeg' }); return res.end(x.avatar); }
   if (p === '/api/auth/unlink-telegram') { const x = users.get(uid); if (!x.pass) return send(res, 409, { error: 'нельзя' }); x.tgId = null; x.tgUser = null; return send(res, 200, meOf(uid)); }
   if (p === '/api/tg/link') return send(res, 200, tgStart('link', uid));
   if (p.startsWith('/api/friends')) {
-    if (!users.get(uid).tgId) return send(res, 403, { error: 'Сначала привяжите телефон через Telegram' });
     if (p === '/api/friends') return send(res, 200, friendsOf(uid));
     if (p === '/api/friends/search') {
       const t = (body.q || '').trim().replace(/^@/, '').toLowerCase(), x = users.get(t);
-      if (!x || !x.tgId) return send(res, 404, { error: 'Никого не нашли' });
+      if (!x) return send(res, 404, { error: 'Никого не нашли' });
       const state = t === uid ? 'me' : friendsSet.has(fkey(uid, t)) ? 'friend' : friendReq.has(uid + '>' + t) ? 'requested' : friendReq.has(t + '>' + uid) ? 'incoming' : 'none';
       return send(res, 200, { user: personOf(t), state });
     }

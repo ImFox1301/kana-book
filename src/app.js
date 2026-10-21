@@ -69,6 +69,7 @@
   const acct = () => window.KanaSync ? window.KanaSync.account : store.get('account', null);
   const guest = () => !!window.KANA_PWA && !acct();
   const linked = () => !!(acct() && acct().linked);
+  const hasFriends = () => !!acct();   // друзья — для любого аккаунта
 
   // ---------- история ответов ----------
   const MAX_ANSWERS = 20000;
@@ -974,8 +975,8 @@
 
   // ---------- переключение экранов ----------
   let current = 'home';
-  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me', 'similar', 'reading', 'builder', 'login', 'register', 'friends'];
-  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice', reading: 'practice', builder: 'practice', login: 'me', register: 'me', friends: 'friends' };
+  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me', 'similar', 'reading', 'builder', 'login', 'register', 'friends', 'settings'];
+  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice', reading: 'practice', builder: 'practice', login: 'me', register: 'me', friends: 'friends', settings: null };
   const tabOf = name => (FLOW && ['quiz', 'result', 'write'].includes(name)) ? 'lessons' : TAB_OF[name];
   const lastOf = { home: 'home', lessons: 'lessons', practice: 'practice', dict: 'dict', me: 'me', friends: 'friends' };
   function show(name) {
@@ -990,7 +991,8 @@
       // экран входа рисует sync.js; на самом старте он ещё не загружен — дорисуем чуть позже
       login: () => window.KanaSync ? window.KanaSync.renderAuthPage($('#screen-login'), 'login') : setTimeout(() => { if (current === 'login') show('login'); }, 30),
       register: () => window.KanaSync ? window.KanaSync.renderAuthPage($('#screen-register'), 'register') : setTimeout(() => { if (current === 'register') show('register'); }, 30),
-      friends: () => { renderFriends(); loadFriends(); } })[name]?.();
+      friends: () => { renderFriends(); loadFriends(); }, settings: renderSettings })[name]?.();
+    $('#btn-settings').toggleAttribute('aria-current', name === 'settings'); $('#btn-settings').hidden = name === 'onboard';
     updateTabs();
     // фокус в первое поле — только если пользователь ещё никуда не нажал (иначе текст уйдёт не в то поле)
     if (name === 'login' || name === 'register') setTimeout(() => { const f = $('#screen-' + name + ' input'); if (f && (!document.activeElement || document.activeElement === document.body)) f.focus(); }, 50);
@@ -1005,6 +1007,8 @@
     show(target === 'lessons' && curLesson && tabOf(current) !== 'lessons' && lastOf.lessons === 'lesson' ? 'lesson' : target);
   });
   document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => show(b.dataset.back));
+  $('#btn-settings').onclick = () => { if (current === 'settings') show(lastScreen || 'home'); else { lastScreen = current; show('settings'); } };
+  let lastScreen = null;
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !$('#screen-quiz').hidden && document.activeElement && document.activeElement.tagName === 'BODY') {
       const b = $('#card .btn.primary'); if (b) b.click();
@@ -1016,8 +1020,13 @@
   });
 
   // ---------- словарь ----------
+  $('#dict-register').onclick = () => show('register'); $('#dict-login').onclick = () => show('login');
   function saveWords() { store.set('words', userWords); store.set('deleted', [...deleted]); }
   function renderDict() {
+    // свои слова, импорт и копия — только с аккаунтом (слова синхронизируются)
+    const g = guest();
+    $('#dict-guest').hidden = !g;
+    for (const id of ['add-panel', 'import-panel', 'backup-panel']) $('#' + id).hidden = g;
     const q = ($('#dict-q').value || '').trim().toLowerCase();
     const ws = allWords();
     $('#topics').replaceChildren(...topicsOf(ws).map(t => h('option', { value: t })));
@@ -1030,7 +1039,7 @@
         h('span', { class: 'rd' }, displayReading(w.kana, 'ru', w.read) + ' · ' + displayReading(w.kana, 'lat', w.read)),
         h('span', { class: 'm' }, w.mean),
         sayButton({ kana: w.kana, kanji: w.kanji, word: true }) || h('span', { class: 'say-none', title: 'Для своих слов нужен японский голос в системе устройства' }),
-        h('button', { class: 'del', type: 'button', title: 'Удалить слово', 'aria-label': 'Удалить ' + w.kana, onclick: () => {
+        g ? null : h('button', { class: 'del', type: 'button', title: 'Удалить слово', 'aria-label': 'Удалить ' + w.kana, onclick: () => {
           if (w.builtin) deleted.add(wid(w)); else userWords = userWords.filter(x => wid(x) !== wid(w));
           saveWords(); renderDict();
         } }, '×')))));
@@ -1559,6 +1568,12 @@
   function renderHome() {
     const el = $('#screen-home'); el.replaceChildren();
     if (guest()) return renderGuestHome(el);
+    // уведомления не разрешены (Safari спрашивает только по нажатию) — без них не придут приглашения в друзья
+    if (window.KANA_PWA && pushPossible() && Notification.permission === 'default' && !store.get('push-asked', false)) {
+      el.append(h('div', { class: 'sheet notif-ask', id: 'notif-ask' }, h('div', {}, h('b', {}, 'Разрешите уведомления'), h('div', { class: 'small muted' }, 'Чтобы узнавать о заявках и приглашениях в друзья. Напоминания о занятиях включаются отдельно в настройках.')),
+        h('div', { class: 'row' }, h('button', { class: 'btn primary', type: 'button', onclick: async () => { await pushSubscribe(null, true).catch(() => { }); store.set('push-asked', true); renderHome(); } }, 'Разрешить'),
+          h('button', { class: 'link', type: 'button', onclick: () => { store.set('push-asked', true); renderHome(); } }, 'Не сейчас'))));
+    }
     const g = S.goal || def.goal, t = dayTotals(todayKey());
     const pm = Math.min(1, t.min / g.min), pc = Math.min(1, t.cards / g.cards);
     const met = pm >= 1 && pc >= 1;
@@ -1646,35 +1661,60 @@
     try { const reg = await navigator.serviceWorker.getRegistration(); return reg ? await reg.pushManager.getSubscription() : null; } catch (e) { return null; }
   }
   async function pushRefresh() {
-    if (!pushSupported() || !window.KanaSync || !window.KanaSync.account) { PS.on = false; PS.checked = true; return; }
+    if (!pushSupported() || !acct()) { PS.on = false; PS.checked = true; return; }
     const sub = await pushSub();
-    PS.on = !!sub && Notification.permission === 'granted';
-    if (PS.on) { const r = await api('/push/prefs'); if (r.status === 200 && r.data.time) { PS.time = r.data.time; store.set('remind-time', PS.time); } }
+    PS.sub = !!sub && Notification.permission === 'granted';
+    PS.on = false;
+    if (PS.sub) { const r = await api('/push/prefs'); if (r.status === 200) { PS.on = !!r.data.enabled; if (r.data.time) { PS.time = r.data.time; store.set('remind-time', PS.time); } } }
     PS.checked = true;
   }
   const b64ToU8 = s => { const b = atob((s + '==='.slice((s.length + 3) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(b, c => c.charCodeAt(0)); };
   const tz = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return null; } };
+  const pushPossible = () => pushSupported() && !(isIOSDevice && !standalone());
+  // Подписать это устройство на уведомления (заявки в друзья, напоминания). remind: true/false — включить или выключить напоминания, null — не менять.
+  async function pushSubscribe(remind, ask) {
+    if (!pushPossible() || !acct()) return false;
+    let perm = Notification.permission;
+    if (perm === 'default' && ask) { try { perm = await Notification.requestPermission(); } catch (e) { } }
+    if (perm !== 'granted') { PS.perm = perm; return false; }
+    const key = await api('/push/key');
+    if (key.status !== 200 || !key.data.key) throw new Error('Сервер уведомлений недоступен');
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(key.data.key) });
+    const j = sub.toJSON();
+    const r = await api('/push/subscribe', { endpoint: j.endpoint, keys: j.keys, time: PS.time, tz: tz(), remind });
+    if (r.status !== 200) throw new Error(r.data.error || 'Не получилось включить уведомления');
+    PS.sub = true; PS.perm = 'granted';
+    if (remind != null) PS.on = remind; else PS.on = !!r.data.enabled;
+    return true;
+  }
+  // после входа — сразу спросить разрешение: иначе не придут приглашения в друзья.
+  // Safari разрешает спросить только по нажатию — тогда на «Сегодня» появится кнопка «Разрешить».
+  async function autoPush() {
+    try { await pushSubscribe(null, true); } catch (e) { }
+    PS.checked = false; if (current === 'home') renderHome();
+  }
   async function pushEnable() {
     PS.busy = true; PS.msg = ''; renderSettings();
     try {
-      const perm = await Notification.requestPermission();
-      if (perm !== 'granted') throw new Error(perm === 'denied' ? 'Уведомления запрещены для этого сайта — разрешите их в настройках браузера' : 'Разрешение на уведомления не получено');
-      const key = await api('/push/key');
-      if (key.status !== 200 || !key.data.key) throw new Error('Сервер напоминаний недоступен');
-      const reg = await navigator.serviceWorker.ready;
-      let sub = await reg.pushManager.getSubscription();
-      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(key.data.key) });
-      const j = sub.toJSON();
-      const r = await api('/push/subscribe', { endpoint: j.endpoint, keys: j.keys, time: PS.time, tz: tz() });
-      if (r.status !== 200) throw new Error(r.data.error || 'Не получилось включить напоминания');
-      PS.on = true; PS.msg = `Включено: напомним в ${PS.time}, если цель дня ещё не выполнена.`;
+      const ok = await pushSubscribe(true, true);
+      if (!ok) throw new Error(PS.perm === 'denied' ? 'Уведомления запрещены для этого сайта — разрешите их в настройках браузера' : 'Разрешение на уведомления не получено');
+      PS.msg = `Включено: напомним в ${PS.time}, если цель дня ещё не выполнена.`;
     } catch (e) { PS.on = false; PS.msg = e.message || 'Не получилось включить напоминания'; }
     PS.busy = false; renderSettings();
   }
-  async function pushDisable(silent) {
+  // выключить только напоминания: уведомления о друзьях остаются
+  async function pushDisable() {
+    const r = await api('/push/prefs', { enabled: false });
+    PS.on = false; PS.msg = r.status === 200 ? 'Напоминания выключены. Уведомления о друзьях по-прежнему приходят.' : (r.data.error || 'Не получилось');
+    renderSettings();
+  }
+  // при выходе из аккаунта: это устройство больше ничего не получает
+  async function pushForget() {
     const sub = await pushSub();
     if (sub) { await api('/push/unsubscribe', { endpoint: sub.endpoint }); try { await sub.unsubscribe(); } catch (e) { } }
-    PS.on = false; if (!silent) { PS.msg = 'Напоминания на этом устройстве выключены.'; renderSettings(); }
+    PS.on = false; PS.sub = false; PS.checked = false;
   }
   async function pushTime(v) {
     PS.time = v; store.set('remind-time', v);
@@ -1686,16 +1726,15 @@
     PS.msg = r.status === 200 ? (r.data.sent ? 'Отправлено — уведомление должно появиться через несколько секунд.' : 'Не дошло: подписка устарела. Выключите и снова включите напоминания.') : (r.data.error || 'Не получилось отправить');
     renderSettings();
   }
-  window.KanaPush = { forget: () => pushDisable(true), refresh: () => pushRefresh().then(() => { if (current === 'me') renderSettings(); }) };
+  window.KanaPush = { forget: pushForget, refresh: () => pushRefresh().then(() => { if (current === 'settings') renderSettings(); }) };
   function remindRow() {
-    const logged = !!(window.KanaSync && window.KanaSync.account);
-    const why = !logged ? 'Войдите в аккаунт: напоминание приходит, только если цель дня ещё не выполнена, а для этого серверу нужен ваш прогресс.'
-      : !pushSupported() ? (isIOSDevice && !standalone() ? 'На iPhone и iPad напоминания работают в установленном приложении (iOS 16.4 и новее): Safari → «Поделиться» → «На экран Домой».' : 'Этот браузер не поддерживает уведомления.')
+    const logged = !!acct();
+    if (!logged) { PS.checked = false; PS.on = false; return []; }   // без аккаунта напоминаний нет
+    const why = !pushSupported() ? (isIOSDevice && !standalone() ? 'На iPhone и iPad напоминания работают в установленном приложении (iOS 16.4 и новее): Safari → «Поделиться» → «На экран Домой».' : 'Этот браузер не поддерживает уведомления.')
         : isIOSDevice && !standalone() ? 'На iPhone и iPad напоминания работают в установленном приложении: Safari → «Поделиться» → «На экран Домой».'
           : 'Раз в день в выбранное время, если цель дня ещё не выполнена.';
-    const can = logged && pushSupported() && !(isIOSDevice && !standalone());
-    if (!logged) { PS.checked = false; PS.on = false; }
-    if (can && !PS.checked) pushRefresh().then(() => { if (current === 'me') renderSettings(); });
+    const can = pushPossible();
+    if (can && !PS.checked) pushRefresh().then(() => { if (current === 'settings') renderSettings(); });
     const row = h('div', { class: 'set switch' }, h('div', {}, h('div', { class: 'lbl' }, 'Напоминания о занятиях'), h('div', { class: 'd' }, why)),
       toggle('set-notify', PS.on, v => v ? pushEnable() : pushDisable(), !can || PS.busy));
     const out = [row];
@@ -1726,12 +1765,11 @@
         toggle('set-vibrate', S.vibrate && canBuzz(), v => { S.vibrate = v; save(); buzz(true); }, !canBuzz())),
       ...remindRow());
   }
+  // «Я»: только о пользователе — фото, имя, аккаунт и прогресс. Настройки — отдельный экран (шестерёнка в шапке).
   function renderMe() {
     if (window.KanaSync) window.KanaSync.renderAccount($('#account-box'));
-    renderSettings();
     const g = guest(), st = $('#stats');
     st.hidden = g; st.previousElementSibling.hidden = g;
-    $('#settings').previousElementSibling.textContent = g ? 'Настройки' : 'Цель и настройки';
     if (!g) renderProgress();
   }
 
@@ -1759,12 +1797,13 @@
   // Доступны после привязки телефона через Telegram. Видно только сводку: серия, сегодня, уроки, ответы за неделю.
   const FR = { data: null, loading: false, msg: '', found: null, invite: null, pendingInvite: store.get('invite', null) };
   async function loadFriends() {
-    if (!linked()) return;
+    if (!hasFriends()) return;
     FR.loading = true;
     const r = await api('/friends');
     FR.loading = false;
     if (r.status === 200) { FR.data = r.data; setDot(); }
-    if (current === 'friends') renderFriends();
+    // обновляем только список — поле поиска и кнопки не перерисовываются, введённое и нажатия не теряются
+    if (current === 'friends') { if ($('#fr-list')) renderFriendsList(); else renderFriends(); }
   }
   function setDot() { const n = FR.data ? FR.data.incoming.length : 0; $('#friends-dot').hidden = !n; $('#tab-friends').title = n ? `Заявки в друзья: ${n}` : ''; }
   async function friendAct(path, userId) {
@@ -1785,7 +1824,7 @@
     renderFriends();
   }
   async function checkInvite() {
-    const t = FR.pendingInvite; if (!t || !linked()) return;
+    const t = FR.pendingInvite; if (!t || !hasFriends()) return;
     const r = await api('/friends/invite/' + encodeURIComponent(t));
     FR.inviteInfo = r.status === 200 ? r.data : { error: r.data.error || 'Приглашение не найдено' };
     if (current === 'friends') renderFriends();
@@ -1802,7 +1841,7 @@
     const s = f.stats, today = `${s.todayMin}/${s.goalMin} мин`;
     const goalDone = s.todayMin >= s.goalMin && s.todayCards >= s.goalCards;
     return h('div', { class: 'fcard' },
-      h('div', { class: 'top' }, h('div', {}, h('div', { class: 'nm' }, f.name), h('div', { class: 'lg' }, '@' + f.username)),
+      h('div', { class: 'top' }, h('div', { class: 'pl' }, avatarEl(f.name, f.avatar), h('div', {}, h('div', { class: 'nm' }, f.name), h('div', { class: 'lg' }, '@' + f.username))),
         s.streak ? h('span', { class: 'streak', title: 'дней подряд' }, '🔥 ' + s.streak + ' ' + plural(s.streak, 'день', 'дня', 'дней')) : h('span', { class: 'small muted' }, 'серии пока нет')),
       h('div', { class: 'fstats' },
         statBox(goalDone ? '○ цель' : today, `сегодня, ${s.todayCards} карт.`),
@@ -1812,15 +1851,20 @@
         if (e.currentTarget.dataset.confirm) return friendAct('remove', f.id);
         e.currentTarget.dataset.confirm = '1'; e.currentTarget.textContent = 'Точно удалить из друзей?'; } }, 'Удалить из друзей')));
   }
+  // фото профиля или первая буква имени на цветном круге
+  const AVA_COLORS = ['#2f4f86', '#3f7a4a', '#9a6a12', '#c23b2a', '#5b4a8b', '#1f6f78', '#8a4f2a'];
+  function avatarEl(name, url, cls) {
+    const n = (name || '?').trim(), el = h('span', { class: 'ava' + (cls ? ' ' + cls : ''), 'aria-hidden': 'true' });
+    el.style.background = AVA_COLORS[[...n].reduce((a, c) => a + c.codePointAt(0), 0) % AVA_COLORS.length];
+    if (url) { const img = h('img', { src: url, alt: '', loading: 'lazy' }); img.onerror = () => { img.remove(); el.textContent = [...n][0].toUpperCase(); }; el.append(img); }
+    else el.textContent = [...n][0].toUpperCase();
+    return el;
+  }
+  window.KanaAvatar = avatarEl;
   function renderFriends() {
     const el = $('#screen-friends'); el.replaceChildren();
     el.append(h('h1', { class: 'h1' }, 'Друзья'));
-    if (!acct()) { el.append(guestCard('Друзья доступны с аккаунтом и привязанным через Telegram телефоном.')); return; }
-    if (!linked()) {
-      el.append(h('div', { class: 'guest-card' }, h('p', {}, 'Чтобы добавлять друзей и видеть их прогресс, привяжите телефон через Telegram в разделе «Я». Номер друзьям не показывается.'),
-        h('div', { class: 'row' }, h('button', { class: 'btn primary', type: 'button', onclick: () => show('me') }, 'Перейти в «Я»'))));
-      return;
-    }
+    if (!acct()) { el.append(guestCard('Друзья доступны с аккаунтом.')); return; }
     if (FR.pendingInvite) {
       const inf = FR.inviteInfo;
       if (!inf) checkInvite();
@@ -1845,7 +1889,7 @@
       h('div', { class: 'row' }, iconBtn('btn primary', 'next', 'Пригласить ссылкой', makeInvite, 'Создать одноразовую ссылку-приглашение на 7 дней')),
       FR.invite ? h('div', { class: 'small muted', style: 'overflow-wrap:anywhere' }, 'Ссылка: ', h('span', { id: 'invite-url' }, FR.invite), ' — действует 7 дней, один раз.') : null,
       h('div', { class: 'fsearch' }, q, h('button', { class: 'btn ghost', type: 'button', id: 'btn-friend-search', onclick: search }, 'Найти')),
-      h('div', { class: 'small muted' }, 'Поиск — по точному логину. Найти можно только тех, кто привязал телефон.'));
+      h('div', { class: 'small muted' }, 'Поиск — по точному логину.'));
     if (FR.found) {
       const f = FR.found;
       add.append(f.error ? h('div', { class: 'err' }, f.error) : h('div', { class: 'freq', id: 'found' }, h('span', {}, h('b', {}, f.user.name), ' @' + f.user.username),
@@ -1855,10 +1899,16 @@
     }
     el.append(add);
     if (hadFocus) { const nq = $('#friend-q'); nq.focus(); nq.setSelectionRange(nq.value.length, nq.value.length); }
+    el.append(h('div', { id: 'fr-list', style: 'display:grid;gap:12px' }));
+    renderFriendsList();
+  }
+  function renderFriendsList() {
+    const el = $('#fr-list'); if (!el) return;
+    el.replaceChildren();
     const d = FR.data;
     if (!d) { if (!FR.loading) loadFriends(); el.append(h('p', { class: 'muted small' }, 'Загружаю…')); return; }
     if (d.incoming.length) el.append(h('div', { class: 'sheet', id: 'incoming' }, h('b', {}, 'Хотят добавить вас в друзья'),
-      ...d.incoming.map(p => h('div', { class: 'freq' }, h('span', {}, h('b', {}, p.name), ' @' + p.username),
+      ...d.incoming.map(p => h('div', { class: 'freq' }, h('span', { class: 'pl', style: 'display:flex;gap:10px;align-items:center' }, avatarEl(p.name, p.avatar), h('span', {}, h('b', {}, p.name), ' @' + p.username)),
         h('span', { class: 'row' }, h('button', { class: 'btn primary', type: 'button', onclick: () => friendAct('accept', p.id) }, 'Принять'),
           h('button', { class: 'btn ghost', type: 'button', onclick: () => friendAct('decline', p.id) }, 'Отклонить'))))));
     if (d.outgoing.length) el.append(h('div', { class: 'sheet' }, h('b', {}, 'Ждут ответа'),
@@ -1869,7 +1919,7 @@
     el.append(...d.friends.map(friendCard));
   }
   function updateTabs() {
-    const ok = linked();
+    const ok = hasFriends();
     $('#tab-friends').hidden = !ok;
     if (ok && !FR.data && !FR.loading) loadFriends();
     if (!ok) { FR.data = null; $('#friends-dot').hidden = true; }
@@ -1989,7 +2039,7 @@
     rerender() { updateTabs(); if (current === 'me') renderMe(); if (current === 'friends') renderFriends(); },
     open(name) { show(name); },
     // после входа: новый аккаунт — настройка цели; есть приглашение — к друзьям
-    afterLogin() { show(!S.onboarded ? 'onboard' : FR.pendingInvite && linked() ? 'friends' : 'me'); },
+    afterLogin() { show(!S.onboarded ? 'onboard' : FR.pendingInvite ? 'friends' : 'me'); autoPush(); },
   };
 
   window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next, show, openLesson, get lessonsDone() { return lessonsDone; }, dayTotals, todayKey, buzz, srsState, srsDue, srsForecast, startReview, startSim, confusions, startReading, startBuilder };
@@ -2001,12 +2051,14 @@
       history.replaceState(null, '', location.pathname);
       return show(acct() ? 'friends' : 'register');
     }
-    if (hash === '#friends') { history.replaceState(null, '', location.pathname); if (linked()) return show('friends'); }
-    if (initial) show(FR.pendingInvite && linked() ? 'friends' : guest() ? (S.welcomed || S.onboarded ? 'home' : 'onboard') : (S.onboarded ? 'home' : 'onboard'));
+    if (hash === '#friends') { history.replaceState(null, '', location.pathname); if (hasFriends()) return show('friends'); }
+    if (initial) show(FR.pendingInvite && hasFriends() ? 'friends' : guest() ? (S.welcomed || S.onboarded ? 'home' : 'onboard') : (S.onboarded ? 'home' : 'onboard'));
   }
   window.addEventListener('hashchange', () => route(false));
   // новые заявки в друзья — отметка на вкладке
-  setInterval(() => { if (linked() && document.visibilityState === 'visible') loadFriends(); }, 120000);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && linked()) loadFriends(); });
+  setInterval(() => { if (hasFriends() && document.visibilityState === 'visible') loadFriends(); }, 120000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && hasFriends()) loadFriends(); });
+  // вошли раньше и уже разрешили уведомления — подписка этого устройства обновляется тихо
+  if (acct() && window.KANA_PWA && 'Notification' in window && Notification.permission === 'granted') setTimeout(() => pushSubscribe(null, false).catch(() => { }), 1500);
   route(true);
 })();

@@ -387,6 +387,18 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
 .invite-card { border: 1.5px solid var(--indigo); background: var(--indigo-soft) }
 .onboard .row, .authpage .row, .sheet > .row { display: flex; gap: 8px; flex-wrap: wrap }
 .tgsheet .st, .tglink .st, .tgbox .st { font-size: 13.5px; color: var(--ink-2); line-height: 1.45 }
+.tgunder { display: grid; gap: 10px; justify-items: center; margin-top: 16px }
+.orline { width: 100%; display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 13px }
+.orline::before, .orline::after { content: ''; flex: 1; border-top: 1px solid var(--rule) }
+.tgunder .st { text-align: center; font-size: 12.5px; color: var(--ink-2); max-width: 36ch }
+.tgbox.compact { justify-items: center }
+.tgicon { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px 8px 8px; border-radius: 99px; border: 1.5px solid var(--rule); background: var(--sheet); color: var(--ink); text-decoration: none; font-weight: 600; font-size: 15px }
+.tgicon svg { width: 22px; height: 22px; padding: 7px; border-radius: 50%; background: #2a9fd8; color: #fff; box-sizing: content-box }
+.tgicon:hover { border-color: #2a9fd8 }
+.btn.tg svg { width: 18px; height: 18px; margin-right: 8px }
+.ava-btn { border: 0; padding: 0; background: none; cursor: pointer; border-radius: 50%; position: relative }
+.ava-btn:focus-visible { outline: 2px solid var(--indigo); outline-offset: 3px }
+.notif-ask { display: grid; gap: 10px; border-color: var(--indigo) }
 .tgbox { display: grid; gap: 8px; justify-items: start }
 .btn.tg { background: #2a9fd8; color: #fff; text-decoration: none; display: inline-flex; align-items: center; justify-content: center }
 .tgsheet { display: grid; gap: 8px }
@@ -490,6 +502,16 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
 .onboard .hero { font-family: var(--kana); font-size: 56px; color: var(--indigo); line-height: 1 }
 .onboard p { margin: 0; color: var(--ink-2); line-height: 1.55 }
 .topright { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+.iconbtn.gear { padding: 7px; border-radius: 10px } .iconbtn.gear svg { width: 20px; height: 20px }
+.iconbtn.gear[aria-current="page"] { color: var(--indigo); border-color: var(--indigo) }
+/* фото профиля */
+.ava { width: 44px; height: 44px; border-radius: 50%; flex: none; display: grid; place-items: center; overflow: hidden; font-weight: 700; color: #fff; font-size: 17px; background: var(--indigo); user-select: none }
+.ava img { width: 100%; height: 100%; object-fit: cover; display: block }
+.ava.big { width: 84px; height: 84px; font-size: 32px }
+.profile { display: flex; gap: 16px; align-items: center; flex-wrap: wrap }
+.profile .who { font-size: 20px; font-weight: 700 }
+.profile .ava-edit { display: grid; gap: 4px; justify-items: center }
+.fcard .top .pl { display: flex; gap: 10px; align-items: center }
 .installhint { background: var(--indigo-soft); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin-bottom: 12px }
 .updbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; justify-content: center; padding: 0 max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); pointer-events: none }
 .updbar > div { pointer-events: auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--ink); color: var(--paper); border-radius: 12px; padding: 10px 12px 10px 16px; font-size: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.18); max-width: 520px }
@@ -514,6 +536,8 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
       <button class="iconbtn" id="btn-install" type="button" hidden title="Установить Кана-тетрадь как приложение">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Установить</button>
       <span class="streak" id="streak" hidden title="Дней подряд с занятиями"></span>
+      <button class="iconbtn gear" id="btn-settings" type="button" title="Настройки" aria-label="Настройки">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     </div>
   </header>
   <div class="installhint" id="install-hint" hidden>
@@ -614,6 +638,10 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
 
   <!-- СЛОВАРЬ -->
   <section id="screen-dict" hidden>
+    <div class="guest-card" id="dict-guest" hidden>
+      <p>Свои слова, импорт и резервная копия доступны с аккаунтом — так слова сохраняются и есть на всех ваших устройствах. Стартовый словарь можно смотреть, слушать и тренировать и без входа.</p>
+      <div class="row"><button class="btn primary" type="button" id="dict-register">Создать аккаунт</button><button class="btn ghost" type="button" id="dict-login">Войти</button></div>
+    </div>
     <details class="panel" id="add-panel">
       <summary>Добавить слово</summary>
       <form class="form" id="add-form">
@@ -644,7 +672,7 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
     <details class="panel" id="backup-panel">
       <summary>Резервная копия и мой почерк</summary>
       <div class="form">
-        <div class="howto">Ваши слова и образцы почерка хранятся только в этом браузере. Скопируйте резервную копию, чтобы перенести их на другое устройство, и вставьте её туда в поле ниже.</div>
+        <div class="howto">Слова и образцы почерка синхронизируются с аккаунтом на всех ваших устройствах. Копия — на всякий случай: её можно сохранить у себя и потом восстановить.</div>
         <div class="dict-tools">
           <button class="btn ghost" id="bk-copy" type="button">Скопировать копию</button>
           <button class="btn ghost" id="bk-restore" type="button">Восстановить из поля</button>
@@ -695,12 +723,15 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
 
   <!-- Я: аккаунт, цель, настройки, прогресс -->
   <section id="screen-me" hidden>
-    <h2 class="h2">Аккаунт</h2>
     <div class="sheet account" id="account-box" hidden></div>
-    <h2 class="h2">Цель и настройки</h2>
-    <div class="sheet" id="settings"></div>
     <h2 class="h2">Прогресс по знакам</h2>
     <div class="sheet" id="stats"></div>
+  </section>
+
+  <!-- НАСТРОЙКИ -->
+  <section id="screen-settings" hidden>
+    <h1 class="h1">Настройки</h1>
+    <div class="sheet" id="settings"></div>
   </section>
 </div>
 

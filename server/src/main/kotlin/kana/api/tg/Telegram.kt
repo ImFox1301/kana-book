@@ -174,6 +174,8 @@ class TgService(private val jdbc: JdbcTemplate, private val api: TgApi, private 
             val owner = linked?.get("id") as Number?
             when {
                 owner != null && owner.toLong() == r.userId -> { set(r.nonce, "approved", tgId = tgId, result = r.userId); api.send(chat, "Этот Telegram уже привязан к вашему аккаунту.", noKeyboard) }
+                // аккаунт, созданный входом через Telegram (без пароля), объединим с этим — так не теряется прогресс
+                owner != null && !hasPassword(owner.toLong()) -> { set(r.nonce, "need_contact", tgId = tgId); prompt(chat, r.copy(status = "need_contact", tgId = tgId)) }
                 owner != null -> { set(r.nonce, "error", "Этот Telegram уже привязан к другому аккаунту", tgId); api.send(chat, "Этот Telegram уже привязан к другому аккаунту Кана-тетради.", noKeyboard) }
                 else -> { set(r.nonce, "need_contact", tgId = tgId); prompt(chat, r.copy(status = "need_contact", tgId = tgId)) }
             }
@@ -191,12 +193,17 @@ class TgService(private val jdbc: JdbcTemplate, private val api: TgApi, private 
             val existing = userByTg(tgId)
             val id = (existing?.get("id") as Number?)?.toLong() ?: createUser(tgId, tgName, phone, displayName(from))
             set(r.nonce, "approved", result = id)
-            api.send(chat, "Готово! Вернитесь в приложение — вход выполнен.", noKeyboard)
+            api.send(chat, if (existing == null) "Готово! Создан новый аккаунт — вернитесь в приложение.\nЕсли у вас уже есть аккаунт с логином и паролем, войдите в него и привяжите Telegram в разделе «Я»: аккаунты объединятся вместе с прогрессом."
+                           else "Готово! Вернитесь в приложение — вход выполнен.", noKeyboard)
         } else {
             try {
+                val other = (userByTg(tgId)?.get("id") as Number?)?.toLong()
+                val merged = other != null && other != r.userId && !hasPassword(other)
+                if (merged) mergeInto(other!!, r.userId!!)
                 jdbc.update("update users set tg_id = ?, tg_username = ?, phone = ? where id = ?", tgId, tgName, phone, r.userId)
                 set(r.nonce, "approved", result = r.userId)
-                api.send(chat, "Готово! Номер привязан к аккаунту. Вернитесь в приложение.", noKeyboard)
+                api.send(chat, if (merged) "Готово! Номер привязан, а аккаунт, созданный раньше через Telegram, объединён с этим — прогресс из обоих сохранён. Вернитесь в приложение."
+                               else "Готово! Номер привязан к аккаунту. Вернитесь в приложение.", noKeyboard)
             } catch (e: DuplicateKeyException) {
                 set(r.nonce, "error", "Этот Telegram уже привязан к другому аккаунту")
                 api.send(chat, "Этот Telegram уже привязан к другому аккаунту Кана-тетради.", noKeyboard)
@@ -218,6 +225,32 @@ class TgService(private val jdbc: JdbcTemplate, private val api: TgApi, private 
         }
         runCatching { api.call("answerCallbackQuery", mapOf("callback_query_id" to q["id"].asText())) }
         q["message"]?.let { m -> runCatching { api.call("editMessageText", mapOf("chat_id" to m["chat"]["id"].asLong(), "message_id" to m["message_id"].asLong(), "text" to text)) } }
+    }
+
+    private fun hasPassword(id: Long) = jdbc.queryForObject("select password_hash not like '!%' from users where id = ?", Boolean::class.java, id) == true
+
+    /**
+     * Перенести всё из аккаунта from в аккаунт to и удалить from. Данные синхронизации объединяются
+     * по тем же правилам, что и синхронизация: при совпадении остаётся более позднее изменение.
+     */
+    fun mergeInto(from: Long, to: Long) {
+        jdbc.update(
+            "insert into items (user_id, collection, item_id, data, deleted, updated_at) " +
+            "select ?, collection, item_id, data, deleted, updated_at from items where user_id = ? " +
+            "on conflict (user_id, collection, item_id) do update set data = excluded.data, deleted = excluded.deleted, " +
+            "updated_at = excluded.updated_at, seq = nextval('items_seq') where excluded.updated_at > items.updated_at", to, from)
+        // друзья, заявки, устройства для уведомлений
+        jdbc.update(
+            "insert into friends (a, b) select least(?, o), greatest(?, o) from (select case when a = ? then b else a end as o from friends where a = ? or b = ?) f " +
+            "where o <> ? on conflict do nothing", to, to, from, from, from, to)
+        jdbc.update("insert into friend_requests (from_id, to_id) select ?, to_id from friend_requests where from_id = ? and to_id <> ? on conflict do nothing", to, from, to)
+        jdbc.update("insert into friend_requests (from_id, to_id) select from_id, ? from friend_requests where to_id = ? and from_id <> ? on conflict do nothing", to, from, to)
+        jdbc.update("update push_subs set user_id = ? where user_id = ?", to, from)
+        jdbc.update("update users set display_name = coalesce(display_name, (select display_name from users where id = ?)) where id = ?", from, to)
+        jdbc.update("update users set tg_id = null where id = ?", from)
+        jdbc.update("delete from users where id = ?", from)   // сессии и остатки — каскадом
+        // все устройства этого аккаунта получат объединённые данные при следующей синхронизации
+        jdbc.update("update items set seq = nextval('items_seq') where user_id = ?", to)
     }
 
     private fun displayName(from: JsonNode): String =

@@ -50,7 +50,7 @@ class PushConfig
 
 data class PushSub(val id: Long, val userId: Long, val endpoint: String, val p256dh: String, val auth: String)
 data class Keys(val p256dh: String = "", val auth: String = "")
-data class SubscribeRequest(val endpoint: String = "", val keys: Keys = Keys(), val time: String? = null, val tz: String? = null)
+data class SubscribeRequest(val endpoint: String = "", val keys: Keys = Keys(), val time: String? = null, val tz: String? = null, val remind: Boolean? = null)
 data class PrefsRequest(val time: String? = null, val tz: String? = null, val enabled: Boolean? = null)
 data class EndpointRequest(val endpoint: String = "")
 data class Message(val title: String, val body: String, val tag: String = "reminder", val url: String = "/")
@@ -128,7 +128,9 @@ class PushService(private val jdbc: JdbcTemplate, private val keys: VapidKeys, p
             insert into push_subs (user_id, endpoint, p256dh, auth) values (?, ?, ?, ?)
             on conflict (endpoint) do update set user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth
         """.trimIndent(), userId, r.endpoint, r.keys.p256dh, r.keys.auth)
-        setPrefs(userId, PrefsRequest(r.time, r.tz, true))
+        // устройство подписывается и ради уведомлений о друзьях; напоминания — отдельный переключатель
+        jdbc.update("insert into push_prefs (user_id, enabled) values (?, ?) on conflict do nothing", userId, r.remind ?: false)
+        setPrefs(userId, PrefsRequest(r.time, r.tz, r.remind))
     }
 
     fun unsubscribe(userId: Long, endpoint: String) {
