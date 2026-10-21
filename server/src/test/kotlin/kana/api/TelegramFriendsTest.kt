@@ -45,7 +45,7 @@ class TelegramFriendsTest(@Autowired val mvc: MockMvc, @Autowired val om: Object
             createContext("/") { ex ->
                 val method = ex.requestURI.path.substringAfterLast('/')
                 val body = om.readTree(ex.requestBody.readAllBytes().let { if (it.isEmpty()) "{}".toByteArray() else it })
-                if (method == "sendMessage" || method == "editMessageText") sent += om.createObjectNode().put("method", method).set<JsonNode>("body", body)
+                if (method == "sendMessage" || method == "editMessageText") sent.add(om.createObjectNode().put("method", method).set<JsonNode>("body", body))
                 val result: Any = if (method == "getMe") mapOf("username" to "kana_test_bot") else true
                 val bytes = om.writeValueAsBytes(mapOf("ok" to true, "result" to result))
                 ex.responseHeaders.add("Content-Type", "application/json"); ex.sendResponseHeaders(200, bytes.size.toLong()); ex.responseBody.write(bytes); ex.close()
@@ -89,7 +89,7 @@ class TelegramFriendsTest(@Autowired val mvc: MockMvc, @Autowired val om: Object
     private fun username(id: Long) = jdbc.queryForObject("select username from users where id = ?", String::class.java, id)!!
 
     @Test
-    fun `вход через Telegram: новый пользователь делится номером`() {
+    fun `вход через Telegram — новый пользователь делится номером`() {
         val tgId = 7_000_000_000L + (System.nanoTime() % 1_000_000)
         val n = startLogin()
         assertEquals("new", om.readTree(status(n).contentAsString)["status"].asText())
@@ -154,7 +154,7 @@ class TelegramFriendsTest(@Autowired val mvc: MockMvc, @Autowired val om: Object
     }
 
     @Test
-    fun `друзья: поиск по логину, заявка, приглашение, прогресс`() {
+    fun `друзья — поиск по логину, заявка, приглашение, прогресс`() {
         val (ca, a) = register("Аня"); val (cb, b) = register("Боря"); val (cc, c) = register("Вика"); val (cd, d) = register("Гоша")
         linkDirect(a); linkDirect(b); linkDirect(d)
         assertEquals(403, res(get("/api/friends").cookie(cc)).status, "без привязки телефона друзья недоступны")
