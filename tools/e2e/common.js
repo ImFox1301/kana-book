@@ -20,7 +20,7 @@ async function signup(page, { name = 'Тест', user = 'u_' + rnd(), pass = 'se
   try { await page.waitForSelector('#screen-onboard:not([hidden]) .btn.primary', { timeout: 20000 }); }
   catch (e) {
     // что на экране — для разбора провала в CI
-    const st = await page.evaluate(() => ({ screens: [...document.querySelectorAll('section:not([hidden])')].map(s => s.id), text: (document.querySelector('section:not([hidden])') || document.body).innerText.slice(0, 600), acct: localStorage.getItem('kana-tetrad:account') }));
+    const st = await page.evaluate(() => ({ screens: [...document.querySelectorAll('section:not([hidden])')].map(s => s.id), err: (document.querySelector('#screen-register .err') || {}).textContent, btn: (document.querySelector('#screen-register button[type=submit]') || {}).textContent, vals: [...document.querySelectorAll('#screen-register input')].map(i => i.id + '=' + i.value.length + (i.validity.valid ? '' : '!')), acct: localStorage.getItem('kana-tetrad:account') }));
     console.log('FAIL регистрация не завершилась: ' + JSON.stringify(st).replace(/\n/g, ' '));
     throw e;
   }
