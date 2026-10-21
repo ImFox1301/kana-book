@@ -68,7 +68,7 @@
   let answers = store.get('answers', []);
 
   // ---------- настройки ----------
-  const def = { script: 'h', rows: { h: ['a', 'ka', 'sa'], k: ['a', 'ka', 'sa'] }, topics: null, wfilter: 'all', count: 20, mode: 'draw', sys: 'ru', len: 1, abcScript: 'h', abcMode: 'listen', abcSel: { h: [], k: [] }, reps: 5, ghost: true, voice: 'm', goal: { min: 30, cards: 50 }, onboarded: false, vibrate: true };
+  const def = { script: 'h', rows: { h: ['a', 'ka', 'sa'], k: ['a', 'ka', 'sa'] }, topics: null, wfilter: 'all', count: 20, mode: 'draw', sys: 'ru', len: 1, abcScript: 'h', abcMode: 'listen', abcSel: { h: [], k: [] }, reps: 5, ghost: true, voice: 'm', goal: { min: 30, cards: 50 }, onboarded: false, vibrate: true, simScript: 'h', simSel: { h: null, k: null }, simCount: 20 };
   const S = Object.assign({}, def, store.get('settings', {}));
   const save = () => store.set('settings', S);
 
@@ -141,7 +141,8 @@
 
     const md = $('#sel-mode'); md.replaceChildren(
       opt(md, 'draw', S.mode, 'Перевод', 'вижу звучание → рисую знак пальцем', null, v => { S.mode = v; save(); renderSetup(); }),
-      opt(md, 'type', S.mode, 'Обратный перевод', 'вижу знак → пишу звучание', null, v => { S.mode = v; save(); renderSetup(); }));
+      opt(md, 'type', S.mode, 'Обратный перевод', 'вижу знак → пишу звучание', null, v => { S.mode = v; save(); renderSetup(); }),
+      opt(md, 'listen', S.mode, 'На слух', 'слышу звучание → выбираю знак', null, v => { S.mode = v; save(); renderSetup(); }));
     const sy = $('#sel-sys'); sy.replaceChildren(
       opt(sy, 'ru', S.sys, 'Кириллица', 'система Поливанова: си, ти, цу', null, v => { S.sys = v; save(); renderSetup(); }),
       opt(sy, 'lat', S.sys, 'Латиница', 'система Хэпбёрна: shi, chi, tsu', null, v => { S.sys = v; save(); renderSetup(); }));
@@ -174,7 +175,7 @@
   let Q = null;
   function startQuiz(items, count, opts = {}) {
     if (!opts.keepFlow && FLOW && FLOW.step !== 'quiz') FLOW = null;
-    Q = { deck: buildDeck(items, count), i: 0, results: [], mode: opts.mode || S.mode, sys: S.sys, len: S.len };
+    Q = { deck: buildDeck(items, count), i: 0, results: [], mode: opts.mode || S.mode, sys: S.sys, len: S.len, pool: items, review: !!opts.review, back: opts.back || 'setup', again: opts.again || null };
     show('quiz'); renderCard();
   }
   $('#btn-start').onclick = () => {
@@ -182,7 +183,7 @@
     if (S.count < items.length) S.count = items.length;
     startQuiz(items, S.count);
   };
-  $('#btn-quit').onclick = () => { if (Q && Q.results.length) renderResult(); else if (FLOW) backToLesson(); else { Q = null; show('setup'); } };
+  $('#btn-quit').onclick = () => { if (Q && Q.results.length) renderResult(); else if (FLOW) backToLesson(); else { const b = Q ? Q.back : 'setup'; Q = null; show(b); } };
 
   function readingOf(it, sys) { return displayReading(it.kana, sys, it.w && it.w.read); }
   const otherSys = s => s === 'ru' ? 'lat' : 'ru';
@@ -286,7 +287,9 @@
     const card = $('#card'); card.replaceChildren();
     const msg = h('div', { class: 'msg', role: 'status' });
     const isWord = it.kind === 'word';
-    if (Q.mode === 'draw') {
+    const mode = it.mode || Q.mode;
+    if (mode === 'listen' || mode === 'sim') return renderChoice(card, it, mode, msg);
+    if (mode === 'draw') {
       const units = [...it.kana];
       const slotStrokes = units.map(() => []);
       let cur = 0;
@@ -341,6 +344,62 @@
       setTimeout(() => input.focus(), 30);
     }
   }
+  // ---------- карточки с выбором: квиз на слух и похожие знаки ----------
+  const soundKey = k => displayReading(k, 'lat').replace(/^wo$/, 'o');      // を звучит как お, ぢ — как じ
+  let ALL_KANA = null;
+  const allKana = () => ALL_KANA || (ALL_KANA = ROWS.flatMap(r => r.h.split(' ')).flatMap(k => [k, toKata(k)]));
+  const similarOf = k => SIMILAR.filter(g => g.k.includes(k));
+  function simNote(a, b) {
+    if (!a || !b) return null;
+    const g = SIMILAR.find(g => g.k.includes(a) && g.k.includes(b)); if (g) return g.t;
+    for (const l of LESSONS) for (const [x, y, t] of l.similar || []) if ((x === a && y === b) || (x === b && y === a)) return t;
+    return null;
+  }
+  const groupNote = it => { const g = SIMILAR.find(g => it.group && g.k.length === it.group.length && g.k.every(k => it.group.includes(k))); return g ? g.t : it.group && it.group.length === 2 ? simNote(it.group[0], it.group[1]) : null; };
+  function pickDistinct(target, cands, n) {
+    const out = [], seen = new Set([soundKey(target)]);
+    for (const c of cands) { if (out.length >= n) break; if (c === target || out.includes(c)) continue; const sk = soundKey(c); if (seen.has(sk)) continue; seen.add(sk); out.push(c); }
+    return out;
+  }
+  function listenOptions(it) {
+    if (it.kind === 'word') {
+      const sc = wordScript(it.w), L = [...it.kana].length;
+      const pool = [...new Set(Q.pool.filter(x => x.kind === 'word').map(x => x.kana).concat(allWords().filter(w => wordScript(w) === sc).map(w => w.kana)))];
+      const near = shuffle(pool.filter(k => Math.abs([...k].length - L) <= 1));
+      return shuffle([it.kana, ...pickDistinct(it.kana, near.concat(shuffle(pool.slice())), 3)]);
+    }
+    const k = it.kana, kata = isKata(k[0]), multi = k.length > 1;
+    const same = c => (c.length > 1) === multi && isKata(c[0]) === kata;
+    const sim = shuffle(similarOf(k).flatMap(g => g.k).filter(c => c !== k)).slice(0, 2);
+    const pool = shuffle(Q.pool.filter(x => x.kind !== 'word').map(x => x.kana).filter(same));
+    const all = shuffle(allKana().filter(same));
+    const sk = soundKey(k), near = all.filter(c => { const o = soundKey(c); return o.slice(-1) === sk.slice(-1) || o[0] === sk[0]; });
+    return shuffle([k, ...pickDistinct(k, sim.concat(pool, near, all), 3)]);
+  }
+  function renderChoice(card, it, mode, msg) {
+    const isWord = it.kind === 'word';
+    const dir = mode === 'listen' ? 'listen' : (Math.random() < 0.5 ? 'k2r' : 'r2k');
+    const keys = mode === 'listen' ? listenOptions(it) : shuffle((it.group || [it.kana]).slice());
+    const prompt = h('div', { class: 'prompt' });
+    if (mode === 'listen') {
+      const say = h('button', { class: 'iconbtn say big', type: 'button', 'aria-label': 'Прослушать ещё раз', onclick: () => play() }, svgIcon('sound'), 'Ещё раз');
+      const play = () => isWord ? playWord(it.kana, say, it.w.kanji) : playKana(it.kana, say);
+      prompt.append(h('span', { class: 'lab' }, isWord ? 'Какое слово прозвучало?' : 'Какой знак прозвучал?'), say,
+        h('span', { class: 'tag' }, isWord ? (wordScript(it.w) === 'k' ? 'слово катаканой' : 'слово хираганой') : isKata(it.kana[0]) ? 'катакана' : 'хирагана'));
+      setTimeout(play, 150);
+    } else if (dir === 'k2r') {
+      prompt.append(h('span', { class: 'lab' }, 'Как читается этот знак?'), h('span', { class: 'kana' }, it.kana));
+    } else {
+      prompt.append(h('span', { class: 'lab' }, 'Найдите знак'), h('span', { class: 'big' }, readingOf(it, Q.sys)), sayButton(it, 'Прослушать'));
+    }
+    const asReading = dir === 'k2r';
+    const box = h('div', { class: 'choices' + (asReading ? '' : ' kana') + (isWord ? ' word' : '') + (keys.length === 4 ? ' four' : '') });
+    keys.forEach((k, i) => box.append(h('button', { type: 'button', class: 'choice', 'data-k': k, 'aria-label': asReading ? displayReading(k, Q.sys) : k,
+      onclick: () => finish({ it, status: k === it.kana ? 'ok' : 'bad', chosen: k, dir }) },
+      h('span', { class: 'n', 'aria-hidden': 'true' }, String(i + 1)), h('span', { class: 'v' }, asReading ? displayReading(k, Q.sys) : k))));
+    card.append(prompt, box, msg, h('div', { class: 'actions' },
+      iconBtn('btn ghost', 'skip', 'Пропустить', () => finish({ it, status: 'skip', dir }), 'Пропустить карточку и посмотреть ответ')));
+  }
   function actions(submit) {
     return h('div', { class: 'actions' },
       iconBtn('btn ghost', 'skip', 'Пропустить', () => finish({ it: Q.deck[Q.i], status: 'skip' }), 'Пропустить карточку и посмотреть ответ'),
@@ -349,7 +408,11 @@
 
   function finish(res) {
     Q.results[Q.i] = res;
-    const a = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), ts: Date.now(), k: res.it.kana, w: res.it.kind === 'word' ? 1 : 0, m: Q.mode, r: res.status };
+    const mode = res.mode = res.mode || res.it.mode || Q.mode;
+    const a = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), ts: Date.now(), k: res.it.kana, w: res.it.kind === 'word' ? 1 : 0, m: mode, r: res.status };
+    // с чем перепутан знак: выбранный вариант или то, как распознан рисунок
+    const x = res.chosen || (res.per && res.per.length === 1 && !res.per[0].ok ? res.per[0].best : null);
+    if (res.status === 'bad' && x && x !== res.it.kana) a.x = x;
     res.answerId = a.id;
     answers.push(a);
     if (answers.length > MAX_ANSWERS) answers.splice(0, answers.length - MAX_ANSWERS);
@@ -365,8 +428,19 @@
     const markTxt = status === 'ok' ? '○' : status === 'bad' ? '✕' : '—';
     v.append(h('div', { class: 'mark ' + status, 'aria-hidden': 'true' }, markTxt),
       h('div', { class: 'vtitle' }, status === 'ok' ? (res.taught ? 'Засчитано' : 'Верно') : status === 'bad' ? 'Неверно' : 'Пропущено'));
+    const mode = res.mode || Q.mode;
     const reading = h('div', { class: 'vreading' }, h('div', { class: 'correct-reading' }, readingOf(it, Q.sys)), h('div', { class: 'small muted' }, readingOf(it, otherSys(Q.sys))), sayButton(it, 'Прослушать'));
-    if (Q.mode === 'draw') {
+    if (mode === 'listen' || mode === 'sim') {
+      v.append(h('div', { class: 'kana' + (isWord ? ' word' : ''), style: 'font-family:var(--kana);font-size:' + (isWord ? '44px' : '64px') + ';line-height:1.1' }, it.kana), reading);
+      if (isWord) v.append(h('div', { class: 'meaning' }, it.w.mean));
+      if (status === 'bad' && res.chosen) {
+        const cw = isWord ? allWords().find(w => w.kana === res.chosen) : null;
+        v.append(h('div', { class: 'your' }, 'Вы выбрали: ', h('s', { class: 'kana-in' }, res.chosen), ' — ' + displayReading(res.chosen, Q.sys, cw && cw.read) + (cw ? ' · ' + cw.mean : '')));
+      }
+      if (mode === 'sim' && it.group) v.append(h('div', { class: 'simrow' }, ...it.group.map(k => h('div', { class: k === it.kana ? 'on' : '' }, h('span', { class: 'k' }, k), h('span', { class: 'r' }, displayReading(k, Q.sys))))));
+      const note = !isWord && (status === 'bad' && res.chosen ? simNote(it.kana, res.chosen) : mode === 'sim' ? groupNote(it) : null);
+      if (note) v.append(h('div', { class: 'note' }, 'Как различать: ' + note));
+    } else if (mode === 'draw') {
       const units = [...it.kana];
       const cmp = h('div', { class: 'compare' });
       if (res.per) cmp.append(h('figure', {}, h('div', { class: 'glyphs' }, ...res.per.map(p => { const c = thumb(p.strokes); c.style.borderColor = p.ok ? 'var(--ok)' : 'var(--shu)'; return c; })), h('figcaption', {}, 'Ваш рисунок')));
@@ -376,7 +450,7 @@
       v.append(reading);
       if (status === 'bad' && res.per) {
         const wrong = res.per.filter(p => !p.ok);
-        v.append(h('div', { class: 'note' }, wrong.map(p => `Знак ${p.target}: распознан как «${p.best}»`).join('. ') + '.'));
+        v.append(h('div', { class: 'note' }, wrong.map(p => `Знак ${p.target}: распознан как «${p.best}»` + (simNote(p.target, p.best) ? ` — ${simNote(p.target, p.best)}` : '')).join('. ') + '.'));
       }
       // порядок штрихов для неверных или пропущенных знаков
       if (status !== 'ok') {
@@ -395,7 +469,7 @@
           }
           store.set('samples', samples);
           res.status = 'ok'; res.taught = true;
-          const a = answers.find(x => x.id === res.answerId); if (a) { a.r = 'ok'; store.set('answers', answers); }
+          const a = answers.find(x => x.id === res.answerId); if (a) { a.r = 'ok'; delete a.x; store.set('answers', answers); }
           renderVerdict(res);
         }, 'Сохранить этот рисунок как образец вашего почерка и засчитать ответ'));
       }
@@ -443,9 +517,19 @@
         h('button', { class: 'btn ghost', type: 'button', onclick: backToLesson }, 'К уроку')));
       return show('result');
     }
+    if (Q.review) {
+      const left = srsDue().length;
+      el.prepend(h('div', { class: 'result-banner ' + (left ? 'bad' : 'ok') }, left ? `Повторение: ещё ${left} ${plural(left, 'знак', 'знака', 'знаков')} на сегодня` : 'Повторение на сегодня выполнено'));
+      el.append(h('div', { class: 'actions', style: 'justify-content:center' },
+        left ? iconBtn('btn primary', 'next', `Продолжить повторение (${left})`, startReview) : null,
+        h('button', { class: left ? 'btn ghost' : 'btn primary', type: 'button', onclick: () => { Q = null; show('home'); } }, 'На главную')));
+      return show('result');
+    }
+    const back = Q.back, again = Q.again;
     el.append(h('div', { class: 'actions', style: 'justify-content:center' },
-      missedItems.length ? iconBtn('btn primary', 'undo', `Повторить ошибки (${missedItems.length})`, () => startQuiz(missedItems, missedItems.length * 2, { mode: Q.mode })) : null,
-      h('button', { class: 'btn ghost', type: 'button', onclick: () => { Q = null; show('setup'); } }, 'Новый квиз')));
+      missedItems.length ? iconBtn('btn primary', 'undo', `Повторить ошибки (${missedItems.length})`, () => startQuiz(missedItems, missedItems.length * 2, { mode: Q.mode, back })) : null,
+      again ? iconBtn('btn ghost', 'next', 'Ещё раз', again) : null,
+      h('button', { class: 'btn ghost', type: 'button', onclick: () => { Q = null; show(back); } }, back === 'setup' ? 'Новый квиз' : back === 'similar' ? 'К выбору групп' : 'Готово')));
     show('result');
   }
 
@@ -749,8 +833,8 @@
 
   // ---------- переключение экранов ----------
   let current = 'home';
-  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me'];
-  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me' };
+  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me', 'similar'];
+  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice' };
   const tabOf = name => (FLOW && ['quiz', 'result', 'write'].includes(name)) ? 'lessons' : TAB_OF[name];
   const lastOf = { home: 'home', lessons: 'lessons', practice: 'practice', dict: 'dict', me: 'me' };
   function show(name) {
@@ -761,7 +845,7 @@
     document.querySelectorAll('.backbar[data-for]').forEach(b => { b.hidden = b.dataset.for !== name; });
     $('#bnav').hidden = name === 'onboard';
     document.querySelectorAll('#bnav button').forEach(x => { if (x.dataset.tab === tab) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current'); });
-    ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, onboard: renderOnboard })[name]?.();
+    ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, onboard: renderOnboard, similar: renderSimilar })[name]?.();
     renderStreak();
     window.scrollTo(0, 0);
   }
@@ -776,6 +860,10 @@
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !$('#screen-quiz').hidden && document.activeElement && document.activeElement.tagName === 'BODY') {
       const b = $('#card .btn.primary'); if (b) b.click();
+    }
+    // карточки с выбором: цифры 1–4
+    if (/^[1-9]$/.test(e.key) && !$('#screen-quiz').hidden && !(document.activeElement && document.activeElement.tagName === 'INPUT')) {
+      const c = document.querySelectorAll('#card .choices .choice')[+e.key - 1]; if (c) { e.preventDefault(); c.click(); }
     }
   });
 
@@ -885,6 +973,8 @@
       h('div', {}, h('div', { class: 'v' }, pct(ok, total)), h('div', { class: 'l' }, 'верных за всё время')),
       h('div', {}, h('div', { class: 'v' }, pct(weekOk, week.length)), h('div', { class: 'l' }, `верных за 7 дней (${week.length})`)),
       h('div', {}, h('div', { class: 'v' }, String(streak)), h('div', { class: 'l' }, 'дней подряд'))));
+    const fc = srsForecast();
+    if (fc.total) el.append(h('p', { class: 'small muted' }, `В интервальном повторении: ${fc.total}. Держатся неделю и дольше: ${fc.learned}. На сегодня: ${fc.due}, на завтра: ${fc.tomorrow}.`));
     if (!total) { el.append(h('p', { class: 'muted' }, 'Пройдите первый квиз — здесь появится, какие знаки уже держатся, а какие путаются.')); return; }
 
     const st = kanaStats();
@@ -1044,6 +1134,115 @@
   }
   function backToLesson() { const l = FLOW && FLOW.lesson; FLOW = null; Q = null; WR = null; if (l) openLesson(l); else show('lessons'); }
 
+  // ---------- интервальное повторение ----------
+  // Состояние считается из истории ответов (она синхронизируется), отдельно ничего не хранится.
+  // Верный ответ в день повторения или позже — следующая «коробка»: 1, 2, 4, 7, 14, 30, 60, 120 дней.
+  // Ошибка — знак возвращается в повторение сегодня, выученный (от 7 дней) откатывается на 1 день.
+  const DAY = 864e5, IVL = [0, 1, 2, 4, 7, 14, 30, 60, 120], REVIEW_MAX = 20;
+  const startOfDay = ts => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  function srsState() {
+    const m = new Map();
+    const get = (k, w) => { const key = (w ? 'w:' : '') + k; let st = m.get(key); if (!st) m.set(key, st = { key, k, w: !!w, box: 0, due: 0, n: 0 }); return st; };
+    for (const a of answers) {
+      const st = get(a.k, a.w); st.n++;
+      if (a.r === 'ok') { if (a.ts >= st.due) { st.box = Math.min(st.box + 1, IVL.length - 1); st.due = startOfDay(a.ts) + IVL[st.box] * DAY; } }
+      else { st.box = st.box >= 4 ? 1 : 0; st.due = a.ts; }
+    }
+    // знаки начатых уроков и слова пройденных попадают в повторение, даже если ответов ещё не было
+    for (const l of LESSONS) {
+      const ls = lessonsDone[l.id]; if (!ls) continue;
+      if (ls.intro || ls.done) for (const k of lessonKana(l)) get(k, false);
+      if (ls.done) for (const [kana] of l.words) get(kana, true);
+    }
+    return m;
+  }
+  function srsDue(now = Date.now()) {
+    return [...srsState().values()].filter(s => s.due <= now).sort((a, b) => a.box - b.box || a.due - b.due);
+  }
+  function srsForecast() {
+    const st = [...srsState().values()], now = Date.now(), tomorrow = startOfDay(now) + DAY;
+    return { total: st.length, due: st.filter(s => s.due <= now).length, tomorrow: st.filter(s => s.due > now && s.due < tomorrow + DAY).length, learned: st.filter(s => s.box >= 4).length };
+  }
+  function wordIndex() {
+    const m = new Map();
+    for (const l of LESSONS) for (const [kana, mean, kanji, read] of l.words) m.set(kana, { kana, mean, kanji, read, topic: 'Урок' });
+    for (const w of allWords()) m.set(w.kana, w);
+    return m;
+  }
+  const hasAudio = () => !!window.KANA_PWA;
+  function reviewItems() {
+    const due = srsDue(), words = wordIndex(), out = [];
+    for (const s of due) {
+      if (out.length >= REVIEW_MAX) break;
+      let it;
+      if (s.w) { const w = words.get(s.k); if (!w) continue; it = { kind: 'word', kana: s.k, w }; }
+      else it = { kind: 'kana', kana: s.k };
+      const canDraw = !s.w && [...s.k].every(c => KVG[bigOf(c)]);
+      const canListen = s.w ? canSay(s.k) : hasAudio();
+      // чем лучше знак выучен, тем сложнее задание: прочитать → узнать на слух → написать по памяти
+      it.mode = s.box >= 4 && canDraw ? 'draw' : s.box >= 2 && canListen && Math.random() < 0.5 ? 'listen' : 'type';
+      out.push(it);
+    }
+    return out;
+  }
+  function startReview() {
+    const items = reviewItems();
+    if (!items.length) return show('home');
+    FLOW = null;
+    startQuiz(items, items.length, { review: true, back: 'home', mode: 'type' });
+  }
+
+  // ---------- похожие знаки ----------
+  function confusions(script) {
+    const c = {};
+    for (const a of answers.slice(-3000)) {
+      if (a.w || !a.x || a.r === 'ok' || a.x.length !== a.k.length) continue;
+      if (script && isKata(a.k[0]) !== (script === 'k')) continue;
+      const key = [a.k, a.x].sort().join('|'); c[key] = (c[key] || 0) + 1;
+    }
+    return Object.entries(c).filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, n]) => ({ pair: k.split('|'), n }));
+  }
+  function simGroups(sc) { return SIMILAR.filter(g => g.s === sc); }
+  function simItems(groups) {
+    const out = [];
+    for (const g of groups) for (const k of g.k) out.push({ kind: 'kana', kana: k, mode: 'sim', group: g.k });
+    return out;
+  }
+  function startSim(groups, count) {
+    const items = simItems(groups); if (!items.length) return;
+    FLOW = null;
+    startQuiz(items, Math.max(items.length, count), { mode: 'sim', back: 'similar', again: () => startSim(groups, count) });
+  }
+  function renderSimilar() {
+    const el = $('#screen-similar'); el.replaceChildren();
+    const sc = S.simScript === 'k' ? 'k' : 'h';
+    const groups = simGroups(sc);
+    const sel = S.simSel && S.simSel[sc] ? S.simSel[sc].filter(id => groups.some(g => g.id === id)) : groups.map(g => g.id);
+    const setSel = v => { S.simSel = Object.assign({ h: null, k: null }, S.simSel, { [sc]: v }); save(); renderSimilar(); };
+    el.append(h('h1', { class: 'h1' }, 'Похожие знаки'),
+      h('p', { class: 'small muted' }, 'Карточки с выбором из похожих знаков: то по знаку найти чтение, то по чтению — знак. После ответа — подсказка, как их различать.'),
+      segm('Азбука', [['h', 'Хирагана'], ['k', 'Катакана']], sc, v => { S.simScript = v; save(); renderSimilar(); }));
+    const conf = confusions(sc);
+    if (conf.length) {
+      el.append(h('div', { class: 'sheet simconf' }, h('div', { class: 'lbl' }, 'Чаще всего путаете'),
+        h('div', { class: 'chips' }, ...conf.map(c => h('span', { class: 'chip', style: 'cursor:default' }, h('span', { class: 'k' }, c.pair.join(' · ')), h('span', { class: 'n' }, `${c.n} ${plural(c.n, 'раз', 'раза', 'раз')}`)))),
+        iconBtn('btn primary', 'undo', 'Потренировать эти пары', () => startSim(conf.map(c => ({ k: c.pair })), conf.length * 6))));
+    }
+    const allOn = sel.length === groups.length;
+    el.append(h('div', { class: 'sheet' },
+      h('div', { class: 'ghead' }, h('span', { class: 'label' }, 'Группы'),
+        h('button', { class: 'link', type: 'button', onclick: () => setSel(allOn ? [] : groups.map(g => g.id)) }, allOn ? 'снять все' : 'выбрать все')),
+      h('div', { class: 'simgroups' }, ...groups.map(g => h('button', { type: 'button', class: 'simg', 'aria-pressed': String(sel.includes(g.id)),
+        onclick: () => setSel(sel.includes(g.id) ? sel.filter(x => x !== g.id) : sel.concat(g.id)) },
+        h('span', { class: 'k' }, g.k.join(' ')), h('span', { class: 'd' }, g.t))))));
+    const chosen = groups.filter(g => sel.includes(g.id)), n = simItems(chosen).length;
+    const count = Math.max(n, S.simCount || 20);
+    el.append(h('div', { class: 'sheet simstart' },
+      h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Карточек'), segm('Карточек', [10, 20, 30, 50].map(v => [v, String(v)]), S.simCount || 20, v => { S.simCount = v; save(); renderSimilar(); }),
+        h('div', { class: 'd' }, n ? `Знаков в выбранных группах: ${n}. Каждый появится хотя бы раз${count > (S.simCount || 20) ? `, поэтому карточек будет ${count}` : ''}.` : 'Отметьте хотя бы одну группу.')),
+      h('div', { class: 'start' }, (() => { const b = iconBtn('btn primary', 'next', 'Начать', () => startSim(chosen, count)); b.id = 'btn-sim-start'; b.disabled = !n; return b; })())));
+  }
+
   // ---------- экран «Уроки» ----------
   function renderLessons() {
     const el = $('#screen-lessons'); el.replaceChildren();
@@ -1176,6 +1375,9 @@
   }
   const CTA_ICONS = {
     lesson: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+    review: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="13" height="14" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v12"/><path d="M7 14l2 2 4-4"/></svg>',
+    listen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>',
+    similar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9c2-2 4-2 6 0s4 2 6 0 3-1.5 4-1"/><path d="M4 15c2-2 4-2 6 0s4 2 6 0 3-1.5 4-1"/></svg>',
     weak: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4"/></svg>',
     quiz: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>',
     abc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5l4 4L9 19l-5 1 1-5z"/></svg>',
@@ -1198,6 +1400,8 @@
       h('div', { class: 'goal-row' }, h('div', { class: 'top' }, h('span', {}, 'Занятия'), h('b', {}, `${t.min} из ${g.min} мин`)), h('div', { class: 'bar' + (pm >= 1 ? ' done' : '') }, h('i', { style: `width:${pm * 100}%` }))),
       h('div', { class: 'goal-row' }, h('div', { class: 'top' }, h('span', {}, 'Карточки и прописи'), h('b', {}, `${t.cards} из ${g.cards}`)), h('div', { class: 'bar' + (pc >= 1 ? ' done' : '') }, h('i', { style: `width:${pc * 100}%` }))),
       met ? h('div', { class: 'goal-done' }, '○ Цель на сегодня выполнена') : null));
+    const fc = srsForecast();
+    if (fc.due) box.append(cta('review', `Повторение · ${fc.due} ${plural(fc.due, 'знак', 'знака', 'знаков')}`, `Пора повторить, пока не забылось${fc.due > REVIEW_MAX ? ` — по ${REVIEW_MAX} за подход` : ''}`, srsDue().slice(0, 10).map(s => s.k).join(' '), startReview, 'main review'));
     const rec = recommended();
     if (rec) {
       const st = lessonState(rec), started = st.intro || st.write || st.quiz;
@@ -1206,12 +1410,15 @@
     } else {
       box.append(cta('lesson', 'Все уроки хираганы пройдены', 'Уроки катаканы появятся в следующем обновлении', null, () => show('lessons'), 'main'));
     }
+    if (!fc.due && fc.total) box.append(h('div', { class: 'sheet srsdone small' }, h('b', {}, '○ Повторение на сегодня выполнено'), h('span', { class: 'muted' }, fc.tomorrow ? ` · завтра ${fc.tomorrow} ${plural(fc.tomorrow, 'знак', 'знака', 'знаков')}` : '')));
     const weak = weakKana();
     if (weak.length) box.append(cta('weak', 'Слабые знаки', `${weak.length} ${plural(weak.length, 'знак', 'знака', 'знаков')} — короткий квиз на чтение`, weak.map(w => w.ch).slice(0, 10).join(' '),
       () => { const items = weak.map(w => ({ kind: 'kana', kana: w.ch })); startQuiz(items, items.length * 2, { mode: 'type' }); }, 'alt'));
     box.append(h('div', { class: 'quick' },
       cta('quiz', 'Квиз', 'Свободная тренировка', null, () => show('setup'), 'alt'),
-      cta('abc', 'Азбука и прописи', 'Озвучка и письмо', null, () => show('abc'), 'alt')));
+      cta('abc', 'Азбука и прописи', 'Озвучка и письмо', null, () => show('abc'), 'alt'),
+      cta('listen', 'Квиз на слух', 'Узнать знак по звучанию', null, () => openListenSetup(), 'alt'),
+      cta('similar', 'Похожие знаки', 'シ・ツ, ぬ・め и другие', null, () => show('similar'), 'alt')));
     // неделя
     const days = activeDays(), wk = h('div', { class: 'week', 'aria-label': 'Последние 7 дней' });
     const names = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
@@ -1231,9 +1438,14 @@
     el.append(h('h1', { class: 'h1' }, 'Практика'), h('p', { class: 'small muted' }, 'Свободные тренировки — в любом порядке и сколько угодно.'),
       h('div', { class: 'practice' },
         cta('quiz', 'Квиз', 'Хирагана, катакана или слова: нарисовать знак по звучанию или прочитать', null, () => show('setup')),
+        srsForecast().due ? cta('review', 'Повторение', `${srsForecast().due} на сегодня — интервальное повторение пройденного`, null, startReview, 'main') : null,
         cta('abc', 'Азбука и прописи', 'Таблицы с озвучкой, прописи выбранных знаков с подложкой', null, () => show('abc')),
+        cta('listen', 'Квиз на слух', 'Звучит знак или слово — выберите, как он пишется', null, () => openListenSetup()),
+        cta('similar', 'Похожие знаки', 'シ・ツ・ソ・ン, ぬ・め, ね・れ・わ: выбор из похожих и подсказки, как различать', null, () => show('similar')),
         weak.length ? cta('weak', 'Слабые знаки', 'Квиз по знакам, на которых вы чаще ошибаетесь', weak.map(w => w.ch).slice(0, 10).join(' '), () => { const items = weak.map(w => ({ kind: 'kana', kana: w.ch })); startQuiz(items, items.length * 2, { mode: 'type' }); }) : null));
   }
+
+  function openListenSetup() { S.mode = 'listen'; save(); show('setup'); }
 
   // ---------- Я: настройки ----------
   function toggle(id, on, onchange, disabled) {
@@ -1358,7 +1570,7 @@
       store.set('lessons', lessonsDone); store.set('activity', activity);
       applying = false;
       loadSamples();
-      ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice })[current]?.();
+      ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, similar: renderSimilar })[current]?.();
       renderStreak();
     },
     resetLocal() {
@@ -1369,6 +1581,6 @@
     rerender() { if (current === 'me') renderMe(); },
   };
 
-  window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next, show, openLesson, get lessonsDone() { return lessonsDone; }, dayTotals, todayKey, buzz };
+  window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next, show, openLesson, get lessonsDone() { return lessonsDone; }, dayTotals, todayKey, buzz, srsState, srsDue, srsForecast, startReview, startSim, confusions };
   show(S.onboarded ? 'home' : 'onboard');
 })();

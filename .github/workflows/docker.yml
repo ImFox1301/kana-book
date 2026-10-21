@@ -86,7 +86,7 @@ jobs:
           npm i --no-save playwright@1.56.0 > /dev/null
           npx playwright install --with-deps chromium > /dev/null
           fail=0
-          for t in sync abc lessons; do
+          for t in sync abc lessons srs; do
             # провалы — в аннотации запуска, чтобы их было видно без скачивания логов
             node tools/e2e/$t-e2e.js http://localhost:8790 > $t.log 2>&1 || { fail=1; grep -E "FAIL|Error|ошибка|    at " $t.log | head -15 | sed "s/^/::error title=$t-e2e::/"; }
             cat $t.log

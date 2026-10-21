@@ -339,6 +339,37 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
 .pdfrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
 .lsim { display: grid; gap: 6px; font-size: 14px }
 .lsim .k { font-family: var(--kana); font-size: 22px; margin-right: 6px }
+/* ---- выбор из вариантов: на слух и похожие знаки ---- */
+.choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 420px }
+.choices:not(.four) { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) }
+.choice { position: relative; min-height: 76px; border: 1.5px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 14px; cursor: pointer; font: 600 22px var(--ui); display: grid; place-items: center; padding: 10px }
+.choices.kana .choice { font: 600 44px/1.1 var(--kana) }
+.choices.kana.word .choice { font-size: clamp(22px, 6.5vw, 30px) }
+.choice:hover { border-color: var(--indigo) }
+.choice:active { background: var(--indigo-soft) }
+.choice .n { position: absolute; top: 5px; left: 9px; font: 600 11px var(--ui); color: var(--ink-2) }
+@media (pointer: coarse) { .choice .n { display: none } }
+.say.big { padding: 14px 22px; font-size: 15px; border-radius: 14px; border-color: var(--indigo); color: var(--indigo); margin: 6px 0 }
+.say.big svg { width: 28px; height: 28px }
+.kana-in { font-family: var(--kana); font-size: 20px }
+.simrow { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap }
+.simrow div { border: 1px solid var(--rule); border-radius: 10px; padding: 6px 12px; display: grid; justify-items: center; background: var(--paper) }
+.simrow div.on { border-color: var(--ok); background: var(--ok-soft) }
+.simrow .k { font-family: var(--kana); font-size: 30px; line-height: 1.2 }
+.simrow .r { font-size: 12.5px; color: var(--ink-2) }
+.simscreen { display: grid; gap: 12px }
+.simscreen .segm { justify-self: start }
+.simconf { display: grid; gap: 10px; justify-items: start }
+.simconf .lbl, .simstart .lbl { font-weight: 600 }
+.simgroups { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px }
+.simg { display: grid; gap: 4px; text-align: left; border: 1.5px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 12px; padding: 10px 12px; cursor: pointer; font: inherit }
+.simg[aria-pressed="true"] { border-color: var(--indigo); background: var(--indigo-soft) }
+.simg .k { font-family: var(--kana); font-size: 26px; letter-spacing: .12em; line-height: 1.2 }
+.simg .d { font-size: 12.5px; color: var(--ink-2); line-height: 1.4 }
+.simstart { display: grid; gap: 12px }
+.simstart .start { justify-content: flex-start }
+.srsdone { display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline; padding: 12px 16px }
+.srsdone b { color: var(--ok) }
 .result-banner { border-radius: 12px; padding: 12px 14px; font-weight: 600; text-align: center; width: 100% }
 .result-banner.ok { background: var(--ok-soft); color: var(--ok) }
 .result-banner.bad { background: var(--warn-soft); color: var(--warn) }
@@ -543,6 +574,10 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
     <div class="dict-tools"><input type="search" id="dict-q" placeholder="Поиск по слову или переводу" aria-label="Поиск"><span class="small muted" id="dict-count"></span></div>
     <div class="sheet"><div class="wlist" id="wlist"></div></div>
   </section>
+
+  <!-- ПОХОЖИЕ ЗНАКИ -->
+  <div class="backbar" data-for="similar"><button class="link back" type="button" data-back="practice">← Практика</button></div>
+  <section id="screen-similar" class="simscreen" hidden></section>
 
   <!-- АЗБУКА -->
   <div class="backbar" data-for="abc"><button class="link back" type="button" data-back="practice">← Практика</button></div>
