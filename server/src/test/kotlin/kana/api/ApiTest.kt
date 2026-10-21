@@ -58,7 +58,7 @@ class ApiTest(@Autowired val mvc: MockMvc, @Autowired val om: ObjectMapper) {
         assertEquals("Павел", call(json(post("/api/auth/name"), mapOf("displayName" to "  Павел "), c)).body!!["displayName"].asText())
         assertEquals(400, call(json(post("/api/auth/name"), mapOf("displayName" to "x".repeat(41)), c)).status)
 
-        assertEquals(409, call(json(post("/api/auth/register"), mapOf("username" to u.uppercase(), "password" to "another-pass"))).status)
+        assertEquals(409, call(json(post("/api/auth/register"), mapOf("username" to u.uppercase(), "password" to "another-pass", "displayName" to "Двойник"))).status)
         assertEquals(400, call(json(post("/api/auth/register"), mapOf("username" to "a", "password" to "secret-pass"))).status)
         assertEquals(400, call(json(post("/api/auth/register"), mapOf("username" to uname(), "password" to "short"))).status)
 
