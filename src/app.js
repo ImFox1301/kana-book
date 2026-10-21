@@ -992,7 +992,8 @@
       register: () => window.KanaSync ? window.KanaSync.renderAuthPage($('#screen-register'), 'register') : setTimeout(() => { if (current === 'register') show('register'); }, 30),
       friends: () => { renderFriends(); loadFriends(); } })[name]?.();
     updateTabs();
-    if (name === 'login' || name === 'register') setTimeout(() => { const f = $('#screen-' + name + ' input'); if (f) f.focus(); }, 50);
+    // фокус в первое поле — только если пользователь ещё никуда не нажал (иначе текст уйдёт не в то поле)
+    if (name === 'login' || name === 'register') setTimeout(() => { const f = $('#screen-' + name + ' input'); if (f && (!document.activeElement || document.activeElement === document.body)) f.focus(); }, 50);
     renderStreak();
     window.scrollTo(0, 0);
   }
