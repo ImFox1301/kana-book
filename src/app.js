@@ -1471,10 +1471,7 @@
       h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Голос озвучки'), segm('Голос', [['m', 'Мужской'], ['f', 'Женский']], S.voice === 'f' ? 'f' : 'm', v => { S.voice = v; save(); renderSettings(); playKana('あ'); }),
         h('div', { class: 'd' }, 'VOICEVOX:青山龍星 (мужской), VOICEVOX:波音リツ (женский)')),
       h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Проверка рисунка'), segm('Строгость', [[0, 'Строго'], [1, 'Обычно'], [2, 'Мягко']], S.len, v => { S.len = v; save(); renderSettings(); })),
-      h('div', { class: 'set switch' }, h('div', {}, h('div', { class: 'lbl' }, 'Вибрация'), h('div', { class: 'd' },
-          navigator.vibrate ? 'Верный ответ — один импульс, ошибка — два'
-            : iosHaptics ? 'Системный тактильный отклик iPhone: верно — один щелчок, ошибка — два. Нужны включённые «Тактильные сигналы системы» в настройках звуков'
-              : 'Это устройство не даёт сайтам вибрировать (на iPhone отклик доступен с iOS 18)')),
+      h('div', { class: 'set switch' }, h('div', {}, h('div', { class: 'lbl' }, 'Вибрация'), h('div', { class: 'd' }, 'Тактильный отклик')),
         toggle('set-vibrate', S.vibrate && canBuzz(), v => { S.vibrate = v; save(); buzz(true); }, !canBuzz())),
       h('div', { class: 'set switch' }, h('div', {}, h('div', { class: 'lbl' }, 'Напоминания о занятиях'), h('div', { class: 'd' }, 'Появятся в одном из следующих обновлений')),
         toggle('set-notify', false, () => { }, true)));
