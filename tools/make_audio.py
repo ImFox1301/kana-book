@@ -39,7 +39,9 @@ VOICES = {"m": ("15.vvm", 13), "f": ("3.vvm", 9)}   # файл модели, id 
 kana_js = (root / "src" / "kana.js").read_text(encoding="utf-8").split("const GROUPS")[0]
 sounds = [k for m in re.finditer(r"h: '([^']+)'", kana_js) for k in m.group(1).split(" ")]
 to_kata = lambda s: "".join(chr(ord(c) + 0x60) if "ぁ" <= c <= "ゖ" else c for c in s)
-SAME = {"ヲ": "オ", "ヂ": "ジ", "ヅ": "ズ"}            # звучат одинаково; VOICEVOX их отдельно не принимает
+SAME = {"ヲ": "オ", "ヂ": "ジ", "ヅ": "ズ"}
+# сочетания для заимствований (урок катаканы «звуки заимствований»)
+sounds += "てぃ でぃ ふぁ ふぃ ふぇ ふぉ うぃ うぇ うぉ ゔ しぇ じぇ ちぇ でゅ".split()            # звучат одинаково; VOICEVOX их отдельно не принимает
 
 ort = Onnxruntime.load_once(filename=str(next(vv.glob("voicevox_onnxruntime-*/lib/libvoicevox_onnxruntime.so.*"))))
 syn = Synthesizer(ort, OpenJtalk(str(next(vv.glob("open_jtalk_dic_utf_8-*")))))
@@ -81,12 +83,27 @@ console.log(JSON.stringify(LESSONS.flatMap(l => l.words)));
 for w in lesson_words:
     if w[0] not in words: words.append(w[0])
     if len(w) > 2 and w[2] and w[0] not in WORD_TEXT: WORD_TEXT[w[0]] = w[2]
+# надписи из «Чтения в поездке»: [как написано, кана, значение]
+reading = _json.loads(subprocess.run(["node", "-e", "console.log(JSON.stringify(require('./src/reading.js').READING.flatMap(t => t.items)))"],
+                                     cwd=root, capture_output=True, text=True, check=True).stdout)
+for sign, kana, *_ in reading:
+    if kana not in words: words.append(kana)
+    if sign != kana and kana not in WORD_TEXT: WORD_TEXT[kana] = sign
 ONLY_MISSING = "--missing" in sys.argv
 
 def moras(aq):
     # «えい» на письме произносится как долгое «ээ»: エイゴ и エエゴ — одно и то же слово
     t = "".join(m.text for ap in aq.accent_phrases for m in ap.moras)
     return re.sub(r"([エケセテネヘメレゲゼデベペ])イ", r"\1エ", t)
+
+def natural_vowels(aq):
+    """Голос 青山龍星 растягивает подряд идущие гласные (いいえ звучало как «и… и… э»): ограничиваем
+    длительность слогов без согласного естественной величиной — как у женского голоса."""
+    ms = [m for ap in aq.accent_phrases for m in ap.moras]
+    for i, m in enumerate(ms):
+        if m.consonant is None and m.vowel in "aiueo":
+            m.vowel_length = min(m.vowel_length, 0.24 if i == len(ms) - 1 else 0.13)
+    return aq
 
 def word_query(kana, style):
     plain = syn.create_audio_query(kana, style)
@@ -111,7 +128,7 @@ for key, (vvm, style) in VOICES.items():
     wout.mkdir(parents=True, exist_ok=True)
     for kana in words:
         if ONLY_MISSING and (wout / f"{kana}.mp3").exists(): continue
-        aq = word_query(kana, style)
+        aq = natural_vowels(word_query(kana, style))
         aq.speed_scale = 0.9                      # чуть медленнее обычной речи
         aq.pre_phoneme_length, aq.post_phoneme_length = 0.06, 0.20
         x, sr = sf.read(io.BytesIO(syn.synthesis(aq, style)), dtype="float64")

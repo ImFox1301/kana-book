@@ -18,6 +18,9 @@ jobs:
       - name: Validate docker-compose.yml
         run: SITE_DOMAIN=example.com DB_PASSWORD=x docker compose -f docker-compose.yml config -q
 
+      - name: Lessons check (words use only learned kana, audio and strokes exist)
+        run: node tools/check_lessons.js
+
       - name: Recognizer self-test
         run: node tools/test.js | tee test.log && ! grep -q "level 0.6 top1 [0-8][0-9]\." test.log
 
@@ -86,7 +89,7 @@ jobs:
           npm i --no-save playwright@1.56.0 > /dev/null
           npx playwright install --with-deps chromium > /dev/null
           fail=0
-          for t in sync abc lessons srs; do
+          for t in sync abc lessons srs kata; do
             # провалы — в аннотации запуска, чтобы их было видно без скачивания логов
             node tools/e2e/$t-e2e.js http://localhost:8790 > $t.log 2>&1 || { fail=1; grep -E "FAIL|Error|ошибка|    at " $t.log | head -15 | sed "s/^/::error title=$t-e2e::/"; }
             cat $t.log

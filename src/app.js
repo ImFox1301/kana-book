@@ -175,7 +175,7 @@
   let Q = null;
   function startQuiz(items, count, opts = {}) {
     if (!opts.keepFlow && FLOW && FLOW.step !== 'quiz') FLOW = null;
-    Q = { deck: buildDeck(items, count), i: 0, results: [], mode: opts.mode || S.mode, sys: S.sys, len: S.len, pool: items, review: !!opts.review, back: opts.back || 'setup', again: opts.again || null };
+    Q = { deck: buildDeck(items, count), i: 0, results: [], mode: opts.mode || S.mode, sys: S.sys, len: S.len, pool: items, review: !!opts.review, back: opts.back || 'setup', again: opts.again || null, topic: opts.topic || null };
     show('quiz'); renderCard();
   }
   $('#btn-start').onclick = () => {
@@ -288,7 +288,7 @@
     const msg = h('div', { class: 'msg', role: 'status' });
     const isWord = it.kind === 'word';
     const mode = it.mode || Q.mode;
-    if (mode === 'listen' || mode === 'sim') return renderChoice(card, it, mode, msg);
+    if (mode === 'listen' || mode === 'sim' || mode === 'mean') return renderChoice(card, it, mode, msg);
     if (mode === 'draw') {
       const units = [...it.kana];
       const slotStrokes = units.map(() => []);
@@ -376,12 +376,71 @@
     const sk = soundKey(k), near = all.filter(c => { const o = soundKey(c); return o.slice(-1) === sk.slice(-1) || o[0] === sk[0]; });
     return shuffle([k, ...pickDistinct(k, sim.concat(pool, near, all), 3)]);
   }
+  // ---------- чтение в поездке ----------
+  const readingItem = (t, [sign, kana, mean, read]) => ({ kind: 'word', kana, w: { kana, mean, read, sign, kanji: hasKanji(sign) ? sign : undefined, topic: t.title, rtopic: t.id } });
+  const readingItems = t => t.items.map(x => readingItem(t, x));
+  const meaningOf = k => { const w = wordIndex().get(k); return w ? w.mean : k; };
+  function meanOptions(it) {
+    const t = READING.find(t => t.id === it.w.rtopic);
+    const same = t ? shuffle(readingItems(t)) : [];
+    const pool = shuffle(Q.pool.filter(x => x.kind === 'word' && x.w));
+    const all = shuffle(READING.flatMap(readingItems));
+    const out = [it.kana], seen = new Set([it.w.mean]);
+    for (const x of same.concat(pool, all)) { if (out.length >= 4) break; if (seen.has(x.w.mean) || out.includes(x.kana)) continue; seen.add(x.w.mean); out.push(x.kana); }
+    return shuffle(out);
+  }
+  function signplate(text) { return h('div', { class: 'signplate' + ([...text].length > 6 ? ' long' : ''), lang: 'ja' }, text); }
+  let RT = null;                                         // открытая тема чтения
+  function readingList() {
+    const box = h('div', { class: 'lessons' });
+    for (const t of READING) {
+      const best = (lessonsDone['r-' + t.id] || {}).quiz;
+      box.append(h('button', { type: 'button', class: 'lrow' + (best >= PASS * 100 ? ' done' : ''), onclick: () => { RT = t; show('reading'); } },
+        h('span', { class: 'n', lang: 'ja' }, best >= PASS * 100 ? '✓' : t.icon),
+        h('span', {}, h('div', { class: 't' }, t.title), h('div', { class: 'k' }, t.items.slice(0, 5).map(x => x[0]).join('・'))),
+        best ? h('span', { class: 'badge ' + (best >= PASS * 100 ? 'ok' : 'soon') }, best + '%') : h('span', { class: 'badge soon' }, t.items.length + ' надп.')));
+    }
+    return box;
+  }
+  function startReading(t, mode) {
+    const items = t ? readingItems(t) : shuffle(READING.flatMap(readingItems)).slice(0, 20);
+    const list = mode === 'type' ? items.filter(x => !hasKanji(x.w.sign)) : items;
+    FLOW = null;
+    startQuiz(list, list.length, { mode, back: 'reading', topic: t ? t.id : null, again: () => startReading(t, mode) });
+  }
+  function renderReading() {
+    const el = $('#screen-reading'); el.replaceChildren();
+    if (!RT) {
+      el.append(h('div', { class: 'backbar' }, h('button', { class: 'link back', type: 'button', onclick: () => show('practice') }, '← Практика')),
+        h('h1', { class: 'h1' }, 'Чтение в поездке'),
+        h('p', { class: 'small muted' }, 'Вывески, указатели и меню по темам. Надписи каной тренируются и на чтение, надписи иероглифами достаточно узнавать в лицо — чтение показывается после ответа. Шрифт — как на настоящих табличках, а не рукописный.'),
+        readingList(),
+        h('div', { class: 'actions', style: 'justify-content:flex-start' }, iconBtn('btn ghost', 'next', 'Все темы вперемешку', () => startReading(null, 'mean'))));
+      return;
+    }
+    const t = RT, items = readingItems(t), kanaOnly = items.filter(x => !hasKanji(x.w.sign));
+    el.append(h('div', { class: 'backbar' }, h('button', { class: 'link back', type: 'button', onclick: () => { RT = null; renderReading(); } }, '← Все темы')),
+      h('div', { class: 'hello' }, h('h1', { class: 'h1' }, t.title), (lessonsDone['r-' + t.id] || {}).quiz ? h('span', { class: 'badge ' + (lessonsDone['r-' + t.id].quiz >= PASS * 100 ? 'ok' : 'soon') }, `Лучший результат · ${lessonsDone['r-' + t.id].quiz}%`) : null),
+      h('p', { class: 'lintro-text' }, t.intro),
+      h('div', { class: 'actions', style: 'justify-content:flex-start' },
+        iconBtn('btn primary', 'next', `Что означает? · ${items.length}`, () => startReading(t, 'mean'), 'Квиз: выбрать значение надписи'),
+        kanaOnly.length ? iconBtn('btn ghost', 'next', `Прочитать · ${kanaOnly.length}`, () => startReading(t, 'type'), 'Квиз: написать чтение надписей каной') : null));
+    const list = h('div', { class: 'sheet rlist' });
+    for (const it of items) {
+      const rd = h('span', { class: 'rd hid', title: 'Нажмите, чтобы показать чтение', onclick: () => rd.classList.remove('hid') }, (hasKanji(it.w.sign) ? it.kana + ' · ' : '') + displayReading(it.kana, S.sys, it.w.read));
+      list.append(h('div', { class: 'ritem' }, signplate(it.w.sign), h('div', {}, h('div', { class: 'm' }, it.w.mean), rd), sayButton(it) || h('span')));
+    }
+    el.append(list);
+  }
+
   function renderChoice(card, it, mode, msg) {
     const isWord = it.kind === 'word';
-    const dir = mode === 'listen' ? 'listen' : (Math.random() < 0.5 ? 'k2r' : 'r2k');
-    const keys = mode === 'listen' ? listenOptions(it) : shuffle((it.group || [it.kana]).slice());
+    const dir = mode === 'listen' || mode === 'mean' ? mode : (Math.random() < 0.5 ? 'k2r' : 'r2k');
+    const keys = mode === 'listen' ? listenOptions(it) : mode === 'mean' ? meanOptions(it) : shuffle((it.group || [it.kana]).slice());
     const prompt = h('div', { class: 'prompt' });
-    if (mode === 'listen') {
+    if (mode === 'mean') {
+      prompt.append(h('span', { class: 'lab' }, 'Что означает надпись?'), signplate(it.w.sign || it.kana));
+    } else if (mode === 'listen') {
       const say = h('button', { class: 'iconbtn say big', type: 'button', 'aria-label': 'Прослушать ещё раз', onclick: () => play() }, svgIcon('sound'), 'Ещё раз');
       const play = () => isWord ? playWord(it.kana, say, it.w.kanji) : playKana(it.kana, say);
       prompt.append(h('span', { class: 'lab' }, isWord ? 'Какое слово прозвучало?' : 'Какой знак прозвучал?'), say,
@@ -392,11 +451,12 @@
     } else {
       prompt.append(h('span', { class: 'lab' }, 'Найдите знак'), h('span', { class: 'big' }, readingOf(it, Q.sys)), sayButton(it, 'Прослушать'));
     }
-    const asReading = dir === 'k2r';
-    const box = h('div', { class: 'choices' + (asReading ? '' : ' kana') + (isWord ? ' word' : '') + (keys.length === 4 ? ' four' : '') });
-    keys.forEach((k, i) => box.append(h('button', { type: 'button', class: 'choice', 'data-k': k, 'aria-label': asReading ? displayReading(k, Q.sys) : k,
+    const asText = dir === 'k2r' || dir === 'mean';
+    const label = k => dir === 'mean' ? meaningOf(k) : dir === 'k2r' ? displayReading(k, Q.sys) : k;
+    const box = h('div', { class: 'choices' + (asText ? '' : ' kana') + (isWord ? ' word' : '') + (dir === 'mean' ? ' mean' : '') + (keys.length === 4 ? ' four' : '') });
+    keys.forEach((k, i) => box.append(h('button', { type: 'button', class: 'choice', 'data-k': k, 'aria-label': label(k),
       onclick: () => finish({ it, status: k === it.kana ? 'ok' : 'bad', chosen: k, dir }) },
-      h('span', { class: 'n', 'aria-hidden': 'true' }, String(i + 1)), h('span', { class: 'v' }, asReading ? displayReading(k, Q.sys) : k))));
+      h('span', { class: 'n', 'aria-hidden': 'true' }, String(i + 1)), h('span', { class: 'v' }, label(k)))));
     card.append(prompt, box, msg, h('div', { class: 'actions' },
       iconBtn('btn ghost', 'skip', 'Пропустить', () => finish({ it, status: 'skip', dir }), 'Пропустить карточку и посмотреть ответ')));
   }
@@ -430,11 +490,14 @@
       h('div', { class: 'vtitle' }, status === 'ok' ? (res.taught ? 'Засчитано' : 'Верно') : status === 'bad' ? 'Неверно' : 'Пропущено'));
     const mode = res.mode || Q.mode;
     const reading = h('div', { class: 'vreading' }, h('div', { class: 'correct-reading' }, readingOf(it, Q.sys)), h('div', { class: 'small muted' }, readingOf(it, otherSys(Q.sys))), sayButton(it, 'Прослушать'));
-    if (mode === 'listen' || mode === 'sim') {
-      v.append(h('div', { class: 'kana' + (isWord ? ' word' : ''), style: 'font-family:var(--kana);font-size:' + (isWord ? '44px' : '64px') + ';line-height:1.1' }, it.kana), reading);
+    if (mode === 'listen' || mode === 'sim' || mode === 'mean') {
+      v.append(it.w && it.w.sign && it.w.sign !== it.kana ? signplate(it.w.sign) : h('div', { class: 'kana' + (isWord ? ' word' : ''), style: 'font-family:var(--kana);font-size:' + (isWord ? '44px' : '64px') + ';line-height:1.1' }, it.kana));
+      if (it.w && it.w.sign && it.w.sign !== it.kana) v.append(h('div', { class: 'kana-in', style: 'font-size:26px' }, it.kana));
+      v.append(reading);
       if (isWord) v.append(h('div', { class: 'meaning' }, it.w.mean));
-      if (status === 'bad' && res.chosen) {
-        const cw = isWord ? allWords().find(w => w.kana === res.chosen) : null;
+      if (status === 'bad' && res.chosen && mode === 'mean') v.append(h('div', { class: 'your' }, 'Вы выбрали: ', h('s', {}, meaningOf(res.chosen))));
+      else if (status === 'bad' && res.chosen) {
+        const cw = isWord ? wordIndex().get(res.chosen) : null;
         v.append(h('div', { class: 'your' }, 'Вы выбрали: ', h('s', { class: 'kana-in' }, res.chosen), ' — ' + displayReading(res.chosen, Q.sys, cw && cw.read) + (cw ? ' · ' + cw.mean : '')));
       }
       if (mode === 'sim' && it.group) v.append(h('div', { class: 'simrow' }, ...it.group.map(k => h('div', { class: k === it.kana ? 'on' : '' }, h('span', { class: 'k' }, k), h('span', { class: 'r' }, displayReading(k, Q.sys))))));
@@ -510,7 +573,7 @@
       const l = FLOW.lesson, pct = Math.round(ok / Math.max(1, Q.deck.length) * 100), passed = pct >= PASS * 100;
       markStep(l, 'quiz', pct);
       const next = LESSONS[LESSONS.indexOf(l) + 1];
-      el.prepend(h('div', { class: 'result-banner ' + (passed ? 'ok' : 'bad') }, passed ? `Урок ${lessonNo(l)} пройден: ${pct}%` : `${pct}% — для прохождения нужно ${PASS * 100}%. Повторите знакомство и попробуйте ещё раз.`));
+      el.prepend(h('div', { class: 'result-banner ' + (passed ? 'ok' : 'bad') }, passed ? `${lessonLabel(l)} пройден: ${pct}%` : `${pct}% — для прохождения нужно ${PASS * 100}%. Повторите знакомство и попробуйте ещё раз.`));
       el.append(h('div', { class: 'actions', style: 'justify-content:center' },
         passed && next ? iconBtn('btn primary', 'next', `Следующий урок: ${next.title}`, () => { FLOW = null; Q = null; openLesson(next); }) : null,
         iconBtn(passed ? 'btn ghost' : 'btn primary', 'undo', 'Пройти проверку ещё раз', () => startLessonQuiz(l)),
@@ -526,6 +589,11 @@
       return show('result');
     }
     const back = Q.back, again = Q.again;
+    if (Q.topic && rs.length === Q.deck.length) {
+      const pct = Math.round(ok / Q.deck.length * 100), id = 'r-' + Q.topic;
+      lessonsDone[id] = { quiz: Math.max(pct, (lessonsDone[id] || {}).quiz || 0) }; saveLessons();
+      el.prepend(h('div', { class: 'result-banner ' + (pct >= PASS * 100 ? 'ok' : 'bad') }, `${READING.find(t => t.id === Q.topic).title}: ${pct}%`));
+    }
     el.append(h('div', { class: 'actions', style: 'justify-content:center' },
       missedItems.length ? iconBtn('btn primary', 'undo', `Повторить ошибки (${missedItems.length})`, () => startQuiz(missedItems, missedItems.length * 2, { mode: Q.mode, back })) : null,
       again ? iconBtn('btn ghost', 'next', 'Ещё раз', again) : null,
@@ -833,8 +901,8 @@
 
   // ---------- переключение экранов ----------
   let current = 'home';
-  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me', 'similar'];
-  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice' };
+  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me', 'similar', 'reading'];
+  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice', reading: 'practice' };
   const tabOf = name => (FLOW && ['quiz', 'result', 'write'].includes(name)) ? 'lessons' : TAB_OF[name];
   const lastOf = { home: 'home', lessons: 'lessons', practice: 'practice', dict: 'dict', me: 'me' };
   function show(name) {
@@ -845,7 +913,7 @@
     document.querySelectorAll('.backbar[data-for]').forEach(b => { b.hidden = b.dataset.for !== name; });
     $('#bnav').hidden = name === 'onboard';
     document.querySelectorAll('#bnav button').forEach(x => { if (x.dataset.tab === tab) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current'); });
-    ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, onboard: renderOnboard, similar: renderSimilar })[name]?.();
+    ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, onboard: renderOnboard, similar: renderSimilar, reading: renderReading })[name]?.();
     renderStreak();
     window.scrollTo(0, 0);
   }
@@ -1104,14 +1172,17 @@
   const lessonState = l => lessonsDone[l.id] || {};
   const isDone = l => !!lessonState(l).done;
   function recommended() { return LESSONS.find(l => !isDone(l)) || null; }
-  const lessonNo = l => LESSONS.indexOf(l) + 1;
+  const lessonNo = l => LESSONS.filter(x => x.script === l.script).indexOf(l) + 1;   // номер внутри азбуки
+  const scriptName = l => l.script === 'k' ? 'катакана' : 'хирагана';
+  const lessonLabel = l => (l.script === 'k' ? 'Катакана, урок ' : 'Урок ') + lessonNo(l);
+  const lessonPreview = l => { const k = lessonKana(l); return k.length ? k.slice(0, 12).join(' ') + (k.length > 12 ? ' …' : '') : (l.extra || []).concat(l.id === 'h18' ? ['は', 'へ', 'を'] : []).join(' '); };
   let FLOW = null;                                      // { lesson, step } — квиз или прописи запущены из урока
   let curLesson = null;
 
   function lessonQuizItems(l) {
-    if (!l.rows.length) return l.words.map(([kana, mean, kanji, read]) => ({ kind: 'word', kana, w: { kana, mean, kanji, read, topic: 'Урок' } }));
+    if (!lessonKana(l).length) return l.words.map(([kana, mean, kanji, read]) => ({ kind: 'word', kana, w: { kana, mean, kanji, read, topic: 'Урок' } }));
     const own = lessonKana(l).map(k => ({ kind: 'kana', kana: k }));
-    const prev = LESSONS.slice(0, LESSONS.indexOf(l)).flatMap(x => lessonKana(x)).filter(k => k.length === 1);
+    const prev = LESSONS.slice(0, LESSONS.indexOf(l)).filter(x => x.script === l.script).flatMap(x => lessonKana(x)).filter(k => k.length === 1);
     const review = shuffle(prev.slice()).slice(0, Math.min(5, prev.length)).map(k => ({ kind: 'kana', kana: k }));
     return { own, review };
   }
@@ -1166,7 +1237,8 @@
   function wordIndex() {
     const m = new Map();
     for (const l of LESSONS) for (const [kana, mean, kanji, read] of l.words) m.set(kana, { kana, mean, kanji, read, topic: 'Урок' });
-    for (const w of allWords()) m.set(w.kana, w);
+    for (const t of READING) for (const it of readingItems(t)) if (!m.has(it.kana)) m.set(it.kana, it.w);
+    for (const w of allWords()) if (!m.has(w.kana) || !m.get(w.kana).sign) m.set(w.kana, w);
     return m;
   }
   const hasAudio = () => !!window.KANA_PWA;
@@ -1180,7 +1252,7 @@
       const canDraw = !s.w && [...s.k].every(c => KVG[bigOf(c)]);
       const canListen = s.w ? canSay(s.k) : hasAudio();
       // чем лучше знак выучен, тем сложнее задание: прочитать → узнать на слух → написать по памяти
-      it.mode = s.box >= 4 && canDraw ? 'draw' : s.box >= 2 && canListen && Math.random() < 0.5 ? 'listen' : 'type';
+      it.mode = s.w && it.w.kanji && it.w.sign ? 'mean' : s.box >= 4 && canDraw ? 'draw' : s.box >= 2 && canListen && Math.random() < 0.5 ? 'listen' : 'type';
       out.push(it);
     }
     return out;
@@ -1248,19 +1320,24 @@
     const el = $('#screen-lessons'); el.replaceChildren();
     const rec = recommended();
     el.append(h('h1', { class: 'h1' }, 'Уроки'),
-      h('p', { class: 'small muted' }, 'Сначала хирагана, затем катакана. Все уроки открыты; рекомендуем идти по порядку.'),
-      h('h2', { class: 'h2' }, `Хирагана · пройдено ${LESSONS.filter(isDone).length} из ${LESSONS.length}`));
+      h('p', { class: 'small muted' }, 'Сначала хирагана, затем катакана. Все уроки открыты; рекомендуем идти по порядку.'));
+    for (const [sc, name] of [['h', 'Хирагана'], ['k', 'Катакана']]) {
+    const ls = LESSONS.filter(l => l.script === sc);
+    el.append(h('h2', { class: 'h2' }, `${name} · пройдено ${ls.filter(isDone).length} из ${ls.length}`));
     const list = h('div', { class: 'lessons' });
-    for (const l of LESSONS) {
+    for (const l of ls) {
       const st = lessonState(l), done = !!st.done, isRec = rec === l;
-      const kana = l.rows.length ? lessonKana(l).slice(0, 12).join(' ') + (lessonKana(l).length > 12 ? ' …' : '') : 'っ ー は へ を';
+      const kana = lessonPreview(l);
       list.append(h('button', { type: 'button', class: 'lrow' + (done ? ' done' : '') + (isRec ? ' rec' : ''), onclick: () => openLesson(l) },
         h('span', { class: 'n' }, done ? '✓' : String(lessonNo(l))),
         h('span', {}, h('div', { class: 't' }, l.title), h('div', { class: 'k' }, kana)),
         done ? h('span', { class: 'badge ok' }, `${st.quiz}%`) : isRec ? h('span', { class: 'badge rec' }, 'Следующий') : st.intro || st.write || st.quiz ? h('span', { class: 'badge soon' }, 'начат') : null));
     }
-    el.append(list, h('h2', { class: 'h2' }, 'Катакана'),
-      h('div', { class: 'lrow', style: 'cursor:default' }, h('span', { class: 'n' }, 'ア'), h('span', {}, h('div', { class: 't' }, 'Уроки катаканы'), h('div', { class: 'small muted' }, 'Появятся на следующем этапе')), h('span', { class: 'badge soon' }, 'скоро')));
+    el.append(list);
+    }
+    el.append(h('h2', { class: 'h2' }, 'Чтение в поездке'),
+      h('p', { class: 'small muted' }, 'Вывески, указатели и меню по темам — когда знаки уже знакомы.'),
+      readingList());
   }
 
   // ---------- экран урока ----------
@@ -1272,7 +1349,7 @@
     const kanas = lessonKana(l);
     el.append(h('div', { class: 'backbar' }, h('button', { class: 'link back', type: 'button', onclick: () => show('lessons') }, '← Уроки')));
     const head = h('div', { class: 'lhead' },
-      h('div', { class: 'small muted' }, `Урок ${lessonNo(l)} · хирагана`),
+      h('div', { class: 'small muted' }, `Урок ${lessonNo(l)} · ${scriptName(l)}`),
       h('div', { class: 'hello' }, h('h1', { class: 'h1' }, l.title), st.done ? h('span', { class: 'badge ok' }, `Пройден · ${st.quiz}%`) : recommended() === l ? h('span', { class: 'badge rec' }, 'Рекомендуемый') : null));
     if (kanas.length) {
       const row = h('div', { class: 'lkana' });
@@ -1284,9 +1361,9 @@
 
     const writable = lessonWritable(l);
     const steps = [
-      { key: 'intro', t: 'Знакомство', d: l.rows.length ? `${kanas.length} ${plural(kanas.length, 'знак', 'знака', 'знаков')}: произношение, порядок штрихов, как запомнить` : 'Пауза っ, долгие гласные и частицы', go: () => startIntro(l) },
+      { key: 'intro', t: 'Знакомство', d: kanas.length ? `${kanas.length} ${plural(kanas.length, kanas.some(k => k.length > 1) ? 'сочетание' : 'знак', kanas.some(k => k.length > 1) ? 'сочетания' : 'знака', kanas.some(k => k.length > 1) ? 'сочетаний' : 'знаков')}: произношение, ${writable.length ? 'порядок штрихов, ' : ''}как запомнить` : (l.points || []).map(p => p[0]).join(', '), go: () => startIntro(l) },
       writable.length ? { key: 'write', t: 'Прописи', d: 'Каждый знак 5 раз: 3 по подложке, 2 по памяти', go: () => startLessonWrite(l) } : null,
-      { key: 'quiz', t: 'Проверка', d: `Квиз на чтение${l.rows.length ? ' с повторением прошлых уроков' : ' слов'}. Нужно ${PASS * 100}% верных`, go: () => startLessonQuiz(l) },
+      { key: 'quiz', t: 'Проверка', d: `Квиз на чтение${kanas.length ? (lessonNo(l) > 1 ? ' с повторением прошлых уроков' : '') : ' слов'}. Нужно ${PASS * 100}% верных`, go: () => startLessonQuiz(l) },
     ].filter(Boolean);
     const sl = h('div', { class: 'steps' });
     steps.forEach((s, i) => {
@@ -1325,8 +1402,8 @@
   let IN = null;
   function startIntro(l) { IN = { l, i: 0 }; FLOW = { lesson: l, step: 'intro' }; show('lintro'); renderIntro(); }
   function introCards(l) {
-    if (!l.rows.length) return (l.points || []).map(([t, p]) => ({ point: true, t, p })).concat(l.similar.length ? [{ similar: true }] : []);
-    return lessonKana(l).map(k => ({ k, note: l.notes[k] || l.notes[toHira(k)] || null })).concat(l.similar.length ? [{ similar: true }] : []);
+    const points = (l.points || []).map(([t, p]) => ({ point: true, t, p }));
+    return points.concat(lessonKana(l).map(k => ({ k, note: l.notes[k] || l.notes[toHira(k)] || null }))).concat(l.similar.length ? [{ similar: true }] : []);
   }
   function renderIntro() {
     const l = IN.l, cards = introCards(l), c = cards[IN.i];
@@ -1377,6 +1454,7 @@
     lesson: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
     review: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="13" height="14" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v12"/><path d="M7 14l2 2 4-4"/></svg>',
     listen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>',
+    reading: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="11" rx="2"/><path d="M12 15v6M8 21h8M7 9h10"/></svg>',
     similar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9c2-2 4-2 6 0s4 2 6 0 3-1.5 4-1"/><path d="M4 15c2-2 4-2 6 0s4 2 6 0 3-1.5 4-1"/></svg>',
     weak: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4"/></svg>',
     quiz: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>',
@@ -1406,9 +1484,9 @@
     if (rec) {
       const st = lessonState(rec), started = st.intro || st.write || st.quiz;
       const kanas = lessonKana(rec);
-      box.append(cta('lesson', `${started ? 'Продолжить' : 'Начать'}: урок ${lessonNo(rec)}`, rec.title, kanas.length ? kanas.slice(0, 8).join(' ') : null, () => openLesson(rec), 'main'));
+      box.append(cta('lesson', `${started ? 'Продолжить' : 'Начать'}: ${lessonLabel(rec).replace(/^Урок/, 'урок')}`, rec.title, kanas.length ? kanas.slice(0, 8).join(' ') : null, () => openLesson(rec), 'main'));
     } else {
-      box.append(cta('lesson', 'Все уроки хираганы пройдены', 'Уроки катаканы появятся в следующем обновлении', null, () => show('lessons'), 'main'));
+      box.append(cta('lesson', 'Все уроки пройдены', 'Хирагана и катакана выучены — дальше чтение вывесок и меню', null, () => show('reading'), 'main'));
     }
     if (!fc.due && fc.total) box.append(h('div', { class: 'sheet srsdone small' }, h('b', {}, '○ Повторение на сегодня выполнено'), h('span', { class: 'muted' }, fc.tomorrow ? ` · завтра ${fc.tomorrow} ${plural(fc.tomorrow, 'знак', 'знака', 'знаков')}` : '')));
     const weak = weakKana();
@@ -1442,6 +1520,7 @@
         cta('abc', 'Азбука и прописи', 'Таблицы с озвучкой, прописи выбранных знаков с подложкой', null, () => show('abc')),
         cta('listen', 'Квиз на слух', 'Звучит знак или слово — выберите, как он пишется', null, () => openListenSetup()),
         cta('similar', 'Похожие знаки', 'シ・ツ・ソ・ン, ぬ・め, ね・れ・わ: выбор из похожих и подсказки, как различать', null, () => show('similar')),
+        cta('reading', 'Чтение в поездке', 'Вывески, указатели и меню: еда, транспорт, магазины, отель, улица', null, () => { RT = null; show('reading'); }),
         weak.length ? cta('weak', 'Слабые знаки', 'Квиз по знакам, на которых вы чаще ошибаетесь', weak.map(w => w.ch).slice(0, 10).join(' '), () => { const items = weak.map(w => ({ kind: 'kana', kana: w.ch })); startQuiz(items, items.length * 2, { mode: 'type' }); }) : null));
   }
 
@@ -1509,9 +1588,9 @@
     try {
       if (!window.PDFLib) await loadScript('vendor/pdf-lib.min.js');
       if (!window.fontkit) await loadScript('vendor/fontkit.umd.min.js');
-      const ctx = { no: lessonNo(l), kana: kind === 'sheet' ? lessonWritable(l) : lessonKana(l), read: (k, sys, ov) => displayReading(k, sys, ov), sys: S.sys };
+      const ctx = { no: lessonNo(l), scriptName: scriptName(l), kana: kind === 'sheet' ? lessonWritable(l) : lessonKana(l), read: (k, sys, ov) => displayReading(k, sys, ov), sys: S.sys };
       const bytes = await window.KanaPdf[kind === 'sheet' ? 'sheet' : 'notes'](l, ctx);
-      const name = `Урок ${lessonNo(l)} — ${kind === 'sheet' ? 'прописи' : 'конспект'}.pdf`;
+      const name = `${lessonLabel(l)} — ${kind === 'sheet' ? 'прописи' : 'конспект'}.pdf`;
       deliverFile(bytes, name, 'application/pdf');
       if (msg) msg.textContent = 'Готово: ' + name;
       window.__lastPdf = { name, size: bytes.length };
@@ -1567,7 +1646,7 @@
       store.set('lessons', lessonsDone); store.set('activity', activity);
       applying = false;
       loadSamples();
-      ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, similar: renderSimilar })[current]?.();
+      ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, similar: renderSimilar, reading: renderReading })[current]?.();
       renderStreak();
     },
     resetLocal() {
@@ -1578,6 +1657,6 @@
     rerender() { if (current === 'me') renderMe(); },
   };
 
-  window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next, show, openLesson, get lessonsDone() { return lessonsDone; }, dayTotals, todayKey, buzz, srsState, srsDue, srsForecast, startReview, startSim, confusions };
+  window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next, show, openLesson, get lessonsDone() { return lessonsDone; }, dayTotals, todayKey, buzz, srsState, srsDue, srsForecast, startReview, startSim, confusions, startReading };
   show(S.onboarded ? 'home' : 'onboard');
 })();

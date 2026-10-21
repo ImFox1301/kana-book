@@ -368,6 +368,21 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
 .simg .d { font-size: 12.5px; color: var(--ink-2); line-height: 1.4 }
 .simstart { display: grid; gap: 12px }
 .simstart .start { justify-content: flex-start }
+/* ---- чтение в поездке: таблички ---- */
+.signplate { display: inline-block; font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Noto Sans CJK JP", "Yu Gothic", Meiryo, sans-serif; font-weight: 700; font-size: 44px; line-height: 1.15; letter-spacing: .06em;
+  color: #fff; background: #23395d; border: 3px solid #fff; outline: 2px solid #23395d; border-radius: 8px; padding: 10px 22px; box-shadow: 0 3px 10px rgba(20, 30, 50, .18); max-width: 100%; overflow-wrap: anywhere }
+.signplate.long { font-size: 32px }
+.choices.mean { grid-template-columns: 1fr; max-width: 460px }
+.choices.mean .choice { font: 600 16px/1.35 var(--ui); min-height: 54px; text-align: left; place-items: center start; padding: 12px 16px 12px 30px }
+.rlist { display: grid; gap: 0; padding: 6px 14px }
+.ritem { display: grid; grid-template-columns: minmax(96px, auto) 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule) }
+.ritem:last-child { border-bottom: 0 }
+.ritem .signplate { font-size: 20px; padding: 4px 10px; border-width: 2px; outline-width: 1px; box-shadow: none; justify-self: start }
+.ritem .m { font-weight: 600 }
+.ritem .rd { font-size: 13px; color: var(--ink-2); cursor: pointer }
+.ritem .rd.hid { filter: blur(5px); user-select: none }
+@media (max-width: 420px) { .signplate { font-size: 36px } .signplate.long { font-size: 26px } }
+.ritem .signplate, .ritem .signplate.long { font-size: 18px }
 .srsdone { display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline; padding: 12px 16px }
 .srsdone b { color: var(--ok) }
 .result-banner { border-radius: 12px; padding: 12px 14px; font-weight: 600; text-align: center; width: 100% }
@@ -579,6 +594,9 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
   <div class="backbar" data-for="similar"><button class="link back" type="button" data-back="practice">← Практика</button></div>
   <section id="screen-similar" class="simscreen" hidden></section>
 
+  <!-- ЧТЕНИЕ В ПОЕЗДКЕ -->
+  <section id="screen-reading" class="simscreen" hidden></section>
+
   <!-- АЗБУКА -->
   <div class="backbar" data-for="abc"><button class="link back" type="button" data-back="practice">← Практика</button></div>
   <section id="screen-abc" hidden>
@@ -620,5 +638,6 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
 <script>/*KANA*/</script>
 <script>/*LESSONS*/</script>
 <script>/*WORDS*/</script>
+<script>/*READING*/</script>
 <script>/*PDF*/</script>
 <script>/*APP*/</script>

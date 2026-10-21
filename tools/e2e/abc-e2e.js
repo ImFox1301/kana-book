@@ -98,7 +98,7 @@ async function draw(page, ch) {
   await page.waitForTimeout(300);
   check(tts.some(u => u.includes('t=うさぎ') && u.includes('k=兎')), 'при добавлении слово сразу озвучивается сервером (с иероглифами)');
   await page.click('button[aria-label="Прослушать うさぎ"]'); await page.waitForTimeout(300);
-  check(await page.evaluate(() => caches.has('tts-v1')), 'озвучка своего слова сохранена для офлайна');
+  check(await page.evaluate(() => caches.has('tts-v2')), 'озвучка своего слова сохранена для офлайна');
   await openQuizSetup(page);
   await page.click('.opt:has(.t:text-is("Слова"))'); await page.click('.opt:has(.t:text-is("Обратный перевод"))');
   await page.click('#btn-start');

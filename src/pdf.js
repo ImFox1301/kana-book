@@ -92,8 +92,8 @@ window.KanaPdf = (function () {
   async function notes(l, ctx) {
     const P = window.PDFLib, doc = await P.PDFDocument.create(), F = await fonts(doc);
     const ink = P.rgb(0.11, 0.13, 0.15), muted = P.rgb(0.34, 0.37, 0.4), accent = P.rgb(0.18, 0.31, 0.53);
-    doc.setTitle(`Урок ${ctx.no}. ${l.title} — конспект`); doc.setAuthor('Кана-тетрадь');
-    const pg = pager(doc, F, P, `Урок ${ctx.no} · хирагана · конспект`);
+    doc.setTitle(`${l.title} — конспект`); doc.setAuthor('Кана-тетрадь');
+    const pg = pager(doc, F, P, `Урок ${ctx.no} · ${ctx.scriptName || 'хирагана'} · конспект`);
     pg.add();
     pg.text(l.title, 22, { bold: true }); pg.y -= 4;
     pg.text(l.intro, 10.5, { color: muted }); pg.y -= 10;
@@ -108,7 +108,10 @@ window.KanaPdf = (function () {
       const top = pg.y;
       // крупный образец с номерами штрихов
       if (KVG[k]) { cell(pg.page, P, M, top, 80, { strong: true }); drawKana(pg.page, P, k, M + 4, top - 4, 72, { numbers: true, F, weight: 5.5 }); }
-      else drawLine(pg.page, k, M + 6, top - 62, F, 54, ink);
+      else if ([...k].every(c => KVG[c])) {
+        // сочетание (きゃ, ティ): знаки рядом в двух клетках, маленький — в нижней половине своей клетки
+        [...k].forEach((c, i) => { cell(pg.page, P, M + i * 40, top - 20, 40, { strong: true }); drawKana(pg.page, P, c, M + i * 40 + 2, top - 22, 36, { weight: 5 }); });
+      } else drawLine(pg.page, k, M + 6, top - 62, F, k.length > 1 ? 36 : 54, ink);
       drawLine(pg.page, k, textX, top - 20, F, 20, ink);
       drawLine(pg.page, `${ctx.read(k, 'ru')} · ${ctx.read(k, 'lat')}`, textX + (k.length > 1 ? 50 : 30), top - 18, F, 13, accent, true);
       let y = top - 34;
@@ -160,8 +163,8 @@ window.KanaPdf = (function () {
   async function sheet(l, ctx) {
     const P = window.PDFLib, doc = await P.PDFDocument.create(), F = await fonts(doc);
     const ink = P.rgb(0.11, 0.13, 0.15), accent = P.rgb(0.18, 0.31, 0.53);
-    doc.setTitle(`Урок ${ctx.no}. ${l.title} — прописи`); doc.setAuthor('Кана-тетрадь');
-    const pg = pager(doc, F, P, `Урок ${ctx.no} · хирагана · прописи`);
+    doc.setTitle(`${l.title} — прописи`); doc.setAuthor('Кана-тетрадь');
+    const pg = pager(doc, F, P, `Урок ${ctx.no} · ${ctx.scriptName || 'хирагана'} · прописи`);
     pg.add();
     pg.text(`Прописи: ${l.title}`, 18, { bold: true });
     pg.text('В первой клетке — образец с порядком штрихов. Обведите бледные знаки, затем пишите сами в пустых клетках.', 9.5, { color: P.rgb(0.34, 0.37, 0.4) });

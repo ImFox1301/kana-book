@@ -1,7 +1,7 @@
 // Service worker Кана-тетради. VERSION и ASSETS подставляет build.py при каждой сборке.
 const VERSION = '__VERSION__';
 const CACHE = 'kana-' + VERSION;
-const TTS_CACHE = 'tts-v1';   // не зависит от версии приложения — переживает обновления
+const TTS_CACHE = 'tts-v2';   // не зависит от версии приложения — переживает обновления
 const ASSETS = __ASSETS__;
 
 self.addEventListener('install', event => {
@@ -11,7 +11,7 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
-    for (const key of await caches.keys()) if (key.startsWith('kana-') && key !== CACHE) await caches.delete(key);
+    for (const key of await caches.keys()) if ((key.startsWith('kana-') && key !== CACHE) || (key.startsWith('tts-') && key !== TTS_CACHE)) await caches.delete(key);
     await self.clients.claim();
   })());
 });
