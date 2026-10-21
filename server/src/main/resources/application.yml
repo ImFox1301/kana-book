@@ -31,6 +31,9 @@ kana:
   cookie-secure: ${COOKIE_SECURE:true}
   session-days: 180
   registration-open: ${REGISTRATION_OPEN:true}
+  push:
+    # контакт для push-сервисов (VAPID); пусто — адрес сайта, на котором подписались
+    subject: ${PUSH_SUBJECT:}
 
 logging:
   level:
