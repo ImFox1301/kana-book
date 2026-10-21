@@ -1830,12 +1830,13 @@
     }
     if (FR.msg) el.append(h('div', { class: 'okmsg', role: 'status', id: 'friends-msg' }, FR.msg));
     // пригласить и найти
-    const q = h('input', { id: 'friend-q', placeholder: 'Логин друга, например pavel_k', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Логин друга' });
+    const q = h('input', { id: 'friend-q', placeholder: 'Логин друга, например pavel_k', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Логин друга', value: FR.q || '' });
+    q.addEventListener('input', () => { FR.q = q.value; });   // список подгружается позже — введённое не теряется
+    const hadFocus = document.activeElement && document.activeElement.id === 'friend-q';
     const search = async () => {
-      const v = q.value.trim(); if (!v) return;
+      const v = (FR.q || q.value).trim(); if (!v) return;
       const r = await api('/friends/search', { q: v });
       FR.found = r.status === 200 ? r.data : { error: r.data.error || 'Никого не нашли' }; FR.msg = ''; renderFriends();
-      const nq = $('#friend-q'); if (nq) nq.value = v;
     };
     q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); search(); } });
     const add = h('div', { class: 'sheet', style: 'display:grid;gap:10px' },
@@ -1852,6 +1853,7 @@
             : h('span', { class: 'small muted' }, { me: 'это вы', friend: 'уже в друзьях', requested: 'заявка отправлена' }[f.state])));
     }
     el.append(add);
+    if (hadFocus) { const nq = $('#friend-q'); nq.focus(); nq.setSelectionRange(nq.value.length, nq.value.length); }
     const d = FR.data;
     if (!d) { if (!FR.loading) loadFriends(); el.append(h('p', { class: 'muted small' }, 'Загружаю…')); return; }
     if (d.incoming.length) el.append(h('div', { class: 'sheet', id: 'incoming' }, h('b', {}, 'Хотят добавить вас в друзья'),
