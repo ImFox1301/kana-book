@@ -110,7 +110,8 @@ async function build(page, wrong) {
   // разрешение на уведомления спрашивается сразу после входа — ради заявок в друзья; напоминания при этом выключены
   await pp.waitForFunction(() => window.__pushKey === 65, null, { timeout: 10000 });
   const t0 = Date.now();
-  await pp.waitForFunction(() => fetch('/api/push/prefs').then(r => r.json()).then(p => p.devices === 1), null, { timeout: 40000, polling: 500 }).catch(() => { });
+  // ответ подписки приходит чуть позже вызова subscribe() — ждём, пока сервер её увидит (в Node: waitForFunction не ждёт промисов из fetch)
+  for (let i = 0; i < 80; i++) { const p = await pp.evaluate(() => fetch('/api/push/prefs').then(r => r.json())); if (p.devices === 1) break; await pp.waitForTimeout(250); }
   const waited = Date.now() - t0;
   let pr = await pp.evaluate(() => fetch('/api/push/prefs').then(r => r.json()));
   check(pr.devices === 1 && pr.enabled === false, 'после регистрации устройство подписано на уведомления, напоминания выключены: ' + JSON.stringify(pr) + ' ответы: ' + JSON.stringify(subRes) + ' запросы: ' + JSON.stringify(calls) + ' консоль: ' + JSON.stringify(logs) + ` (ждали ${waited} мс)`);
