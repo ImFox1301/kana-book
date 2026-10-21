@@ -58,19 +58,21 @@ data class Message(val title: String, val body: String, val tag: String = "remin
 /** Ключи VAPID: создаются при первом запуске и хранятся в базе — подписки браузеров привязаны к открытому ключу. */
 @Component
 class VapidKeys(jdbc: JdbcTemplate) {
-    val private: PrivateKey
+    val privateKey: PrivateKey
     val publicRaw: ByteArray
 
     init {
         val stored = jdbc.queryForList("select v from kv where k = 'vapid'", String::class.java).firstOrNull()
-        if (stored != null) {
+        val pair: Pair<PrivateKey, ByteArray> = if (stored != null) {
             val (priv, pub) = stored.split('.')
-            private = WebPush.privateFromPkcs8(WebPush.unb64(priv)); publicRaw = WebPush.unb64(pub)
+            WebPush.privateFromPkcs8(WebPush.unb64(priv)) to WebPush.unb64(pub)
         } else {
             val kp = WebPush.newKeyPair()
-            private = kp.private; publicRaw = WebPush.raw(kp.public as ECPublicKey)
-            jdbc.update("insert into kv (k, v) values ('vapid', ?) on conflict (k) do nothing", WebPush.b64(WebPush.pkcs8(private)) + "." + WebPush.b64(publicRaw))
+            val pub = WebPush.raw(kp.public as ECPublicKey)
+            jdbc.update("insert into kv (k, v) values ('vapid', ?) on conflict (k) do nothing", WebPush.b64(WebPush.pkcs8(kp.private)) + "." + WebPush.b64(pub))
+            kp.private to pub
         }
+        privateKey = pair.first; publicRaw = pair.second
     }
     val publicB64: String get() = WebPush.b64(publicRaw)
 }
@@ -158,7 +160,7 @@ class PushService(private val jdbc: JdbcTemplate, private val keys: VapidKeys, p
             val code = runCatching {
                 val u = URI(s.endpoint)
                 val aud = "${u.scheme}://${u.host}" + (if (u.port > 0) ":${u.port}" else "")
-                transport.send(s, WebPush.encrypt(payload, s.p256dh, s.auth), WebPush.vapid(aud, subject(), keys.private, keys.publicRaw), 12 * 3600)
+                transport.send(s, WebPush.encrypt(payload, s.p256dh, s.auth), WebPush.vapid(aud, subject(), keys.privateKey, keys.publicRaw), 12 * 3600)
             }.getOrElse { log.warn("push {}: {}", s.id, it.message); -1 }
             when {
                 code in 200..299 -> sent++
