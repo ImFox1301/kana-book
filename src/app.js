@@ -1237,8 +1237,9 @@
   function wordIndex() {
     const m = new Map();
     for (const l of LESSONS) for (const [kana, mean, kanji, read] of l.words) m.set(kana, { kana, mean, kanji, read, topic: 'Урок' });
-    for (const t of READING) for (const it of readingItems(t)) if (!m.has(it.kana)) m.set(it.kana, it.w);
-    for (const w of allWords()) if (!m.has(w.kana) || !m.get(w.kana).sign) m.set(w.kana, w);
+    for (const w of allWords()) m.set(w.kana, w);
+    // надпись из «Чтения в поездке» важнее: у неё есть вид таблички (駅, 出口), повторение показывает именно её
+    for (const t of READING) for (const it of readingItems(t)) m.set(it.kana, it.w);
     return m;
   }
   const hasAudio = () => !!window.KANA_PWA;

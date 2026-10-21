@@ -19,7 +19,7 @@ async function finishQuiz(page, wrongKanji) {
   const n = await page.evaluate(() => __kana.Q.deck.length);
   let missed = false;
   for (let i = 0; i < n; i++) {
-    const kj = wrongKanji && !missed && await page.evaluate(() => { const it = __kana.Q.deck[__kana.Q.i]; return !!(it.w && it.w.kanji); });
+    const kj = wrongKanji && !missed && await page.evaluate(k => __kana.Q.deck[__kana.Q.i].kana === k, wrongKanji);
     if (kj) missed = true;
     await answer(page, kj);
   }
@@ -92,7 +92,7 @@ async function finishQuiz(page, wrongKanji) {
   const c = await page.evaluate(() => ({ sign: document.querySelector('#card .signplate').textContent, opts: [...document.querySelectorAll('#card .choice')].map(b => b.textContent.slice(1)) }));
   check(c.opts.length === 4 && new Set(c.opts).size === 4, 'табличка ' + c.sign + ' и 4 разных значения');
   await page.screenshot({ path: SHOTS + '/reading-card.png', fullPage: true });
-  await finishQuiz(page, true);   // одна ошибка — на надписи иероглифами
+  await finishQuiz(page, 'えき');   // одна ошибка — на 駅 (это слово есть и в уроке хираганы)
   check((await page.textContent('#screen-result')).includes('Транспорт: 94%'), 'итог темы: 17 из 18 — 94%');
   await page.click('#screen-result .btn:has-text("Готово")');
   check((await page.textContent('#screen-reading')).includes('94%'), 'лучший результат темы показан в списке');
