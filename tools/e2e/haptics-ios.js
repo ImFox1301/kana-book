@@ -16,7 +16,7 @@ const { ready } = require('./common.js');
   await p.evaluate(() => __kana.buzz(true)); const one = await p.evaluate(() => __clicks);
   await p.evaluate(() => __kana.buzz(false)); await p.waitForTimeout(300); const three = await p.evaluate(() => __clicks);
   await p.click('#tab-me'); const txt = await p.textContent('#settings'); const enabled = await p.isEnabled('#set-vibrate');
-  const ok = one === 1 && three === 3 && txt.includes('щелчок') && enabled;
+  const ok = one === 1 && three === 3 && txt.includes('Тактильный отклик') && enabled;
   console.log((ok ? 'ok   ' : 'FAIL ') + `iPhone: верно — ${one} щелчок, ошибка — ${three - one}; переключатель ${enabled ? 'доступен' : 'недоступен'}`);
   await b.close(); process.exit(ok ? 0 : 1);
 })();
