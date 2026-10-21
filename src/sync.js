@@ -103,10 +103,73 @@ window.KanaSync = (function () {
     ui.busy = false;
     if (r.status !== 200 && r.status !== 201) { ui.error = r.data.error || 'Не получилось, попробуйте ещё раз'; rerender(); return; }
     if (!r.data.username) { ui.error = 'Сервер аккаунтов пока недоступен. Занимайтесь без входа — данные сохраняются на устройстве.'; rerender(); return; }
-    account = { username: r.data.username, displayName: r.data.displayName || null }; cursor = 0; snap = {}; lastSync = 0; saveState();
-    ui.error = ''; ui.editName = false;
-    if (window.KanaApp && window.KanaApp.open) window.KanaApp.open('me'); else rerender();
-    syncNow();
+    signedIn(r.data);
+  }
+  const fromMe = d => ({ username: d.username, displayName: d.displayName || null, linked: !!d.linked, telegram: d.telegram || null, hasPassword: d.hasPassword !== false });
+  async function signedIn(data) {
+    account = fromMe(data); cursor = 0; snap = {}; lastSync = 0; saveState();
+    ui.error = ''; ui.editName = false; stopTg();
+    await syncNow();              // сначала забрать аккаунт (цель, прогресс), потом решать, что показать
+    await refreshMe();
+    if (window.KanaApp && window.KanaApp.afterLogin) window.KanaApp.afterLogin(); else rerender();
+  }
+
+  // ---------- Telegram: вход и привязка телефона ----------
+  // Приложение создаёт попытку, пользователь открывает бота по ссылке, бот просит номер (или подтверждение),
+  // приложение раз в 2 секунды узнаёт результат.
+  let tgEnabled = null, tg = null;   // tg: { kind, nonce, secret, link, state, msg, timer }
+  async function tgConfig() { if (tgEnabled === null) { const r = await api('/tg/config'); tgEnabled = r.status === 200 && !!r.data.enabled; } return tgEnabled; }
+  async function tgPrepare(kind) {
+    if (tg && tg.kind === kind && tg.link && Date.now() - tg.at < 8 * 60000) return;
+    stopTg();
+    const r = await api(kind === 'login' ? '/tg/login' : '/tg/link', {});
+    if (r.status !== 200) { tg = { kind, state: 'error', msg: r.data.error || 'Telegram сейчас недоступен' }; rerender(); return; }
+    tg = { kind, nonce: r.data.nonce, secret: r.data.secret, link: r.data.link, state: 'ready', at: Date.now() };
+    rerender();
+  }
+  function stopTg() { if (tg && tg.timer) clearInterval(tg.timer); tg = null; }
+  function tgOpened() {
+    if (!tg || !tg.nonce) return;
+    tg.state = 'waiting'; rerender();
+    if (tg.timer) return;
+    tg.timer = setInterval(tgPoll, 2000);
+  }
+  const TG_TEXT = {
+    waiting: 'Ждём ответа из Telegram… Нажмите «Старт» в боте.',
+    need_contact: 'В боте нажмите «Поделиться номером».',
+    confirm: 'Подтвердите вход в боте кнопкой «Войти».',
+    denied: 'Вход отклонён в Telegram.',
+    expired: 'Ссылка устарела — откройте Telegram ещё раз.',
+    used: 'Эта ссылка уже использована.',
+  };
+  async function tgPoll() {
+    if (!tg || !tg.nonce) return;
+    const cur = tg;
+    const r = await api('/tg/status', { nonce: cur.nonce, secret: cur.secret });
+    if (tg !== cur) return;
+    if (r.status !== 200) { if (r.status === 404) { stopTg(); rerender(); } return; }
+    const st = r.data.status;
+    if (st === 'ok') { clearInterval(cur.timer); tg = null; signedIn(r.data); return; }
+    if (st === 'linked') { clearInterval(cur.timer); tg = null; await refreshMe(); ui.notice = 'Телефон привязан. Теперь доступны друзья.'; rerender(); if (window.KanaApp) window.KanaApp.rerender(); return; }
+    if (st === 'new') return;
+    cur.state = st; cur.msg = r.data.message || null;
+    if (['denied', 'expired', 'used', 'error'].includes(st)) { clearInterval(cur.timer); cur.timer = null; cur.link = null; }
+    rerender();
+  }
+  function tgBlock(kind) {
+    if (!tgEnabled) return null;
+    if (!tg || tg.kind !== kind) { tgPrepare(kind); return h('div', { class: 'tgbox' }, h('span', { class: 'st' }, 'Готовлю вход через Telegram…')); }
+    const done = ['denied', 'expired', 'used', 'error'].includes(tg.state);
+    const btn = tg.link ? h('a', { class: 'btn tg', id: kind === 'login' ? 'btn-tg-login' : 'btn-tg-link', href: tg.link, target: '_blank', rel: 'noopener', onclick: tgOpened },
+      kind === 'login' ? 'Войти через Telegram' : 'Привязать телефон через Telegram') : null;
+    return h('div', { class: 'tgbox' }, btn,
+      done ? h('button', { class: 'link', type: 'button', onclick: () => { stopTg(); tgPrepare(kind); } }, 'Попробовать ещё раз') : null,
+      tg.state !== 'ready' ? h('div', { class: 'st', role: 'status', id: 'tg-status' }, tg.msg || TG_TEXT[tg.state] || '') : null);
+  }
+  async function unlinkTg() {
+    const r = await api('/auth/unlink-telegram', {});
+    if (r.status !== 200) { ui.error = r.data.error || 'Не получилось отвязать'; rerender(); return; }
+    account = Object.assign(account, fromMe(r.data)); saveState(); rerender(); if (window.KanaApp) window.KanaApp.rerender();
   }
   async function setName(name) {
     ui.busy = true; ui.error = ''; rerender();
@@ -117,14 +180,18 @@ window.KanaSync = (function () {
   }
   async function refreshMe() {   // имя могли поменять на другом устройстве
     const r = await api('/auth/me');
-    if (r.status === 200 && account && r.data.username) { account.displayName = r.data.displayName || null; saveState(); rerender(); }
+    if (r.status === 200 && account && r.data.username) {
+      const was = account.linked;
+      account = Object.assign(account, fromMe(r.data)); saveState(); rerender();
+      if (was !== account.linked && window.KanaApp) window.KanaApp.rerender();
+    }
   }
   async function logout() {
     await syncNow();
     if (window.KanaPush) await window.KanaPush.forget();   // напоминания этого устройства привязаны к аккаунту
     await api('/auth/logout', {});
     account = null; cursor = 0; snap = {}; lastSync = 0; status = ''; saveState();
-    ui.confirm = null; ui.error = '';
+    ui.confirm = null; ui.error = ''; ui.linking = false; ui.notice = ''; stopTg();
     window.KanaApp.resetLocal();   // перерисует «Я» уже без аккаунта
   }
   async function deleteAccount(password) {
@@ -181,6 +248,14 @@ window.KanaSync = (function () {
         h('button', { class: 'btn ghost', type: 'button', disabled: running, onclick: () => syncNow() }, 'Синхронизировать'),
         h('button', { class: 'btn ghost', type: 'button', onclick: () => { ui.confirm = 'logout'; ui.error = ''; rerender(); } }, 'Выйти'))));
     if (ui.editName && account.displayName) el.append(nameForm());
+    if (ui.notice) el.append(h('div', { class: 'okmsg', role: 'status' }, ui.notice));
+    if (account.linked) {
+      el.append(h('div', { class: 'row tgline' }, h('span', { class: 'st' }, 'Телефон привязан через Telegram' + (account.telegram ? ' (@' + account.telegram + ')' : '')),
+        account.hasPassword ? h('button', { class: 'link', type: 'button', onclick: unlinkTg }, 'отвязать') : null));
+    } else if (tgEnabled) {
+      el.append(h('div', { class: 'tglink' }, h('div', { class: 'st' }, 'Привяжите номер телефона через Telegram — откроются друзья и вход в один шаг.'),
+        ui.linking ? tgBlock('link') : h('button', { class: 'btn ghost', type: 'button', id: 'btn-link-start', onclick: () => { ui.linking = true; rerender(); } }, 'Привязать телефон')));
+    } else tgConfig().then(v => { if (v) rerender(); });
     if (ui.confirm === 'logout') {
       el.append(h('div', { class: 'row' }, h('span', { class: 'st' }, 'Прогресс сохранён в аккаунте. С этого устройства он будет удалён, пока вы снова не войдёте.'),
         h('button', { class: 'btn primary', type: 'button', onclick: logout }, 'Выйти'),
@@ -198,36 +273,49 @@ window.KanaSync = (function () {
   }
 
   // ---------- отдельные экраны входа и регистрации ----------
-  let page = null, pageKind = 'login';
+  // Форма рисуется один раз при открытии экрана; дальше меняются только ошибка, кнопка и блок Telegram —
+  // иначе нажатие могло попасть в момент перерисовки и потеряться.
+  let page = null, pageKind = 'login', parts = null;
   function renderAuthPage(el, kind) {
-    page = el; pageKind = kind; el.replaceChildren();
+    page = el; pageKind = kind; el.replaceChildren(); parts = null;
     const isReg = kind === 'register';
     const back = h('div', { class: 'backbar' }, h('button', { class: 'link back', type: 'button', onclick: () => { ui.error = ''; window.KanaApp.open('me'); } }, '← Назад'));
     if (account) { el.append(back, h('p', {}, 'Вы уже вошли как ', h('b', {}, account.displayName || account.username), '.')); return; }
+    ui.error = '';
     const field = (id, label, attrs, hint) => h('label', { class: 'fld', for: id }, h('span', { class: 'lbl' }, label), h('input', Object.assign({ id }, attrs)), hint ? h('span', { class: 'st' }, hint) : null);
     const name = isReg ? field('acc-name', 'Как к вам обращаться', { maxlength: 40, autocomplete: 'nickname', placeholder: 'Например, Павел', required: true }, 'Это имя увидят друзья. Его можно поменять потом.') : null;
     const user = field('acc-user', 'Логин', { autocomplete: 'username', autocapitalize: 'off', spellcheck: 'false', required: true, placeholder: isReg ? 'латиницей, от 3 символов' : '' }, isReg ? 'Для входа. Латинские буквы, цифры, точка, дефис, подчёркивание.' : null);
     const pass = field('acc-pass', 'Пароль', { type: 'password', autocomplete: isReg ? 'new-password' : 'current-password', required: true, minlength: isReg ? 8 : null, placeholder: isReg ? 'от 8 символов' : '' });
     const val = id => el.querySelector('#' + id).value;
+    const err = h('div', { class: 'err', role: 'alert', hidden: true });
+    const submit = h('button', { class: 'btn primary', type: 'submit' }, isReg ? 'Создать аккаунт' : 'Войти');
     const form = h('form', { class: 'authform', onsubmit: e => { e.preventDefault(); auth(kind, val('acc-user').trim(), val('acc-pass'), isReg ? val('acc-name').trim() : undefined); } },
-      name, user, pass,
-      ui.error ? h('div', { class: 'err', role: 'alert' }, ui.error) : null,
-      h('button', { class: 'btn primary', type: 'submit', disabled: ui.busy }, ui.busy ? 'Подождите…' : isReg ? 'Создать аккаунт' : 'Войти'));
+      name, user, pass, err, submit);
+    const tgHolder = h('div', { class: 'sheet tgsheet', hidden: true }, h('b', {}, isReg ? 'Быстрее — через Telegram' : 'Через Telegram'),
+      h('div', { class: 'st' }, isReg ? 'Без логина и пароля: бот попросит поделиться номером телефона, имя возьмём из Telegram.' : 'Если аккаунт создан через Telegram или к нему привязан телефон.'),
+      h('div', { class: 'tgslot' }));
+    const orLine = h('div', { class: 'small muted', style: 'text-align:center', hidden: true }, isReg ? 'или с логином и паролем' : 'или по логину и паролю');
     el.append(back, h('h1', { class: 'h1' }, isReg ? 'Регистрация' : 'Вход'),
       h('p', { class: 'small muted' }, isReg ? 'Аккаунт хранит прогресс, слова и настройки на всех ваших устройствах и нужен для напоминаний. Уже накопленное на этом устройстве перенесётся в аккаунт.' : 'Войдите, чтобы прогресс был на всех ваших устройствах.'),
+      tgHolder, orLine,
       h('div', { class: 'sheet' }, form),
       h('p', { class: 'small' }, isReg ? 'Уже есть аккаунт? ' : 'Нет аккаунта? ',
         h('button', { class: 'link', type: 'button', onclick: () => { ui.error = ''; window.KanaApp.open(isReg ? 'login' : 'register'); } }, isReg ? 'Войти' : 'Создать')));
-    // при перерисовке (ошибка) сохраняем введённое
+    parts = { err, submit, tgHolder, orLine, isReg };
+    updateAuthPage();
+    if (tgEnabled === null) tgConfig().then(updateAuthPage);
+  }
+  function updateAuthPage() {
+    if (!parts || !page || page.hidden) return;
+    parts.err.hidden = !ui.error; parts.err.textContent = ui.error || '';
+    parts.submit.disabled = !!ui.busy;
+    parts.submit.textContent = ui.busy ? 'Подождите…' : parts.isReg ? 'Создать аккаунт' : 'Войти';
+    parts.tgHolder.hidden = parts.orLine.hidden = !tgEnabled;
+    if (tgEnabled) parts.tgHolder.querySelector('.tgslot').replaceChildren(tgBlock('login') || '');
   }
   const prevRerender = rerender;
   rerender = function () {
-    if (page && !page.hidden) {
-      const keep = {}; page.querySelectorAll('input').forEach(i => keep[i.id] = i.value);
-      renderAuthPage(page, pageKind);
-      for (const id in keep) { const i = page.querySelector('#' + id); if (i) i.value = keep[id]; }
-      return;
-    }
+    if (page && !page.hidden && parts) { updateAuthPage(); return; }
     prevRerender();
   };
 
@@ -239,5 +327,5 @@ window.KanaSync = (function () {
     if (account) setTimeout(() => { syncNow(); refreshMe(); }, 800);
   }
 
-  return { touch, syncNow, renderAccount, renderAuthPage, api, get account() { return account; } };
+  return { touch, syncNow, renderAccount, renderAuthPage, api, refreshMe, get account() { return account; } };
 })();

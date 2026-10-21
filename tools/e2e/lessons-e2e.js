@@ -25,10 +25,16 @@ async function draw(page, ch) {
   const page = await ctx.newPage();
   page.on('pageerror', e => { console.log('ошибка страницы: ' + e.message); failed++; });
 
-  // первый запуск
+  // первый запуск: приветствие → регистрация → настройка цели
   await page.goto(BASE + '/');
   await page.waitForSelector('#screen-onboard:not([hidden])');
   check(await page.isHidden('#bnav'), 'на первом запуске нижней панели нет');
+  check(await page.isVisible('#btn-guest') && await page.isVisible('#btn-welcome-register'), 'приветствие: создать аккаунт, войти или без аккаунта');
+  await page.screenshot({ path: SHOTS + '/s0-welcome.png', fullPage: true });
+  await page.click('#btn-welcome-register');
+  await page.fill('#acc-name', 'Павел'); await page.fill('#acc-user', 'l_' + Math.random().toString(36).slice(2, 8)); await page.fill('#acc-pass', 'secret-pass-1');
+  await page.click('#screen-register button[type=submit]');
+  await page.waitForSelector('#screen-onboard:not([hidden]) button:has-text("45 мин")');
   await page.click('#screen-onboard button:has-text("45 мин")');
   await page.click('#screen-onboard button:has-text("100")');
   await page.screenshot({ path: SHOTS + '/s1-onboard.png', fullPage: true });

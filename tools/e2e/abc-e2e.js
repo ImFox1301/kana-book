@@ -27,7 +27,7 @@ async function draw(page, ch) {
   const audio = [];
   page.on('response', r => { if (r.url().includes('/audio/')) audio.push([decodeURIComponent(r.url().split('/audio/')[1]), r.status()]); });
 
-  await page.goto(BASE + '/'); await ready(page);
+  await page.goto(BASE + '/'); await ready(page, { account: true });   // история прописей — только с аккаунтом
   await openAbc(page);
   check(await page.locator('#abc .abc-cell:not(.empty)').count() === 104, 'таблица хираганы: 104 знака и сочетания');
   await page.click('#abc .abc-cell[aria-label^="Прослушать か"]');

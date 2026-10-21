@@ -63,6 +63,13 @@
   const topicsOf = ws => [...new Set(ws.map(w => w.topic || 'Без темы'))];
   const wordScript = w => /[゠-ヿ]/.test(w.kana) ? 'k' : 'h';
 
+  // ---------- гость или аккаунт ----------
+  // Без входа доступны квизы, азбука, словарь и тренировки, но прогресс не копится и не хранится в браузере:
+  // история ответов, уроки, цель дня, повторение, серия — только с аккаунтом.
+  const acct = () => window.KanaSync ? window.KanaSync.account : store.get('account', null);
+  const guest = () => !!window.KANA_PWA && !acct();
+  const linked = () => !!(acct() && acct().linked);
+
   // ---------- история ответов ----------
   const MAX_ANSWERS = 20000;
   let answers = store.get('answers', []);
@@ -529,9 +536,11 @@
     const x = res.chosen || (res.per && res.per.length === 1 && !res.per[0].ok ? res.per[0].best : null);
     if (res.status === 'bad' && x && x !== res.it.kana) a.x = x;
     res.answerId = a.id;
-    answers.push(a);
-    if (answers.length > MAX_ANSWERS) answers.splice(0, answers.length - MAX_ANSWERS);
-    store.set('answers', answers);
+    if (!guest()) {
+      answers.push(a);
+      if (answers.length > MAX_ANSWERS) answers.splice(0, answers.length - MAX_ANSWERS);
+      store.set('answers', answers);
+    }
     countCard(); buzz(res.status === 'ok');
     renderVerdict(res);
   }
@@ -653,7 +662,7 @@
       return show('result');
     }
     const back = Q.back, again = Q.again;
-    if (Q.track && rs.length === Q.deck.length) {
+    if (Q.track && rs.length === Q.deck.length && !guest()) {
       const pct = Math.round(ok / Q.deck.length * 100), id = Q.track.id;
       lessonsDone[id] = { quiz: Math.max(pct, (lessonsDone[id] || {}).quiz || 0) }; saveLessons();
       el.prepend(h('div', { class: 'result-banner ' + (pct >= PASS * 100 ? 'ok' : 'bad') }, `${Q.track.title}: ${pct}%`));
@@ -897,7 +906,7 @@
       countCard(); buzz(res.ok);
       // в историю ответов — только попытки без подложки: обводка не показывает, помнит ли рука знак
       let rec_ = null;
-      if (!ghostUsed) {
+      if (!ghostUsed && !guest()) {
         rec_ = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), ts: Date.now(), k, w: 0, m: 'write', r: res.ok ? 'ok' : 'bad' };
         answers.push(rec_); if (answers.length > MAX_ANSWERS) answers.splice(0, answers.length - MAX_ANSWERS);
         store.set('answers', answers);
@@ -965,21 +974,24 @@
 
   // ---------- переключение экранов ----------
   let current = 'home';
-  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me', 'similar', 'reading', 'builder', 'login', 'register'];
-  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice', reading: 'practice', builder: 'practice', login: 'me', register: 'me' };
+  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me', 'similar', 'reading', 'builder', 'login', 'register', 'friends'];
+  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice', reading: 'practice', builder: 'practice', login: 'me', register: 'me', friends: 'friends' };
   const tabOf = name => (FLOW && ['quiz', 'result', 'write'].includes(name)) ? 'lessons' : TAB_OF[name];
-  const lastOf = { home: 'home', lessons: 'lessons', practice: 'practice', dict: 'dict', me: 'me' };
+  const lastOf = { home: 'home', lessons: 'lessons', practice: 'practice', dict: 'dict', me: 'me', friends: 'friends' };
   function show(name) {
     const tab = tabOf(name);
-    if (tab && !FLOW) lastOf[tab] = (name === 'quiz' || name === 'result' || name === 'write') ? lastOf[tab] : name;
+    if (tab && !FLOW) lastOf[tab] = ['quiz', 'result', 'write', 'login', 'register'].includes(name) ? lastOf[tab] : name;
     current = name;
     for (const n of SCREENS) $('#screen-' + n).hidden = name !== n;
     document.querySelectorAll('.backbar[data-for]').forEach(b => { b.hidden = b.dataset.for !== name; });
     $('#bnav').hidden = name === 'onboard';
     document.querySelectorAll('#bnav button').forEach(x => { if (x.dataset.tab === tab) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current'); });
     ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, onboard: renderOnboard, similar: renderSimilar, reading: renderReading, builder: renderBuilder,
-      login: () => window.KanaSync && window.KanaSync.renderAuthPage($('#screen-login'), 'login'),
-      register: () => window.KanaSync && window.KanaSync.renderAuthPage($('#screen-register'), 'register') })[name]?.();
+      // экран входа рисует sync.js; на самом старте он ещё не загружен — дорисуем чуть позже
+      login: () => window.KanaSync ? window.KanaSync.renderAuthPage($('#screen-login'), 'login') : setTimeout(() => { if (current === 'login') show('login'); }, 30),
+      register: () => window.KanaSync ? window.KanaSync.renderAuthPage($('#screen-register'), 'register') : setTimeout(() => { if (current === 'register') show('register'); }, 30),
+      friends: () => { renderFriends(); loadFriends(); } })[name]?.();
+    updateTabs();
     if (name === 'login' || name === 'register') setTimeout(() => { const f = $('#screen-' + name + ' input'); if (f) f.focus(); }, 50);
     renderStreak();
     window.scrollTo(0, 0);
@@ -1163,7 +1175,7 @@
     const id = todayKey() + '|' + device;
     return activity[id] = activity[id] || { d: todayKey(), s: 0, c: 0 };
   }
-  function countCard() { actRec().c++; store.set('activity', activity); }
+  function countCard() { if (guest()) return; actRec().c++; store.set('activity', activity); }
   function dayTotals(day) {
     let s = 0, c = 0;
     for (const id in activity) { const a = activity[id]; if (a.d === day) { s += a.s || 0; c += a.c || 0; } }
@@ -1173,7 +1185,7 @@
   let lastInteract = 0;
   ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { lastInteract = Date.now(); }, { passive: true }));
   setInterval(() => {
-    if (document.visibilityState !== 'visible' || !LEARNING.has(current) || Date.now() - lastInteract > 60000) return;
+    if (document.visibilityState !== 'visible' || !LEARNING.has(current) || Date.now() - lastInteract > 60000 || guest()) return;
     const r = actRec(); r.s += 10;
     if (r.s % 60 === 0) store.set('activity', activity); else try { localStorage.setItem('kana-tetrad:activity', JSON.stringify(activity)); } catch (e) { }
     if (current === 'home') renderHome();
@@ -1195,7 +1207,7 @@
     return n;
   }
   function renderStreak() {
-    const n = streakDays(), el = $('#streak');
+    const n = guest() ? 0 : streakDays(), el = $('#streak');
     el.hidden = n < 1;
     el.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 3.5 5 5.5 5 10.5A5 5 0 0 1 7 13c0-2 1-3.5 2-4.5 0 2 1 3 2 3.5C11 9 10 6 12 2z"/></svg>';
     el.append(String(n));
@@ -1265,6 +1277,7 @@
     startWriting(lessonWritable(l), 5, { ghostFirst: 3 });
   }
   function markStep(l, step, val) {
+    if (guest()) return;
     const st = lessonsDone[l.id] = Object.assign({}, lessonsDone[l.id]);
     if (step === 'quiz') { st.quiz = Math.max(st.quiz || 0, val); if (val >= PASS * 100 && !st.done) st.done = Date.now(); }
     else st[step] = st[step] || Date.now();
@@ -1387,6 +1400,12 @@
   // ---------- экран «Уроки» ----------
   function renderLessons() {
     const el = $('#screen-lessons'); el.replaceChildren();
+    if (guest()) {
+      el.append(h('h1', { class: 'h1' }, 'Уроки'),
+        guestCard('Уроки хираганы и катаканы ведут вас по порядку и запоминают, что пройдено, — поэтому они доступны с аккаунтом. Без него можно тренироваться в «Практике».'),
+        h('h2', { class: 'h2' }, 'Чтение в поездке'), h('p', { class: 'small muted' }, 'Вывески, указатели и меню по темам.'), readingList());
+      return;
+    }
     const rec = recommended();
     el.append(h('h1', { class: 'h1' }, 'Уроки'),
       h('p', { class: 'small muted' }, 'Сначала хирагана, затем катакана. Все уроки открыты; рекомендуем идти по порядку.'));
@@ -1538,6 +1557,7 @@
   }
   function renderHome() {
     const el = $('#screen-home'); el.replaceChildren();
+    if (guest()) return renderGuestHome(el);
     const g = S.goal || def.goal, t = dayTotals(todayKey());
     const pm = Math.min(1, t.min / g.min), pc = Math.min(1, t.cards / g.cards);
     const met = pm >= 1 && pc >= 1;
@@ -1582,11 +1602,11 @@
   // ---------- Практика ----------
   function renderPractice() {
     const el = $('#screen-practice'); el.replaceChildren();
-    const weak = weakKana();
+    const weak = guest() ? [] : weakKana();
     el.append(h('h1', { class: 'h1' }, 'Практика'), h('p', { class: 'small muted' }, 'Свободные тренировки — в любом порядке и сколько угодно.'),
       h('div', { class: 'practice' },
         cta('quiz', 'Квиз', 'Хирагана, катакана или слова: нарисовать знак по звучанию или прочитать', null, () => show('setup')),
-        srsForecast().due ? cta('review', 'Повторение', `${srsForecast().due} на сегодня — интервальное повторение пройденного`, null, startReview, 'main') : null,
+        !guest() && srsForecast().due ? cta('review', 'Повторение', `${srsForecast().due} на сегодня — интервальное повторение пройденного`, null, startReview, 'main') : null,
         cta('abc', 'Азбука и прописи', 'Таблицы с озвучкой, прописи выбранных знаков с подложкой', null, () => show('abc')),
         cta('listen', 'Квиз на слух', 'Звучит знак или слово — выберите, как он пишется', null, () => openListenSetup()),
         cta('similar', 'Похожие знаки', 'シ・ツ・ソ・ン, ぬ・め, ね・れ・わ: выбор из похожих и подсказки, как различать', null, () => show('similar')),
@@ -1616,7 +1636,11 @@
   const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
   const PS = { on: false, time: store.get('remind-time', '19:00'), busy: false, msg: '', checked: false };
-  const api = (path, body) => window.KanaSync && window.KanaSync.api ? window.KanaSync.api(path, body) : Promise.resolve({ status: 0, data: {} });
+  // sync.js подключается после app.js: на старте подождать его
+  const api = async (path, body) => {
+    for (let i = 0; i < 100 && !(window.KanaSync && window.KanaSync.api); i++) await new Promise(r => setTimeout(r, 20));
+    return window.KanaSync && window.KanaSync.api ? window.KanaSync.api(path, body) : { status: 0, data: {} };
+  };
   async function pushSub() {
     try { const reg = await navigator.serviceWorker.getRegistration(); return reg ? await reg.pushManager.getSubscription() : null; } catch (e) { return null; }
   }
@@ -1688,10 +1712,10 @@
     const g = S.goal || def.goal;
     const setGoal = (k, v) => { S.goal = Object.assign({}, g, { [k]: v }); save(); renderSettings(); renderStreak(); };
     el.append(
-      h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Цель: минут в день'), segm('Минут в день', GOAL_MIN.map(v => [v, String(v)]), g.min, v => setGoal('min', v)),
+      guest() ? null : h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Цель: минут в день'), segm('Минут в день', GOAL_MIN.map(v => [v, String(v)]), g.min, v => setGoal('min', v)),
         h('div', { class: 'd' }, 'Считается время в уроках, квизах и прописях.')),
-      h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Цель: карточек и прописей в день'), segm('Карточек в день', GOAL_CARDS.map(v => [v, String(v)]), g.cards, v => setGoal('cards', v)),
-        h('div', { class: 'd' }, 'Каждый ответ в квизе и каждая попытка в прописях. Цель выполнена, когда набраны и минуты, и карточки.' + (window.KanaSync && window.KanaSync.account ? ' Цель сохраняется в аккаунте.' : ''))),
+      guest() ? null : h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Цель: карточек и прописей в день'), segm('Карточек в день', GOAL_CARDS.map(v => [v, String(v)]), g.cards, v => setGoal('cards', v)),
+        h('div', { class: 'd' }, 'Каждый ответ в квизе и каждая попытка в прописях. Цель выполнена, когда набраны и минуты, и карточки. Цель сохраняется в аккаунте.')),
       h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Транскрипция'), segm('Транскрипция', [['ru', 'Кириллица'], ['lat', 'Латиница']], S.sys, v => { S.sys = v; save(); renderSettings(); })),
       h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Голос озвучки'), segm('Голос', [['m', 'Мужской'], ['f', 'Женский']], S.voice === 'f' ? 'f' : 'm', v => { S.voice = v; save(); renderSettings(); playKana('あ'); }),
         h('div', { class: 'd' }, 'VOICEVOX:青山龍星 (мужской), VOICEVOX:波音リツ (женский)')),
@@ -1703,25 +1727,183 @@
   function renderMe() {
     if (window.KanaSync) window.KanaSync.renderAccount($('#account-box'));
     renderSettings();
-    renderProgress();
+    const g = guest(), st = $('#stats');
+    st.hidden = g; st.previousElementSibling.hidden = g;
+    $('#settings').previousElementSibling.textContent = g ? 'Настройки' : 'Цель и настройки';
+    if (!g) renderProgress();
+  }
+
+  // ---------- без аккаунта ----------
+  function guestCard(text) {
+    return h('div', { class: 'guest-card' }, h('p', {}, text),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn primary', type: 'button', onclick: () => show('register') }, 'Создать аккаунт'),
+        h('button', { class: 'btn ghost', type: 'button', onclick: () => show('login') }, 'Войти')));
+  }
+  function renderGuestHome(el) {
+    el.append(h('div', { class: 'home' },
+      h('div', { class: 'hello' }, h('h1', { class: 'h1' }, greet())),
+      guestCard('Без аккаунта можно тренироваться в квизах, азбуке и прописях, но прогресс не сохраняется. С аккаунтом — уроки хираганы и катаканы, цель дня, интервальное повторение, напоминания и друзья, на всех ваших устройствах.'),
+      h('div', { class: 'quick' },
+        cta('quiz', 'Квиз', 'Свободная тренировка', null, () => show('setup'), 'alt'),
+        cta('abc', 'Азбука и прописи', 'Озвучка и письмо', null, () => show('abc'), 'alt'),
+        cta('listen', 'Квиз на слух', 'Узнать знак по звучанию', null, () => openListenSetup(), 'alt'),
+        cta('similar', 'Похожие знаки', 'シ・ツ, ぬ・め и другие', null, () => show('similar'), 'alt'),
+        cta('builder', 'Конструктор предложений', 'Собрать фразу из блоков', null, () => show('builder'), 'alt'),
+        cta('reading', 'Чтение в поездке', 'Вывески и меню', null, () => { RT = null; show('reading'); }, 'alt'))));
+  }
+
+  // ---------- друзья ----------
+  // Доступны после привязки телефона через Telegram. Видно только сводку: серия, сегодня, уроки, ответы за неделю.
+  const FR = { data: null, loading: false, msg: '', found: null, invite: null, pendingInvite: store.get('invite', null) };
+  async function loadFriends() {
+    if (!linked()) return;
+    FR.loading = true;
+    const r = await api('/friends');
+    FR.loading = false;
+    if (r.status === 200) { FR.data = r.data; setDot(); }
+    if (current === 'friends') renderFriends();
+  }
+  function setDot() { const n = FR.data ? FR.data.incoming.length : 0; $('#friends-dot').hidden = !n; $('#tab-friends').title = n ? `Заявки в друзья: ${n}` : ''; }
+  async function friendAct(path, userId) {
+    const r = await api('/friends/' + path, { userId });
+    if (r.status === 200) { FR.data = r.data; FR.found = null; FR.msg = { request: 'Заявка отправлена', accept: 'Теперь вы друзья', decline: 'Заявка отклонена', remove: 'Удалено из друзей', cancel: 'Заявка отменена' }[path] || ''; setDot(); }
+    else FR.msg = r.data.error || 'Не получилось';
+    renderFriends();
+  }
+  async function makeInvite() {
+    const r = await api('/friends/invite', {});
+    if (r.status !== 200) { FR.msg = r.data.error || 'Не получилось создать приглашение'; return renderFriends(); }
+    const url = location.origin + '/#invite=' + r.data.token;
+    FR.invite = url;
+    const me = acct();
+    const text = `${me.displayName || me.username} зовёт вас учить японскую азбуку вместе в Кана-тетради`;
+    if (navigator.share) { try { await navigator.share({ title: 'Кана-тетрадь', text, url }); FR.msg = 'Приглашение отправлено'; } catch (e) { } }
+    else { try { await navigator.clipboard.writeText(url); FR.msg = 'Ссылка скопирована — отправьте её другу'; } catch (e) { FR.msg = 'Скопируйте ссылку и отправьте её другу'; } }
+    renderFriends();
+  }
+  async function checkInvite() {
+    const t = FR.pendingInvite; if (!t || !linked()) return;
+    const r = await api('/friends/invite/' + encodeURIComponent(t));
+    FR.inviteInfo = r.status === 200 ? r.data : { error: r.data.error || 'Приглашение не найдено' };
+    if (current === 'friends') renderFriends();
+  }
+  async function acceptInvite() {
+    const r = await api('/friends/invite/' + encodeURIComponent(FR.pendingInvite) + '/accept', {});
+    if (r.status === 200) { FR.data = r.data; FR.msg = `${r.data.added.name} теперь у вас в друзьях`; }
+    else FR.msg = r.data.error || 'Не получилось принять приглашение';
+    dropInvite();
+  }
+  function dropInvite() { FR.pendingInvite = null; FR.inviteInfo = null; store.set('invite', null); renderFriends(); }
+  function statBox(v, l) { return h('div', {}, h('div', { class: 'v' }, v), h('div', { class: 'l' }, l)); }
+  function friendCard(f) {
+    const s = f.stats, today = `${s.todayMin}/${s.goalMin} мин`;
+    const goalDone = s.todayMin >= s.goalMin && s.todayCards >= s.goalCards;
+    return h('div', { class: 'fcard' },
+      h('div', { class: 'top' }, h('div', {}, h('div', { class: 'nm' }, f.name), h('div', { class: 'lg' }, '@' + f.username)),
+        s.streak ? h('span', { class: 'streak', title: 'дней подряд' }, '🔥 ' + s.streak + ' ' + plural(s.streak, 'день', 'дня', 'дней')) : h('span', { class: 'small muted' }, 'серии пока нет')),
+      h('div', { class: 'fstats' },
+        statBox(goalDone ? '○ цель' : today, `сегодня, ${s.todayCards} карт.`),
+        statBox(`${s.lessonsH} · ${s.lessonsK}`, 'уроков хираганы · катаканы'),
+        statBox(s.weekAnswers ? `${s.weekAnswers}` : '—', s.weekAccuracy != null ? `ответов за неделю, ${s.weekAccuracy}% верно` : 'ответов за неделю')),
+      h('div', {}, h('button', { class: 'link', type: 'button', onclick: e => {
+        if (e.currentTarget.dataset.confirm) return friendAct('remove', f.id);
+        e.currentTarget.dataset.confirm = '1'; e.currentTarget.textContent = 'Точно удалить из друзей?'; } }, 'Удалить из друзей')));
+  }
+  function renderFriends() {
+    const el = $('#screen-friends'); el.replaceChildren();
+    el.append(h('h1', { class: 'h1' }, 'Друзья'));
+    if (!acct()) { el.append(guestCard('Друзья доступны с аккаунтом и привязанным через Telegram телефоном.')); return; }
+    if (!linked()) {
+      el.append(h('div', { class: 'guest-card' }, h('p', {}, 'Чтобы добавлять друзей и видеть их прогресс, привяжите телефон через Telegram в разделе «Я». Номер друзьям не показывается.'),
+        h('div', { class: 'row' }, h('button', { class: 'btn primary', type: 'button', onclick: () => show('me') }, 'Перейти в «Я»'))));
+      return;
+    }
+    if (FR.pendingInvite) {
+      const inf = FR.inviteInfo;
+      if (!inf) checkInvite();
+      else if (inf.error) el.append(h('div', { class: 'sheet' }, h('p', {}, inf.error), h('button', { class: 'link', type: 'button', onclick: dropInvite }, 'Понятно')));
+      else if (inf.state === 'new') el.append(h('div', { class: 'sheet invite-card', id: 'invite-card' }, h('p', {}, h('b', {}, inf.from.name), ` (@${inf.from.username}) приглашает вас в друзья.`),
+        h('div', { class: 'row' }, h('button', { class: 'btn primary', type: 'button', id: 'btn-invite-accept', onclick: acceptInvite }, 'Принять'), h('button', { class: 'btn ghost', type: 'button', onclick: dropInvite }, 'Не сейчас'))));
+      else { FR.msg = inf.state === 'me' ? 'Это ваше собственное приглашение — отправьте его другу.' : `${inf.from.name} уже у вас в друзьях.`; FR.pendingInvite = null; store.set('invite', null); }
+    }
+    if (FR.msg) el.append(h('div', { class: 'okmsg', role: 'status', id: 'friends-msg' }, FR.msg));
+    // пригласить и найти
+    const q = h('input', { id: 'friend-q', placeholder: 'Логин друга, например pavel_k', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Логин друга' });
+    const search = async () => {
+      const v = q.value.trim(); if (!v) return;
+      const r = await api('/friends/search', { q: v });
+      FR.found = r.status === 200 ? r.data : { error: r.data.error || 'Никого не нашли' }; FR.msg = ''; renderFriends();
+      const nq = $('#friend-q'); if (nq) nq.value = v;
+    };
+    q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); search(); } });
+    const add = h('div', { class: 'sheet', style: 'display:grid;gap:10px' },
+      h('b', {}, 'Добавить друга'),
+      h('div', { class: 'row' }, iconBtn('btn primary', 'next', 'Пригласить ссылкой', makeInvite, 'Создать одноразовую ссылку-приглашение на 7 дней')),
+      FR.invite ? h('div', { class: 'small muted', style: 'overflow-wrap:anywhere' }, 'Ссылка: ', h('span', { id: 'invite-url' }, FR.invite), ' — действует 7 дней, один раз.') : null,
+      h('div', { class: 'fsearch' }, q, h('button', { class: 'btn ghost', type: 'button', id: 'btn-friend-search', onclick: search }, 'Найти')),
+      h('div', { class: 'small muted' }, 'Поиск — по точному логину. Найти можно только тех, кто привязал телефон.'));
+    if (FR.found) {
+      const f = FR.found;
+      add.append(f.error ? h('div', { class: 'err' }, f.error) : h('div', { class: 'freq', id: 'found' }, h('span', {}, h('b', {}, f.user.name), ' @' + f.user.username),
+        f.state === 'none' ? h('button', { class: 'btn primary', type: 'button', onclick: () => friendAct('request', f.user.id) }, 'Добавить в друзья')
+          : f.state === 'incoming' ? h('button', { class: 'btn primary', type: 'button', onclick: () => friendAct('accept', f.user.id) }, 'Принять заявку')
+            : h('span', { class: 'small muted' }, { me: 'это вы', friend: 'уже в друзьях', requested: 'заявка отправлена' }[f.state])));
+    }
+    el.append(add);
+    const d = FR.data;
+    if (!d) { if (!FR.loading) loadFriends(); el.append(h('p', { class: 'muted small' }, 'Загружаю…')); return; }
+    if (d.incoming.length) el.append(h('div', { class: 'sheet', id: 'incoming' }, h('b', {}, 'Хотят добавить вас в друзья'),
+      ...d.incoming.map(p => h('div', { class: 'freq' }, h('span', {}, h('b', {}, p.name), ' @' + p.username),
+        h('span', { class: 'row' }, h('button', { class: 'btn primary', type: 'button', onclick: () => friendAct('accept', p.id) }, 'Принять'),
+          h('button', { class: 'btn ghost', type: 'button', onclick: () => friendAct('decline', p.id) }, 'Отклонить'))))));
+    if (d.outgoing.length) el.append(h('div', { class: 'sheet' }, h('b', {}, 'Ждут ответа'),
+      ...d.outgoing.map(p => h('div', { class: 'freq' }, h('span', {}, h('b', {}, p.name), ' @' + p.username),
+        h('button', { class: 'link', type: 'button', onclick: () => friendAct('cancel', p.id) }, 'Отменить')))));
+    el.append(h('h2', { class: 'h2' }, d.friends.length ? `Друзья · ${d.friends.length}` : 'Друзья'));
+    if (!d.friends.length) el.append(h('p', { class: 'muted' }, 'Пока никого. Пригласите друга ссылкой — заниматься вместе веселее, а серию дней подряд будет жалко прерывать.'));
+    el.append(...d.friends.map(friendCard));
+  }
+  function updateTabs() {
+    const ok = linked();
+    $('#tab-friends').hidden = !ok;
+    if (ok && !FR.data && !FR.loading) loadFriends();
+    if (!ok) { FR.data = null; $('#friends-dot').hidden = true; }
   }
 
   // ---------- первый запуск ----------
   function renderOnboard() {
     const el = $('#screen-onboard'); el.replaceChildren();
+    if (guest()) {
+      // первый запуск: войти, создать аккаунт или заниматься без него
+      el.append(h('div', { class: 'onboard' },
+        h('div', { class: 'hero', 'aria-hidden': 'true' }, 'かな'),
+        h('h1', { class: 'h1' }, 'Добро пожаловать в Кана-тетрадь'),
+        h('p', {}, 'Хирагана и катакана по урокам, квизы, прописи, первые слова и фразы для поездки в Японию.'),
+        h('div', { class: 'sheet', style: 'display:grid;gap:10px' },
+          h('b', {}, 'С аккаунтом'),
+          h('div', { class: 'small' }, 'Уроки с прогрессом, цель дня, интервальное повторение, напоминания и друзья — на всех ваших устройствах. Войти можно через Telegram или по логину и паролю.'),
+          h('div', { class: 'row' },
+            h('button', { class: 'btn primary', type: 'button', id: 'btn-welcome-register', onclick: () => { S.welcomed = true; save(); show('register'); } }, 'Создать аккаунт'),
+            h('button', { class: 'btn ghost', type: 'button', id: 'btn-welcome-login', onclick: () => { S.welcomed = true; save(); show('login'); } }, 'Войти'))),
+        h('div', { class: 'sheet', style: 'display:grid;gap:10px' },
+          h('b', {}, 'Без аккаунта'),
+          h('div', { class: 'small' }, 'Квизы, азбука с озвучкой, прописи, словарь и тренировки. Прогресс не сохраняется.'),
+          h('div', { class: 'row' }, h('button', { class: 'btn ghost', type: 'button', id: 'btn-guest', onclick: () => { S.welcomed = true; save(); show('home'); } }, 'Продолжить без аккаунта')))));
+      return;
+    }
     const g = Object.assign({}, def.goal, S.goal);
     const draw = () => {
       el.replaceChildren(h('div', { class: 'onboard' },
         h('div', { class: 'hero', 'aria-hidden': 'true' }, 'かな'),
         h('h1', { class: 'h1' }, 'Добро пожаловать в Кана-тетрадь'),
-        h('p', {}, 'Здесь можно выучить хирагану и катакану по урокам, тренироваться в квизах и прописях и учить первые слова. Сначала — небольшая настройка, её всегда можно поменять в разделе «Я».'),
+        h('p', {}, 'Аккаунт готов. Осталась небольшая настройка — её всегда можно поменять в разделе «Я».'),
         h('div', { class: 'sheet' },
           h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Сколько минут в день вы готовы заниматься?'), segm('Минут в день', GOAL_MIN.map(v => [v, v + ' мин']), g.min, v => { g.min = v; draw(); })),
           h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Сколько карточек и прописей в день?'), segm('Карточек в день', GOAL_CARDS.map(v => [v, String(v)]), g.cards, v => { g.cards = v; draw(); }),
             h('div', { class: 'd' }, 'Для начала хватит 50: это примерно один урок и короткий квиз.')),
           h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Как показывать чтение?'), segm('Транскрипция', [['ru', 'Кириллицей: си, ти, цу'], ['lat', 'Латиницей: shi, chi, tsu']], S.sys, v => { S.sys = v; draw(); }))),
-        h('div', { class: 'start' }, iconBtn('btn primary', 'next', 'Начать', () => { S.goal = g; S.onboarded = true; save(); show('home'); })),
-        h('p', { class: 'small' }, 'Уже занимались на другом устройстве? ', h('button', { class: 'link', type: 'button', onclick: () => { S.goal = g; S.onboarded = true; save(); show('me'); } }, 'Войдите в аккаунт'), ' — цель и прогресс подтянутся.')));
+        h('div', { class: 'start' }, iconBtn('btn primary', 'next', 'Начать', () => { S.goal = g; S.onboarded = true; S.welcomed = true; save(); show('home'); }))));
     };
     draw();
   }
@@ -1796,13 +1978,31 @@
     },
     resetLocal() {
       userWords = []; deleted = new Set(); samples = {}; answers = []; lessonsDone = {}; activity = {};
-      for (const k in S) delete S[k]; Object.assign(S, JSON.parse(JSON.stringify(def)));
+      for (const k in S) delete S[k]; Object.assign(S, JSON.parse(JSON.stringify(def)), { welcomed: true });
+      FR.data = null; FR.found = null; FR.invite = null; FR.msg = '';
       this.commit();
     },
-    rerender() { if (current === 'me') renderMe(); },
+    rerender() { updateTabs(); if (current === 'me') renderMe(); if (current === 'friends') renderFriends(); },
     open(name) { show(name); },
+    // после входа: новый аккаунт — настройка цели; есть приглашение — к друзьям
+    afterLogin() { show(!S.onboarded ? 'onboard' : FR.pendingInvite && linked() ? 'friends' : 'me'); },
   };
 
   window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next, show, openLesson, get lessonsDone() { return lessonsDone; }, dayTotals, todayKey, buzz, srsState, srsDue, srsForecast, startReview, startSim, confusions, startReading, startBuilder };
-  show(S.onboarded ? 'home' : 'onboard');
+  // ссылки: #invite=<код> — приглашение в друзья, #friends — из уведомления
+  function route(initial) {
+    const hash = location.hash;
+    if (hash.startsWith('#invite=')) {
+      FR.pendingInvite = decodeURIComponent(hash.slice(8)); FR.inviteInfo = null; store.set('invite', FR.pendingInvite);
+      history.replaceState(null, '', location.pathname);
+      return show(acct() ? 'friends' : 'register');
+    }
+    if (hash === '#friends') { history.replaceState(null, '', location.pathname); if (linked()) return show('friends'); }
+    if (initial) show(FR.pendingInvite && linked() ? 'friends' : guest() ? (S.welcomed || S.onboarded ? 'home' : 'onboard') : (S.onboarded ? 'home' : 'onboard'));
+  }
+  window.addEventListener('hashchange', () => route(false));
+  // новые заявки в друзья — отметка на вкладке
+  setInterval(() => { if (linked() && document.visibilityState === 'visible') loadFriends(); }, 120000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && linked()) loadFriends(); });
+  route(true);
 })();

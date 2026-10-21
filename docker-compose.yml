@@ -15,6 +15,8 @@ services:
       - DB_URL=jdbc:postgresql://kana-db:5432/kana
       - DB_USER=kana
       - DB_PASSWORD=${DB_PASSWORD:?укажите DB_PASSWORD в .env}
+      # токен Telegram-бота для входа через Telegram (необязательно)
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
     depends_on:
       kana-db:
         condition: service_healthy

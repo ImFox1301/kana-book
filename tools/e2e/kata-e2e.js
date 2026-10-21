@@ -33,7 +33,7 @@ async function finishQuiz(page, wrongKanji) {
   page.on('pageerror', e => { console.log('ошибка страницы: ' + e.message); failed++; });
   const audio = [];
   page.on('response', r => { if (r.url().includes('/audio/')) audio.push([decodeURIComponent(r.url().split('/audio/')[1]), r.status()]); });
-  await page.goto(BASE + '/'); await ready(page);
+  await page.goto(BASE + '/'); await ready(page, { account: true });
 
   // --- уроки катаканы ---
   await page.click('#tab-lessons');

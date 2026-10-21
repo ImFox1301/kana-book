@@ -37,14 +37,16 @@ async function answerCards(page, n) {
 (async () => {
   const browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
 
-  // Устройство A: занимается без аккаунта, потом регистрируется — накопленное уходит в аккаунт
+  // Устройство A: без аккаунта добавляет слово (словарь доступен и гостю), ответы гостя не сохраняются;
+  // после регистрации слово уходит в аккаунт
   const A = await device(browser, 'A');
   check(await A.page.evaluate(() => KanaSync.account === null), 'A: без входа приложение работает, аккаунта нет');
   await addWord(A.page, 'ねこ', 'кошка');
-  await answerCards(A.page, 3);
+  await answerCards(A.page, 2);
+  check(await answers(A.page) === 0 && await A.page.evaluate(() => !localStorage.getItem('kana-tetrad:answers') || localStorage.getItem('kana-tetrad:answers') === '[]'), 'A: ответы гостя не хранятся');
   await A.page.click('#tab-me');
+  check(await A.page.isHidden('#stats'), 'A: у гостя нет раздела прогресса');
   check(await A.page.isVisible('#btn-to-login') && await A.page.isVisible('#btn-to-register'), 'A: в «Я» — кнопки «Войти» и «Создать аккаунт»');
-  check((await A.page.textContent('#stats')).includes('ответов всего'), 'A: статистика видна и без аккаунта');
   await A.page.click('#btn-to-register');
   check(await A.page.isVisible('#screen-register') && await A.page.isVisible('#acc-name'), 'A: регистрация — отдельный экран с полем «Как к вам обращаться»');
   await A.page.screenshot({ path: (process.env.SHOTS || '/tmp') + '/register.png', fullPage: true });
@@ -56,8 +58,12 @@ async function answerCards(page, n) {
   check(await A.page.inputValue('#acc-user') === user, 'A: введённое не теряется после ошибки');
   await A.page.fill('#acc-name', 'Павел');
   await A.page.click('#screen-register button[type=submit]');
+  await A.page.waitForSelector('#screen-onboard:not([hidden]) .btn.primary');
+  check(true, 'A: после регистрации — настройка цели');
+  await A.page.click('#screen-onboard .btn.primary');
+  await answerCards(A.page, 3);
+  await A.page.click('#tab-me');
   await A.page.waitForSelector('#account-box .who');
-  check(await A.page.isVisible('#screen-me'), 'A: после регистрации — снова «Я»');
   check((await A.page.textContent('#account-box .who')) === 'Павел' && (await A.page.textContent('#account-box')).includes('@' + user), 'A: показано имя и логин');
   await synced(A.page);
   check((await A.page.textContent('#account-box')).includes('Синхронизировано'), 'A: зарегистрирован и синхронизирован');

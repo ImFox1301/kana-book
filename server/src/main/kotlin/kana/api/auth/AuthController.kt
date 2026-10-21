@@ -17,7 +17,8 @@ data class Credentials(val username: String = "", val password: String = "", val
 data class NameChange(val displayName: String = "")
 data class PasswordChange(val oldPassword: String = "", val newPassword: String = "")
 data class PasswordConfirm(val password: String = "")
-data class Me(val username: String, val displayName: String? = null)
+data class Me(val username: String, val displayName: String? = null, val linked: Boolean = false, val telegram: String? = null, val hasPassword: Boolean = true)
+fun UserRow.me() = Me(username, displayName, tgId != null, tgUsername, !passwordHash.startsWith("!"))
 
 @RestController
 @RequestMapping("/api/auth")
@@ -42,7 +43,7 @@ class AuthController(
             throw ApiException(HttpStatus.TOO_MANY_REQUESTS, "Слишком много регистраций с вашего адреса. Попробуйте через час")
         val id = users.create(username, encoder.encode(body.password), name)
             ?: throw ApiException(HttpStatus.CONFLICT, "Этот логин уже занят")
-        return withSession(HttpStatus.CREATED, id, username, name)
+        return withSession(HttpStatus.CREATED, id, Me(username, name))
     }
 
     @PostMapping("/login")
@@ -59,7 +60,7 @@ class AuthController(
             throw ApiException(HttpStatus.UNAUTHORIZED, "Неверный логин или пароль")
         }
         limiter.reset(userKey)
-        return withSession(HttpStatus.OK, user.id, user.username, user.displayName)
+        return withSession(HttpStatus.OK, user.id, user.me())
     }
 
     @PostMapping("/logout")
@@ -71,7 +72,15 @@ class AuthController(
     @GetMapping("/me")
     fun me(req: HttpServletRequest): Me {
         val user = req.userId()?.let(users::findById) ?: throw ApiException(HttpStatus.UNAUTHORIZED, "Вы не вошли")
-        return Me(user.username, user.displayName)
+        return user.me()
+    }
+
+    @PostMapping("/unlink-telegram")
+    fun unlinkTelegram(req: HttpServletRequest): Me {
+        val user = req.userId()?.let(users::findById) ?: throw ApiException(HttpStatus.UNAUTHORIZED, "Вы не вошли")
+        if (user.passwordHash.startsWith("!")) throw ApiException(HttpStatus.CONFLICT, "В этот аккаунт можно войти только через Telegram — отвязать его нельзя")
+        users.unlinkTelegram(user.id)
+        return users.findById(user.id)!!.me()
     }
 
     /** «Как к вам обращаться» — имя, которое видят друзья. */
@@ -80,13 +89,14 @@ class AuthController(
         val user = req.userId()?.let(users::findById) ?: throw ApiException(HttpStatus.UNAUTHORIZED, "Вы не вошли")
         val name = displayName(body.displayName)
         users.updateDisplayName(user.id, name)
-        return Me(user.username, name)
+        return users.findById(user.id)!!.me()
     }
 
     @PostMapping("/password")
     fun changePassword(@RequestBody body: PasswordChange, req: HttpServletRequest): Map<String, Boolean> {
         val user = req.userId()?.let(users::findById) ?: throw ApiException(HttpStatus.UNAUTHORIZED, "Вы не вошли")
-        if (!encoder.matches(body.oldPassword, user.passwordHash)) throw ApiException(HttpStatus.FORBIDDEN, "Текущий пароль указан неверно")
+        // у аккаунта из Telegram пароля ещё нет — его можно задать без старого
+        if (!user.passwordHash.startsWith("!") && !encoder.matches(body.oldPassword, user.passwordHash)) throw ApiException(HttpStatus.FORBIDDEN, "Текущий пароль указан неверно")
         validatePassword(body.newPassword)
         users.updatePassword(user.id, encoder.encode(body.newPassword))
         sessions.deleteAllExcept(user.id, req.sessionToken())   // выйти на остальных устройствах
@@ -96,14 +106,14 @@ class AuthController(
     @PostMapping("/delete")
     fun deleteAccount(@RequestBody body: PasswordConfirm, req: HttpServletRequest): ResponseEntity<Map<String, Boolean>> {
         val user = req.userId()?.let(users::findById) ?: throw ApiException(HttpStatus.UNAUTHORIZED, "Вы не вошли")
-        if (!encoder.matches(body.password, user.passwordHash)) throw ApiException(HttpStatus.FORBIDDEN, "Пароль указан неверно")
+        if (!user.passwordHash.startsWith("!") && !encoder.matches(body.password, user.passwordHash)) throw ApiException(HttpStatus.FORBIDDEN, "Пароль указан неверно")
         users.delete(user.id)   // сессии и данные удаляются каскадом
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, sessions.clearCookie().toString()).body(mapOf("ok" to true))
     }
 
-    private fun withSession(status: HttpStatus, userId: Long, username: String, displayName: String?): ResponseEntity<Me> {
+    private fun withSession(status: HttpStatus, userId: Long, me: Me): ResponseEntity<Me> {
         val token = sessions.create(userId)
-        return ResponseEntity.status(status).header(HttpHeaders.SET_COOKIE, sessions.cookie(token).toString()).body(Me(username, displayName))
+        return ResponseEntity.status(status).header(HttpHeaders.SET_COOKIE, sessions.cookie(token).toString()).body(me)
     }
 
     private fun displayName(raw: String?): String {

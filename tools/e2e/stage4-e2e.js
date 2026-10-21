@@ -24,7 +24,7 @@ async function build(page, wrong) {
   page.on('pageerror', e => { console.log('ошибка страницы: ' + e.message); failed++; });
   const audio = [];
   page.on('response', r => { if (r.url().includes('/audio/')) audio.push([decodeURIComponent(r.url().split('/audio/')[1]), r.status()]); });
-  await page.goto(BASE + '/'); await ready(page);
+  await page.goto(BASE + '/'); await ready(page, { account: true });
 
   // --- конструктор предложений ---
   await practiceHub(page);
@@ -103,6 +103,8 @@ async function build(page, wrong) {
   await pp.click('#btn-to-register');
   await pp.fill('#acc-name', 'Тест'); await pp.fill('#acc-user', 'push_' + crypto.randomBytes(3).toString('hex')); await pp.fill('#acc-pass', 'secret-pass-1');
   await pp.click('#screen-register button[type=submit]');
+  await pp.waitForSelector('#screen-onboard:not([hidden]) .btn.primary'); await pp.click('#screen-onboard .btn.primary');
+  await pp.click('#tab-me');
   await pp.waitForSelector('#account-box .who');
   await pp.waitForFunction(() => !document.querySelector('#set-notify').disabled);
   await pp.click('#settings .tgl:has(#set-notify)');

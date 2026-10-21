@@ -35,14 +35,14 @@ async function answerCard(page, wrong) {
   await ctx.addInitScript(seed => {
     if (localStorage.getItem('kana-tetrad:answers')) return;
     localStorage.setItem('kana-tetrad:answers', JSON.stringify(seed));
-    localStorage.setItem('kana-tetrad:settings', JSON.stringify({ onboarded: true, sys: 'ru' }));
+    localStorage.setItem('kana-tetrad:settings', JSON.stringify({ sys: 'ru' }));
   }, SEED);
   const page = await ctx.newPage();
   page.on('pageerror', e => { console.log('ошибка страницы: ' + e.message); failed++; });
   const audio = [];
   page.on('request', r => { if (r.url().includes('/audio/')) audio.push(decodeURIComponent(r.url().split('/audio/')[1])); });
 
-  await page.goto(BASE + '/'); await ready(page);
+  await page.goto(BASE + '/'); await ready(page, { account: true });   // история уходит в новый аккаунт
 
   // --- интервальное повторение ---
   const due = await page.evaluate(() => __kana.srsDue().map(s => s.k).sort().join(''));

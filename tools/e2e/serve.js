@@ -8,6 +8,52 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 
 // ---- заглушка API ----
 const users = new Map(), sessions = new Map(), items = new Map(), pushSubs = new Map(), pushPrefs = new Map(); let seq = 0;
+// Telegram и друзья (заглушка повторяет логику сервера в упрощённом виде)
+const tgLogins = new Map(), tgSent = [], friendsSet = new Set(), friendReq = new Set(), invites = new Map();
+const meOf = u => { const x = users.get(u); return { username: x.name, displayName: x.displayName, linked: !!x.tgId, telegram: x.tgUser || null, hasPassword: !!x.pass }; };
+const fkey = (a, b) => [a, b].sort().join('|');
+const personOf = u => ({ id: u, name: users.get(u).displayName || users.get(u).name, username: users.get(u).name });
+const zeroStats = { streak: 0, todayMin: 0, todayCards: 0, goalMin: 30, goalCards: 50, lessonsH: 0, lessonsK: 0, weekAnswers: 0, weekAccuracy: null };
+function friendsOf(u) {
+  const fr = [...friendsSet].filter(k => k.split('|').includes(u)).map(k => k.split('|').find(x => x !== u));
+  return { friends: fr.map(f => Object.assign(personOf(f), { since: 0, stats: Object.assign({}, zeroStats, { weekAnswers: [...items.values()].filter(i => i.uid === f && i.c === 'answers').length }) })),
+    incoming: [...friendReq].filter(k => k.endsWith('>' + u)).map(k => personOf(k.split('>')[0])),
+    outgoing: [...friendReq].filter(k => k.startsWith(u + '>')).map(k => personOf(k.split('>')[1])), me: zeroStats };
+}
+const userByTg = id => [...users.keys()].find(u => users.get(u).tgId === id);
+function tgReply(chat, text, markup) { tgSent.push({ chat_id: chat, text, reply_markup: markup }); }
+function tgHandle(u) {
+  if (u.callback_query) {
+    const q = u.callback_query, nonce = q.data.slice(3), r = tgLogins.get(nonce);
+    if (r && r.status === 'confirm' && r.tgId === q.from.id) { if (q.data.startsWith('ok:')) { r.status = 'approved'; r.result = userByTg(q.from.id); } else r.status = 'denied'; }
+    return;
+  }
+  const m = u.message, from = m.from;
+  if (m.contact) {
+    const r = [...tgLogins.values()].reverse().find(x => x.tgId === from.id && x.status === 'need_contact');
+    if (!r) return tgReply(from.id, 'Ссылка устарела');
+    if (m.contact.user_id !== from.id) return tgReply(from.id, 'Нужен ваш собственный номер');
+    if (r.kind === 'login') {
+      let id = userByTg(from.id);
+      if (!id) { id = (from.username || 'tg' + from.id).toLowerCase(); users.set(id, { name: from.username || id, pass: null, displayName: [from.first_name, from.last_name].filter(Boolean).join(' '), tgId: from.id, tgUser: from.username }); }
+      r.status = 'approved'; r.result = id;
+    } else { const x = users.get(r.user); x.tgId = from.id; x.tgUser = from.username; r.status = 'approved'; r.result = r.user; }
+    return tgReply(from.id, 'Готово!');
+  }
+  const nonce = (m.text || '').replace('/start', '').trim(), r = tgLogins.get(nonce);
+  if (!r || r.status !== 'new') return tgReply(from.id, 'Ссылка устарела');
+  r.tgId = from.id;
+  const owner = userByTg(from.id);
+  if (r.kind === 'login') { r.status = owner ? 'confirm' : 'need_contact'; tgReply(from.id, owner ? 'Войти?' : 'Поделитесь номером', owner ? { inline_keyboard: [[{ text: 'Войти', callback_data: 'ok:' + nonce }, { text: 'Это не я', callback_data: 'no:' + nonce }]] } : { keyboard: [[{ text: 'Поделиться номером', request_contact: true }]] }); }
+  else if (owner && owner !== r.user) { r.status = 'error'; r.message = 'Этот Telegram уже привязан к другому аккаунту'; }
+  else if (owner) { r.status = 'approved'; r.result = r.user; }
+  else { r.status = 'need_contact'; tgReply(from.id, 'Поделитесь номером', { keyboard: [[{ text: 'Поделиться номером', request_contact: true }]] }); }
+}
+function tgStart(kind, user) {
+  const nonce = crypto.randomBytes(12).toString('base64url'), secret = crypto.randomBytes(16).toString('base64url');
+  tgLogins.set(nonce, { kind, user, secret, status: 'new' });
+  return { nonce, secret, link: 'https://t.me/kana_test_bot?start=' + nonce };
+}
 const PUSH_KEY = Buffer.concat([Buffer.from([4]), crypto.randomBytes(64)]).toString('base64url');
 const send = (res, status, body, cookie) => { res.writeHead(status, Object.assign({ 'Content-Type': 'application/json' }, cookie ? { 'Set-Cookie': cookie } : {})); res.end(JSON.stringify(body)); };
 function mock(req, res, body) {
@@ -21,15 +67,23 @@ function mock(req, res, body) {
     if (body.password.length < 8) return send(res, 400, { error: 'Пароль должен быть не короче 8 символов' });
     if (!(body.displayName || '').trim()) return send(res, 400, { error: 'Укажите, как к вам обращаться' });
     users.set(u, { name: body.username, pass: body.password, displayName: body.displayName.trim() });
-    return send(res, 201, { username: body.username, displayName: body.displayName.trim() }, newSession(u));
+    return send(res, 201, meOf(u), newSession(u));
   }
   if (p === '/api/auth/login') {
     const u = users.get((body.username || '').toLowerCase());
-    if (!u || u.pass !== body.password) return send(res, 401, { error: 'Неверный логин или пароль' });
-    return send(res, 200, { username: u.name, displayName: u.displayName }, newSession(body.username.toLowerCase()));
+    if (!u || !u.pass || u.pass !== body.password) return send(res, 401, { error: 'Неверный логин или пароль' });
+    return send(res, 200, meOf(body.username.toLowerCase()), newSession(body.username.toLowerCase()));
   }
   if (p === '/api/auth/logout') { if (cookie) sessions.delete(cookie.split('=')[1]); return send(res, 200, { ok: true }, 'kana_session=; Path=/api; Max-Age=0'); }
   if (p === '/api/push/key') return send(res, 200, { key: PUSH_KEY });
+  if (p === '/api/tg/config') return send(res, 200, { enabled: true });
+  if (p === '/api/tg/login') return send(res, 200, tgStart('login', null));
+  if (p === '/api/tg/status') {
+    const r = tgLogins.get(body.nonce);
+    if (!r || r.secret !== body.secret) return send(res, 404, { error: 'не найдено' });
+    if (r.status === 'approved' && r.kind === 'login') { r.status = 'done'; return send(res, 200, Object.assign({ status: 'ok' }, meOf(r.result)), newSession(r.result)); }
+    return send(res, 200, { status: r.status === 'approved' ? 'linked' : r.status === 'done' ? 'used' : r.status, message: r.message || null });
+  }
   if (!uid) return send(res, 401, { error: 'Вы не вошли' });
   if (p.startsWith('/api/push/')) {
     const prefs = () => { const pr = pushPrefs.get(uid) || { enabled: false, time: '19:00', tz: null }; return Object.assign({}, pr, { devices: [...pushSubs.values()].filter(s => s.uid === uid).length }); };
@@ -43,8 +97,36 @@ function mock(req, res, body) {
     if (p === '/api/push/prefs') { if (req.method === 'POST') pushPrefs.set(uid, Object.assign(prefs(), Object.fromEntries(Object.entries(body).filter(([, v]) => v != null)))); return send(res, 200, prefs()); }
     if (p === '/api/push/test') return send(res, 200, { sent: prefs().devices });
   }
-  if (p === '/api/auth/me') return send(res, 200, { username: users.get(uid).name, displayName: users.get(uid).displayName });
-  if (p === '/api/auth/name') { const n = (body.displayName || '').trim(); if (!n) return send(res, 400, { error: 'Укажите, как к вам обращаться' }); users.get(uid).displayName = n; return send(res, 200, { username: users.get(uid).name, displayName: n }); }
+  if (p === '/api/auth/me') return send(res, 200, meOf(uid));
+  if (p === '/api/auth/name') { const n = (body.displayName || '').trim(); if (!n) return send(res, 400, { error: 'Укажите, как к вам обращаться' }); users.get(uid).displayName = n; return send(res, 200, meOf(uid)); }
+  if (p === '/api/auth/unlink-telegram') { const x = users.get(uid); if (!x.pass) return send(res, 409, { error: 'нельзя' }); x.tgId = null; x.tgUser = null; return send(res, 200, meOf(uid)); }
+  if (p === '/api/tg/link') return send(res, 200, tgStart('link', uid));
+  if (p.startsWith('/api/friends')) {
+    if (!users.get(uid).tgId) return send(res, 403, { error: 'Сначала привяжите телефон через Telegram' });
+    if (p === '/api/friends') return send(res, 200, friendsOf(uid));
+    if (p === '/api/friends/search') {
+      const t = (body.q || '').trim().replace(/^@/, '').toLowerCase(), x = users.get(t);
+      if (!x || !x.tgId) return send(res, 404, { error: 'Никого не нашли' });
+      const state = t === uid ? 'me' : friendsSet.has(fkey(uid, t)) ? 'friend' : friendReq.has(uid + '>' + t) ? 'requested' : friendReq.has(t + '>' + uid) ? 'incoming' : 'none';
+      return send(res, 200, { user: personOf(t), state });
+    }
+    const other = body.userId;
+    if (p === '/api/friends/request') { if (friendReq.has(other + '>' + uid)) { friendReq.delete(other + '>' + uid); friendsSet.add(fkey(uid, other)); } else friendReq.add(uid + '>' + other); return send(res, 200, friendsOf(uid)); }
+    if (p === '/api/friends/accept') { friendReq.delete(other + '>' + uid); friendsSet.add(fkey(uid, other)); return send(res, 200, friendsOf(uid)); }
+    if (p === '/api/friends/decline') { friendReq.delete(other + '>' + uid); return send(res, 200, friendsOf(uid)); }
+    if (p === '/api/friends/cancel') { friendReq.delete(uid + '>' + other); return send(res, 200, friendsOf(uid)); }
+    if (p === '/api/friends/remove') { friendsSet.delete(fkey(uid, other)); return send(res, 200, friendsOf(uid)); }
+    if (p === '/api/friends/invite') { const t = crypto.randomBytes(12).toString('base64url'); invites.set(t, uid); return send(res, 200, { token: t }); }
+    const m = p.match(/^\/api\/friends\/invite\/([^/]+)(\/accept)?$/);
+    if (m) {
+      const from = invites.get(decodeURIComponent(m[1]));
+      if (!from) return send(res, 404, { error: 'Приглашение не найдено или устарело' });
+      if (!m[2]) return send(res, 200, { from: personOf(from), state: from === uid ? 'me' : friendsSet.has(fkey(uid, from)) ? 'friend' : 'new' });
+      if (from === uid) return send(res, 400, { error: 'Это ваше собственное приглашение' });
+      invites.delete(decodeURIComponent(m[1])); friendsSet.add(fkey(uid, from));
+      return send(res, 200, Object.assign(friendsOf(uid), { added: personOf(from) }));
+    }
+  }
   if (p === '/api/sync') {
     for (const ch of body.changes || []) {
       const k = uid + '\u0000' + ch.c + '\u0000' + ch.id, cur = items.get(k);
@@ -61,6 +143,16 @@ http.createServer((req, res) => {
   if (req.url.startsWith('/api/tts') && !API) {   // заглушка озвучки: любой mp3
     res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'public, max-age=31536000, immutable' });
     return fs.createReadStream(path.join(ROOT, 'audio/m/あ.mp3')).pipe(res);
+  }
+  // управление «ботом» из тестов — как у tools/e2e/fake-telegram.js
+  if (req.url.startsWith('/__tg/') && !API) {
+    let data = ''; req.on('data', c => data += c);
+    req.on('end', () => {
+      if (req.url === '/__tg/send') { tgHandle(JSON.parse(data)); return send(res, 200, { ok: true }); }
+      if (req.url === '/__tg/sent') return send(res, 200, tgSent);
+      send(res, 404, {});
+    });
+    return;
   }
   if (req.url.startsWith('/api/')) {
     if (API) {
