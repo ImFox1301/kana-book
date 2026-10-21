@@ -42,6 +42,8 @@ data class TgProps(
     val poll: Boolean = true,
     /** сколько живёт ссылка входа */
     val ttlMinutes: Long = 10,
+    /** попыток входа через Telegram с одного адреса за 10 минут (экран входа создаёт попытку заранее) */
+    val loginLimit: Int = 40,
 ) { val enabled get() = token.isNotBlank() }
 
 /** Bot API: вызовы методов. Опрос (long polling) — сервер сам забирает сообщения, входящий доступ не нужен. */
@@ -240,7 +242,7 @@ class TgController(private val tg: TgService, private val props: TgProps, privat
 
     @PostMapping("/login")
     fun login(req: HttpServletRequest): StartResponse {
-        if (!limiter.tryAcquire("tg:${req.remoteAddr}", 20, 600_000)) throw ApiException(HttpStatus.TOO_MANY_REQUESTS, "Слишком много попыток. Подождите несколько минут")
+        if (!limiter.tryAcquire("tg:${req.remoteAddr}", props.loginLimit, 600_000)) throw ApiException(HttpStatus.TOO_MANY_REQUESTS, "Слишком много попыток. Подождите несколько минут")
         return tg.start("login", null)
     }
 

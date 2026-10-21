@@ -89,7 +89,7 @@ jobs:
         run: |
           python3 build.py
           node tools/e2e/fake-telegram.js > tg.log 2>&1 &
-          java -Dkana.register-per-hour=1000 -Dkana.tg.token=test -Dkana.tg.api-base=http://127.0.0.1:8792 -jar server/build/libs/kana-api.jar > api.log 2>&1 &
+          java -Dkana.register-per-hour=1000 -Dkana.tg.login-limit=1000 -Dkana.tg.token=test -Dkana.tg.api-base=http://127.0.0.1:8792 -jar server/build/libs/kana-api.jar > api.log 2>&1 &
           for i in $(seq 60); do curl -sf http://127.0.0.1:8080/api/health && break; sleep 1; done
           API_URL=http://127.0.0.1:8080 node tools/e2e/serve.js &
           npm i --no-save playwright@1.56.0 > /dev/null
