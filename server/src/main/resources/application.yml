@@ -31,6 +31,9 @@ kana:
   cookie-secure: ${COOKIE_SECURE:true}
   session-days: 180
   registration-open: ${REGISTRATION_OPEN:true}
+  tg:
+    # токен Telegram-бота от @BotFather (в .env на сервере); пусто — вход через Telegram выключен
+    token: ${TELEGRAM_BOT_TOKEN:}
   push:
     # контакт для push-сервисов (VAPID); пусто — адрес сайта, на котором подписались
     subject: ${PUSH_SUBJECT:}
