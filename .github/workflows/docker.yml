@@ -75,7 +75,12 @@ jobs:
         working-directory: server
         env:
           DB_URL: jdbc:postgresql://localhost:5432/kana
-        run: gradle test bootJar --no-daemon
+        run: |
+          gradle test bootJar --no-daemon > gradle.log 2>&1 || {
+            # ошибки компиляции и упавшие тесты — в аннотации запуска
+            grep -E "^e: |FAILED|Exception|expected:|AssertionFailed" gradle.log | head -20 | sed "s/^/::error title=gradle::/"
+            for f in build/test-results/test/*.xml; do grep -A3 "<failure" "$f" | head -8 | tr '\n' ' ' | sed "s/^/::error title=$(basename $f)::/"; echo; done
+            tail -40 gradle.log; exit 1; }
 
       - name: End-to-end checks (sync on real API + PostgreSQL, Azbuka)
         env:
