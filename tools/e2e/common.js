@@ -17,7 +17,13 @@ async function signup(page, { name = 'Тест', user = 'u_' + rnd(), pass = 'se
   await page.evaluate(() => __kana.show('register'));
   await page.fill('#acc-name', name); await page.fill('#acc-user', user); await page.fill('#acc-pass', pass);
   await page.click('#screen-register button[type=submit]');
-  await page.waitForSelector('#screen-onboard:not([hidden]) .btn.primary');
+  try { await page.waitForSelector('#screen-onboard:not([hidden]) .btn.primary', { timeout: 20000 }); }
+  catch (e) {
+    // что на экране — для разбора провала в CI
+    const st = await page.evaluate(() => ({ screens: [...document.querySelectorAll('section:not([hidden])')].map(s => s.id), text: (document.querySelector('section:not([hidden])') || document.body).innerText.slice(0, 600), acct: localStorage.getItem('kana-tetrad:account') }));
+    console.log('FAIL регистрация не завершилась: ' + JSON.stringify(st).replace(/\n/g, ' '));
+    throw e;
+  }
   if (stayOnboard) return { user, pass };
   if (goal) await goal(page);
   await page.click('#screen-onboard .btn.primary');
