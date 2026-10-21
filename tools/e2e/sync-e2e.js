@@ -1,6 +1,7 @@
 // Сквозная проверка синхронизации: два «устройства» (два независимых профиля браузера) и один аккаунт.
 // Запуск: node tools/e2e/serve.js & node tools/e2e/sync-e2e.js http://localhost:8790
 const { chromium } = require('playwright');
+const { ready, openQuizSetup } = require('./common.js');
 const BASE = process.argv[2] || 'http://localhost:8790';
 const user = 'e2e_' + Math.random().toString(36).slice(2, 8), pass = 'kana-pass-123';
 let failed = 0;
@@ -11,7 +12,7 @@ async function device(browser, name) {
   const page = await ctx.newPage();
   page.on('pageerror', e => { console.log(`[${name}] ошибка страницы: ${e.message}`); failed++; });
   await page.goto(BASE + '/');
-  await page.waitForSelector('#btn-start');
+  await ready(page);
   return { ctx, page };
 }
 const words = page => page.evaluate(() => KanaApp.items().filter(i => i.c === 'words').map(i => i.data.kana));
@@ -27,7 +28,7 @@ async function addWord(page, kana, mean) {
   await page.click('#add-form button[type=submit]');
 }
 async function answerCards(page, n) {
-  await page.click('#tab-quiz');
+  await openQuizSetup(page);
   await page.click('#btn-start');
   for (let i = 0; i < n; i++) { await page.click('text=Пропустить'); await page.click('#card .btn.primary'); }
   await page.click('#btn-quit');
@@ -41,7 +42,7 @@ async function answerCards(page, n) {
   check(await A.page.evaluate(() => KanaSync.account === null), 'A: без входа приложение работает, аккаунта нет');
   await addWord(A.page, 'ねこ', 'кошка');
   await answerCards(A.page, 3);
-  await A.page.click('#tab-progress');
+  await A.page.click('#tab-me');
   check(await A.page.isVisible('#acc-user'), 'A: на вкладке «Прогресс» есть форма входа');
   check((await A.page.textContent('#stats')).includes('ответов всего'), 'A: статистика видна и без аккаунта');
   await A.page.click('text=Нет аккаунта? Создать');
@@ -54,7 +55,7 @@ async function answerCards(page, n) {
   // Устройство B: входит в тот же аккаунт и получает всё
   const B = await device(browser, 'B');
   check((await words(B.page)).length === 0, 'B: до входа своих слов нет');
-  await B.page.click('#tab-progress');
+  await B.page.click('#tab-me');
   await B.page.fill('#acc-user', user); await B.page.fill('#acc-pass', pass);
   await B.page.click('#account-box button[type=submit]');
   await B.page.waitForSelector('#account-box .who');
@@ -74,12 +75,12 @@ async function answerCards(page, n) {
   check(!(await words(B.page)).includes('ねこ'), 'B: удаление с устройства A применилось');
 
   // Перезагрузка: сессия и данные сохраняются
-  await B.page.reload(); await B.page.waitForSelector('#btn-start');
-  await B.page.click('#tab-progress'); await B.page.waitForSelector('#account-box .who');
+  await B.page.reload(); await ready(B.page);
+  await B.page.click('#tab-me'); await B.page.waitForSelector('#account-box .who');
   check(true, 'B: после перезагрузки остаётся в аккаунте');
 
   // Выход: данные остаются в аккаунте, устройство очищается
-  await A.page.click('#tab-progress');
+  await A.page.click('#tab-me');
   await A.page.click('#account-box >> text=Выйти');
   await A.page.click('#account-box .btn.primary:has-text("Выйти")');
   await A.page.waitForSelector('#acc-user');

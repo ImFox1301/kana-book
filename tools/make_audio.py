@@ -15,7 +15,8 @@
     curl -L -o vvms/3.vvm https://github.com/VOICEVOX/voicevox_vvm/releases/download/$V/3.vvm
     cd .. && python3 -m venv .venv && .venv/bin/pip install $D/voicevox_core-*.whl numpy soundfile
 Запуск:
-    .venv/bin/python tools/make_audio.py .voicevox
+    .venv/bin/python tools/make_audio.py .voicevox            # всё заново
+    .venv/bin/python tools/make_audio.py .voicevox --missing  # только новые слова
 
 Результат: assets/audio/<голос>/<хирагана>.mp3 (катакана использует те же файлы — звучание одинаковое)
 и assets/audio/words/<голос>/<слово>.mp3 для стартового словаря.
@@ -31,7 +32,7 @@ import numpy as np
 import soundfile as sf
 from voicevox_core.blocking import Onnxruntime, OpenJtalk, Synthesizer, VoiceModelFile
 
-vv = Path(sys.argv[1] if len(sys.argv) > 1 else ".voicevox")
+vv = Path(next((a for a in sys.argv[1:] if not a.startswith("--")), ".voicevox"))
 root = Path(__file__).resolve().parent.parent
 VOICES = {"m": ("15.vvm", 13), "f": ("3.vvm", 9)}   # файл модели, id стиля «ノーマル»
 
@@ -70,6 +71,17 @@ WORD_TEXT = {
 }
 words_js = (root / "src" / "words.js").read_text(encoding="utf-8")
 words = re.findall(r"\['([^']+)',", words_js)
+# слова уроков: [кана, перевод, иероглифы, …]
+import json as _json
+lesson_words = _json.loads(subprocess.run(["node", "-e", """
+const K = require('./src/kana.js'); global.ROWS = K.ROWS; global.toKata = K.toKata;
+const { LESSONS } = require('./src/lessons.js');
+console.log(JSON.stringify(LESSONS.flatMap(l => l.words)));
+"""], cwd=root, capture_output=True, text=True, check=True).stdout)
+for w in lesson_words:
+    if w[0] not in words: words.append(w[0])
+    if len(w) > 2 and w[2] and w[0] not in WORD_TEXT: WORD_TEXT[w[0]] = w[2]
+ONLY_MISSING = "--missing" in sys.argv
 
 def moras(aq):
     # «えい» на письме произносится как долгое «ээ»: エイゴ и エエゴ — одно и то же слово
@@ -98,6 +110,7 @@ for key, (vvm, style) in VOICES.items():
     wout = root / "assets" / "audio" / "words" / key
     wout.mkdir(parents=True, exist_ok=True)
     for kana in words:
+        if ONLY_MISSING and (wout / f"{kana}.mp3").exists(): continue
         aq = word_query(kana, style)
         aq.speed_scale = 0.9                      # чуть медленнее обычной речи
         aq.pre_phoneme_length, aq.post_phoneme_length = 0.06, 0.20
@@ -107,6 +120,7 @@ for key, (vvm, style) in VOICES.items():
     out = root / "assets" / "audio" / key
     out.mkdir(parents=True, exist_ok=True)
     for hira in sounds:
+        if ONLY_MISSING and (out / f"{hira}.mp3").exists(): continue
         k = to_kata(hira); k = SAME.get(k, k)
         aq = syn.create_audio_query_from_kana(k + "'", style)   # один слог с ударением — ровный, отчётливый
         mora = aq.accent_phrases[0].moras[0]

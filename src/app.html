@@ -248,6 +248,134 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
 .w-row .r { color: var(--ink-2) }
 .w-row.hard { background: var(--shu-soft) }
 .w-row .bad { color: var(--shu); font-weight: 600 }
+/* ---- навигация: снизу на телефоне, слева на компьютере ---- */
+:root { --nav-h: 62px }
+body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0px)) }
+.bnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(5, 1fr);
+  background: var(--sheet); border-top: 1px solid var(--rule);
+  padding: 4px max(6px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(6px, env(safe-area-inset-left, 0px)) }
+.bnav button { border: 0; background: none; color: var(--ink-2); display: grid; justify-items: center; gap: 2px; padding: 6px 2px 7px; font: 500 11.5px var(--ui); cursor: pointer; border-radius: 10px; min-height: 52px }
+.bnav button svg { width: 24px; height: 24px }
+.bnav button[aria-current="page"] { color: var(--indigo) }
+.bnav button[aria-current="page"] svg { stroke-width: 2.3 }
+@media (min-width: 960px) {
+  body { padding-bottom: 40px; padding-left: calc(96px + max(16px, env(safe-area-inset-left, 0px))) }
+  .bnav { top: 0; right: auto; width: 88px; grid-template-columns: none; grid-auto-rows: min-content; align-content: start; gap: 6px; padding: 80px 8px 16px max(8px, env(safe-area-inset-left, 0px)); border-top: 0; border-right: 1px solid var(--rule) }
+  .bnav button { padding: 10px 2px }
+  .updbar { padding-left: 96px }
+}
+.updbar { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px)) }
+@media (min-width: 960px) { .updbar { bottom: 0 } }
+.abc-bar { bottom: calc(var(--nav-h) + 10px + env(safe-area-inset-bottom, 0px)) }
+@media (min-width: 960px) { .abc-bar { bottom: 10px } }
+.streak { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; font-size: 14px; color: var(--shu); font-variant-numeric: tabular-nums }
+.streak svg { width: 18px; height: 18px }
+.backbar { margin: -4px 0 10px }
+.back { font-size: 14px; padding: 4px 0 }
+.h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); margin: 22px 0 8px; font-weight: 600 }
+.h2:first-child { margin-top: 4px }
+.h1 { font-size: 24px; margin: 4px 0 2px; text-wrap: balance }
+
+/* ---- Сегодня ---- */
+.home { display: grid; gap: 12px }
+.hello { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap }
+.goal { display: grid; gap: 10px }
+.goal-row { display: grid; gap: 4px }
+.goal-row .top { display: flex; justify-content: space-between; font-size: 14px; gap: 8px }
+.goal-row .top b { font-variant-numeric: tabular-nums }
+.bar { height: 8px; background: var(--rule); border-radius: 99px; overflow: hidden }
+.bar i { display: block; height: 100%; background: var(--indigo); border-radius: 99px; transition: width .3s }
+.bar.done i { background: var(--ok) }
+.goal-done { color: var(--ok); font-weight: 600; font-size: 14px }
+.cta { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; width: 100%; text-align: left; border: 1.5px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 14px; padding: 14px 16px; cursor: pointer; font: inherit }
+.cta:hover { border-color: var(--indigo) }
+.cta.main { border-color: var(--indigo); background: var(--indigo-soft) }
+.cta .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--indigo); color: var(--on-indigo) }
+.cta .ico svg { width: 22px; height: 22px }
+.cta.alt .ico { background: var(--paper); color: var(--indigo); border: 1px solid var(--rule) }
+.cta .t { font-weight: 700; font-size: 16px }
+.cta .d { font-size: 13.5px; color: var(--ink-2) }
+.cta .k { font-family: var(--kana); font-size: 20px; letter-spacing: .08em; color: var(--ink) }
+.cta .go { color: var(--indigo); font-size: 22px }
+.quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; font-size: 12px; color: var(--ink-2) }
+.week i { display: block; height: 28px; border-radius: 8px; background: var(--paper); border: 1px solid var(--rule); margin-top: 4px }
+.week .on i { background: var(--ok-soft); border-color: var(--ok) }
+.week .goal i { background: var(--ok); border-color: var(--ok) }
+.week .today { color: var(--ink); font-weight: 700 }
+
+/* ---- уроки ---- */
+.lessons { display: grid; gap: 8px }
+.lrow { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; width: 100%; text-align: left; border: 1.5px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 12px; padding: 10px 12px; cursor: pointer; font: inherit }
+.lrow:hover { border-color: var(--indigo) }
+.lrow .n { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-variant-numeric: tabular-nums; border: 1.5px solid var(--rule); color: var(--ink-2) }
+.lrow.done .n { background: var(--ok); border-color: var(--ok); color: var(--sheet) }
+.lrow.rec { border-color: var(--indigo); background: var(--indigo-soft) }
+.lrow.rec .n { border-color: var(--indigo); color: var(--indigo) }
+.lrow .t { font-weight: 600 }
+.lrow .k { font-family: var(--kana); font-size: 17px; letter-spacing: .06em; color: var(--ink-2); overflow-wrap: anywhere }
+.badge { font-size: 12px; font-weight: 600; border-radius: 99px; padding: 3px 9px; white-space: nowrap }
+.badge.ok { background: var(--ok-soft); color: var(--ok) }
+.badge.rec { background: var(--indigo); color: var(--on-indigo) }
+.badge.soon { background: var(--paper); color: var(--ink-2); border: 1px solid var(--rule) }
+.lhead { display: grid; gap: 8px }
+.lkana { display: flex; flex-wrap: wrap; gap: 8px }
+.lkana button { font-family: var(--kana); font-size: 34px; line-height: 1; width: 64px; height: 64px; border-radius: 12px; border: 1.5px solid var(--rule); background: var(--paper); color: var(--ink); cursor: pointer; display: grid; place-items: center }
+.lkana button.w2 { width: 84px; font-size: 28px }
+.lkana button.playing { animation: ping .7s ease-out }
+.lintro-text { max-width: 65ch; color: var(--ink); line-height: 1.6 }
+.steps { display: grid; gap: 8px; counter-reset: st }
+.stepc { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; border: 1px solid var(--rule); border-radius: 12px; padding: 12px; background: var(--sheet) }
+.stepc .n { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; border: 1.5px solid var(--indigo); color: var(--indigo); font-size: 14px }
+.stepc.done .n { background: var(--ok); border-color: var(--ok); color: var(--sheet) }
+.stepc .t { font-weight: 600 }
+.stepc .d { font-size: 13px; color: var(--ink-2) }
+.lwords { display: grid; gap: 2px }
+.lword { display: grid; grid-template-columns: minmax(0, 1.2fr) 40px minmax(0, 1.4fr); gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--rule) }
+.lword .k { font-family: var(--kana); font-size: 22px; overflow-wrap: anywhere }
+.lword .rd { font-size: 13px; color: var(--ink-2) }
+.lword .rd.hid { filter: blur(5px); cursor: pointer }
+.lword .m { font-size: 14px; overflow-wrap: anywhere }
+.pdfrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.lsim { display: grid; gap: 6px; font-size: 14px }
+.lsim .k { font-family: var(--kana); font-size: 22px; margin-right: 6px }
+.result-banner { border-radius: 12px; padding: 12px 14px; font-weight: 600; text-align: center; width: 100% }
+.result-banner.ok { background: var(--ok-soft); color: var(--ok) }
+.result-banner.bad { background: var(--warn-soft); color: var(--warn) }
+
+/* ---- знакомство со знаком ---- */
+.icard { display: grid; gap: 14px; width: 100%; justify-items: center; text-align: center }
+.icard .pair { display: flex; gap: 18px; align-items: center; justify-content: center; flex-wrap: wrap }
+.icard .glyph-big { font-family: var(--kana); font-size: 112px; line-height: 1; font-weight: 600 }
+.icard .rd { font-size: 26px; font-weight: 700 }
+.icard .rd span { font-size: 16px; font-weight: 400; color: var(--ink-2) }
+.icard .so canvas.box { width: 128px; height: 128px; cursor: pointer }
+.ibox { text-align: left; width: 100%; max-width: 560px; border-radius: 12px; padding: 12px 14px; background: var(--paper); border: 1px solid var(--rule); display: grid; gap: 4px }
+.ibox .lab { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); font-weight: 600 }
+.ibox p { margin: 0; line-height: 1.55 }
+
+/* ---- практика ---- */
+.practice { display: grid; gap: 10px }
+
+/* ---- настройки ---- */
+.set { display: grid; gap: 4px; padding: 12px 0; border-bottom: 1px dashed var(--rule) }
+.set:last-child { border-bottom: 0 }
+.set .lbl { font-weight: 600; font-size: 14.5px }
+.set .d { font-size: 13px; color: var(--ink-2) }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px }
+.tgl { position: relative; width: 46px; height: 28px; flex: none }
+.tgl input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer }
+.tgl span { position: absolute; inset: 0; border-radius: 99px; background: var(--rule); transition: background .2s; pointer-events: none }
+.tgl span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--sheet); box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s }
+.tgl input:checked + span { background: var(--indigo) }
+.tgl input:checked + span::after { transform: translateX(18px) }
+.tgl input:focus-visible + span { outline: 2px solid var(--indigo); outline-offset: 2px }
+.tgl input:disabled + span { opacity: .5 }
+
+/* ---- первый запуск ---- */
+.onboard { display: grid; gap: 18px; max-width: 560px; margin: 8px auto 0 }
+.onboard .hero { font-family: var(--kana); font-size: 56px; color: var(--indigo); line-height: 1 }
+.onboard p { margin: 0; color: var(--ink-2); line-height: 1.55 }
 .topright { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
 .installhint { background: var(--indigo-soft); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin-bottom: 12px }
 .updbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; justify-content: center; padding: 0 max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); pointer-events: none }
@@ -257,18 +385,21 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important } }
 </style>
 
+<nav class="bnav" id="bnav" aria-label="Разделы">
+  <button type="button" id="tab-home" data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg><span>Сегодня</span></button>
+  <button type="button" id="tab-lessons" data-tab="lessons"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5"/><path d="M9 8h6M9 11h4"/></svg><span>Уроки</span></button>
+  <button type="button" id="tab-practice" data-tab="practice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5l4 4L9 19l-5 1 1-5z"/><path d="M14 6l4 4"/></svg><span>Практика</span></button>
+  <button type="button" id="tab-dict" data-tab="dict"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Словарь</span></button>
+  <button type="button" id="tab-me" data-tab="me"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span>Я</span></button>
+</nav>
+
 <div class="wrap">
   <header class="top">
     <div class="brand"><b>かな</b><span>Кана-тетрадь</span></div>
     <div class="topright">
       <button class="iconbtn" id="btn-install" type="button" hidden title="Установить Кана-тетрадь как приложение">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Установить</button>
-      <nav class="tabs" role="tablist">
-        <button role="tab" id="tab-quiz" aria-selected="true" data-tab="quiz">Квиз</button>
-        <button role="tab" id="tab-abc" aria-selected="false" data-tab="abc">Азбука</button>
-        <button role="tab" id="tab-dict" aria-selected="false" data-tab="dict">Словарь</button>
-        <button role="tab" id="tab-progress" aria-selected="false" data-tab="progress">Прогресс</button>
-      </nav>
+      <span class="streak" id="streak" hidden title="Дней подряд с занятиями"></span>
     </div>
   </header>
   <div class="installhint" id="install-hint" hidden>
@@ -276,7 +407,30 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
     <button class="link" id="install-hint-close" type="button">Понятно</button>
   </div>
 
-  <!-- НАСТРОЙКА -->
+  <!-- ПЕРВЫЙ ЗАПУСК -->
+  <section id="screen-onboard" hidden></section>
+
+  <!-- СЕГОДНЯ -->
+  <section id="screen-home" hidden></section>
+
+  <!-- УРОКИ -->
+  <section id="screen-lessons" hidden></section>
+  <section id="screen-lesson" hidden></section>
+  <section id="screen-lintro" hidden>
+    <div class="qbar">
+      <button class="iconbtn" id="btn-iquit" type="button" title="Вернуться к уроку">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>К уроку</button>
+      <div class="prog"><i id="i-prog"></i></div>
+      <div class="ctr" id="i-ctr"></div>
+    </div>
+    <div class="card" id="lintro"></div>
+  </section>
+
+  <!-- ПРАКТИКА -->
+  <section id="screen-practice" hidden></section>
+
+  <!-- НАСТРОЙКА КВИЗА -->
+  <div class="backbar" data-for="setup"><button class="link back" type="button" data-back="practice">← Практика</button></div>
   <section id="screen-setup" class="sheet">
     <div class="step">
       <div class="num">一</div>
@@ -391,6 +545,7 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
   </section>
 
   <!-- АЗБУКА -->
+  <div class="backbar" data-for="abc"><button class="link back" type="button" data-back="practice">← Практика</button></div>
   <section id="screen-abc" hidden>
     <div class="sheet" id="abc"></div>
     <div class="abc-bar" id="abc-bar" hidden></div>
@@ -407,9 +562,13 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
     <div class="card" id="write"></div>
   </section>
 
-  <!-- ПРОГРЕСС -->
-  <section id="screen-progress" hidden>
+  <!-- Я: аккаунт, цель, настройки, прогресс -->
+  <section id="screen-me" hidden>
+    <h2 class="h2">Аккаунт</h2>
     <div class="sheet account" id="account-box" hidden></div>
+    <h2 class="h2">Цель и настройки</h2>
+    <div class="sheet" id="settings"></div>
+    <h2 class="h2">Прогресс по знакам</h2>
     <div class="sheet" id="stats"></div>
   </section>
 </div>
@@ -424,5 +583,7 @@ pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius
 <script>/*KVG*/</script>
 <script>/*REC*/</script>
 <script>/*KANA*/</script>
+<script>/*LESSONS*/</script>
 <script>/*WORDS*/</script>
+<script>/*PDF*/</script>
 <script>/*APP*/</script>

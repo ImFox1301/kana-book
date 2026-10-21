@@ -12,7 +12,9 @@ if dist.exists():
 dist.mkdir()
 shutil.copytree(assets / "fonts", dist / "fonts")
 shutil.copytree(assets / "icons", dist / "icons")
-shutil.copytree(assets / "audio", dist / "audio")   # озвучка каны (tools/make_audio.py)
+shutil.copytree(assets / "audio", dist / "audio")
+shutil.copytree(assets / "pdf", dist / "pdf")         # шрифты для PDF (TTF)
+shutil.copytree(assets / "vendor", dist / "vendor")   # pdf-lib, fontkit — загружаются при первом PDF   # озвучка каны (tools/make_audio.py)
 
 FONTS = """<style>
 @font-face { font-family: "Klee One"; font-weight: 400; font-display: swap; src: url("fonts/klee-one-Regular.woff2") format("woff2") }
@@ -23,7 +25,7 @@ FONTS = """<style>
 page = (src / "app.html").read_text(encoding="utf-8")
 # в собранной версии шрифты свои, без обращения к Google
 page = "\n".join(l for l in page.splitlines() if "fonts.googleapis.com" not in l)
-for key, name in [("REC", "recognizer.js"), ("KANA", "kana.js"), ("WORDS", "words.js"), ("APP", "app.js")]:
+for key, name in [("REC", "recognizer.js"), ("KANA", "kana.js"), ("LESSONS", "lessons.js"), ("WORDS", "words.js"), ("PDF", "pdf.js"), ("APP", "app.js")]:
     page = page.replace(f"/*{key}*/", (src / name).read_text(encoding="utf-8"))
 # флаг включает установку, офлайн и аккаунт; sync.js и pwa.js подключаются только в собранной версии
 word_audio = sorted({p.stem for p in (assets / "audio" / "words" / "m").glob("*.mp3")})
@@ -73,8 +75,11 @@ manifest = {
 (dist / "manifest.webmanifest").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 
 # список файлов для офлайна и версия = хеш их содержимого
+# в офлайн-кэш при установке: страница, шрифты, иконки, озвучка каны и vendor-скрипты;
+# озвучка слов (≈3 МБ) кэшируется по мере прослушивания (см. sw.js)
 files = ["index.html", "manifest.webmanifest"] + sorted(
-    str(p.relative_to(dist)) for p in dist.rglob("*") if p.is_file() and p.suffix in {".woff2", ".png", ".mp3"})
+    str(p.relative_to(dist)) for p in dist.rglob("*")
+    if p.is_file() and p.suffix in {".woff2", ".png", ".mp3", ".js", ".ttf"} and "audio/words" not in str(p.relative_to(dist)) and p.name != "sw.js")
 h = hashlib.sha256()
 for f in files:
     h.update(f.encode()); h.update((dist / f).read_bytes())

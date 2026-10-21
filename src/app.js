@@ -29,7 +29,7 @@
     },
   };
   // то, что синхронизируется с аккаунтом
-  const SYNCED = new Set(['words', 'deleted', 'samples', 'settings', 'answers']);
+  const SYNCED = new Set(['words', 'deleted', 'samples', 'settings', 'answers', 'lessons', 'activity']);
   let applying = false;
 
   // ---------- распознаватель ----------
@@ -68,7 +68,7 @@
   let answers = store.get('answers', []);
 
   // ---------- настройки ----------
-  const def = { script: 'h', rows: { h: ['a', 'ka', 'sa'], k: ['a', 'ka', 'sa'] }, topics: null, wfilter: 'all', count: 20, mode: 'draw', sys: 'ru', len: 1, abcScript: 'h', abcMode: 'listen', abcSel: { h: [], k: [] }, reps: 5, ghost: true, voice: 'm' };
+  const def = { script: 'h', rows: { h: ['a', 'ka', 'sa'], k: ['a', 'ka', 'sa'] }, topics: null, wfilter: 'all', count: 20, mode: 'draw', sys: 'ru', len: 1, abcScript: 'h', abcMode: 'listen', abcSel: { h: [], k: [] }, reps: 5, ghost: true, voice: 'm', goal: { min: 30, cards: 50 }, onboarded: false, vibrate: true };
   const S = Object.assign({}, def, store.get('settings', {}));
   const save = () => store.set('settings', S);
 
@@ -172,8 +172,9 @@
 
   // ---------- квиз ----------
   let Q = null;
-  function startQuiz(items, count) {
-    Q = { deck: buildDeck(items, count), i: 0, results: [], mode: S.mode, sys: S.sys, len: S.len };
+  function startQuiz(items, count, opts = {}) {
+    if (!opts.keepFlow && FLOW && FLOW.step !== 'quiz') FLOW = null;
+    Q = { deck: buildDeck(items, count), i: 0, results: [], mode: opts.mode || S.mode, sys: S.sys, len: S.len };
     show('quiz'); renderCard();
   }
   $('#btn-start').onclick = () => {
@@ -181,7 +182,7 @@
     if (S.count < items.length) S.count = items.length;
     startQuiz(items, S.count);
   };
-  $('#btn-quit').onclick = () => { if (Q && Q.results.length) renderResult(); else { Q = null; show('setup'); } };
+  $('#btn-quit').onclick = () => { if (Q && Q.results.length) renderResult(); else if (FLOW) backToLesson(); else { Q = null; show('setup'); } };
 
   function readingOf(it, sys) { return displayReading(it.kana, sys, it.w && it.w.read); }
   const otherSys = s => s === 'ru' ? 'lat' : 'ru';
@@ -353,6 +354,7 @@
     answers.push(a);
     if (answers.length > MAX_ANSWERS) answers.splice(0, answers.length - MAX_ANSWERS);
     store.set('answers', answers);
+    countCard(); buzz(res.status === 'ok');
     renderVerdict(res);
   }
   function renderVerdict(res) {
@@ -430,8 +432,19 @@
         h('div', { class: 'mistakes' }, ...missed.map(it => h('div', {}, h('span', { class: 'k' }, it.kana), h('span', { class: 'r' }, readingOf(it, Q.sys) + (it.w ? ' · ' + it.w.mean : ''))))));
     }
     const missedItems = missed;
+    if (FLOW && FLOW.step === 'quiz') {
+      const l = FLOW.lesson, pct = Math.round(ok / Math.max(1, Q.deck.length) * 100), passed = pct >= PASS * 100;
+      markStep(l, 'quiz', pct);
+      const next = LESSONS[LESSONS.indexOf(l) + 1];
+      el.prepend(h('div', { class: 'result-banner ' + (passed ? 'ok' : 'bad') }, passed ? `Урок ${lessonNo(l)} пройден: ${pct}%` : `${pct}% — для прохождения нужно ${PASS * 100}%. Повторите знакомство и попробуйте ещё раз.`));
+      el.append(h('div', { class: 'actions', style: 'justify-content:center' },
+        passed && next ? iconBtn('btn primary', 'next', `Следующий урок: ${next.title}`, () => { FLOW = null; Q = null; openLesson(next); }) : null,
+        iconBtn(passed ? 'btn ghost' : 'btn primary', 'undo', 'Пройти проверку ещё раз', () => startLessonQuiz(l)),
+        h('button', { class: 'btn ghost', type: 'button', onclick: backToLesson }, 'К уроку')));
+      return show('result');
+    }
     el.append(h('div', { class: 'actions', style: 'justify-content:center' },
-      missedItems.length ? iconBtn('btn primary', 'undo', `Повторить ошибки (${missedItems.length})`, () => startQuiz(missedItems, missedItems.length * 2)) : null,
+      missedItems.length ? iconBtn('btn primary', 'undo', `Повторить ошибки (${missedItems.length})`, () => startQuiz(missedItems, missedItems.length * 2, { mode: Q.mode })) : null,
       h('button', { class: 'btn ghost', type: 'button', onclick: () => { Q = null; show('setup'); } }, 'Новый квиз')));
     show('result');
   }
@@ -621,8 +634,9 @@
 
   // ---------- прописи ----------
   let WR = null;
-  function startWriting(kanas, reps) {
-    WR = { kanas, reps, i: 0, done: 0, stats: kanas.map(k => ({ k, ok: 0, bad: 0, firstBad: 0, skipped: false })), seq: 0 };
+  function startWriting(kanas, reps, opts = {}) {
+    if (opts.ghostFirst == null && FLOW && FLOW.step !== 'write') FLOW = null;
+    WR = { kanas, reps, i: 0, done: 0, stats: kanas.map(k => ({ k, ok: 0, bad: 0, firstBad: 0, skipped: false })), seq: 0, ghostFirst: opts.ghostFirst };
     show('write'); renderWrite(true);
   }
   function renderWrite(newKana) {
@@ -645,13 +659,14 @@
         dots));
     const msg = h('div', { class: 'msg w-msg', role: 'status' });
     const pad = makePad(() => { msg.textContent = ''; msg.className = 'msg w-msg'; pad.el.classList.remove('ok', 'bad'); });
-    pad.ghost = S.ghost ? bigOf(k) : null;
+    const lessonGhost = WR.ghostFirst != null;
+    pad.ghost = (lessonGhost ? st.ok < WR.ghostFirst : S.ghost) ? bigOf(k) : null;
     const check = iconBtn('btn primary', 'next', 'Проверить', () => submit(), 'Проверить написанный знак');
     const skipBtn = iconBtn('btn ghost', 'skip', 'Пропустить', () => { st.skipped = true; WR.done += WR.reps - st.ok; WR.i++; renderWrite(true); }, 'Перейти к следующему знаку');
     const tools = h('div', { class: 'padtools' },
       iconBtn('iconbtn', 'undo', 'Отменить штрих', () => pad.undo()),
       iconBtn('iconbtn', 'clear', 'Стереть', () => pad.clear()),
-      ghostToggle(() => { pad.ghost = S.ghost ? bigOf(k) : null; pad.redraw(); }));
+      lessonGhost ? h('span', { class: 'small muted' }, st.ok < WR.ghostFirst ? `По подложке: ещё ${WR.ghostFirst - st.ok}` : 'Теперь по памяти, без подложки') : ghostToggle(() => { pad.ghost = S.ghost ? bigOf(k) : null; pad.redraw(); }));
     const actions = h('div', { class: 'actions' }, skipBtn, check);
     el.append(head, pad.el, tools, msg, actions);
     if (newKana) setTimeout(() => playKana(k), 250);
@@ -663,6 +678,7 @@
       const strokes = pad.strokes.map(s => s.slice());
       const res = judgeChar(strokes, bigOf(k), S.len);
       const ghostUsed = !!pad.ghost;
+      countCard(); buzz(res.ok);
       // в историю ответов — только попытки без подложки: обводка не показывает, помнит ли рука знак
       let rec_ = null;
       if (!ghostUsed) {
@@ -713,32 +729,50 @@
       h('span', { class: 'r' }, displayReading(s.k, S.sys)),
       h('span', {}, s.skipped ? `пропущен, написано ${s.ok}` : `${s.ok} верно`),
       h('span', { class: s.bad ? 'bad' : 'muted' }, s.bad ? `${s.bad} ошиб.` : '—')))));
+    if (FLOW && FLOW.step === 'write') {
+      const l = FLOW.lesson; markStep(l, 'write');
+      el.append(h('div', { class: 'actions', style: 'justify-content:center' },
+        iconBtn('btn primary', 'next', 'Дальше: проверка', () => startLessonQuiz(l)),
+        hard.length ? iconBtn('btn ghost', 'undo', `Повторить трудные (${hard.length})`, () => startWriting(hard.map(s => s.k), WR.reps, { ghostFirst: WR.ghostFirst })) : null,
+        h('button', { class: 'btn ghost', type: 'button', onclick: backToLesson }, 'К уроку')));
+      return;
+    }
     el.append(h('div', { class: 'actions', style: 'justify-content:center' },
       hard.length ? iconBtn('btn primary', 'undo', `Повторить трудные (${hard.length})`, () => startWriting(hard.map(s => s.k), WR.reps)) : null,
       iconBtn('btn ghost', 'undo', 'Ещё раз все', () => startWriting(WR.kanas, WR.reps)),
       h('button', { class: 'btn ghost', type: 'button', onclick: () => { WR = null; show('abc'); } }, 'К азбуке')));
   }
-  $('#btn-wquit').onclick = () => { if (WR && WR.done > 0 && WR.i < WR.kanas.length) { WR.i = WR.kanas.length; renderWrite(); } else { WR = null; show('abc'); } };
+  $('#btn-wquit').onclick = () => { if (WR && WR.done > 0 && WR.i < WR.kanas.length) { WR.i = WR.kanas.length; renderWrite(); } else if (FLOW) backToLesson(); else { WR = null; show('abc'); } };
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && current === 'write' && WR && WR.submit && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); WR.submit(); }
   });
 
   // ---------- переключение экранов ----------
-  let current = 'setup';
-  const lastOf = { quiz: 'setup', abc: 'abc' };
-  const tabOf = name => (name === 'dict' || name === 'progress') ? name : (name === 'abc' || name === 'write') ? 'abc' : 'quiz';
+  let current = 'home';
+  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me'];
+  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me' };
+  const tabOf = name => (FLOW && ['quiz', 'result', 'write'].includes(name)) ? 'lessons' : TAB_OF[name];
+  const lastOf = { home: 'home', lessons: 'lessons', practice: 'practice', dict: 'dict', me: 'me' };
   function show(name) {
-    if (lastOf[tabOf(name)]) lastOf[tabOf(name)] = name;
+    const tab = tabOf(name);
+    if (tab && !FLOW) lastOf[tab] = (name === 'quiz' || name === 'result' || name === 'write') ? lastOf[tab] : name;
     current = name;
-    for (const n of ['setup', 'quiz', 'result', 'dict', 'progress', 'abc', 'write']) $('#screen-' + n).hidden = name !== n;
-    document.querySelectorAll('nav.tabs button').forEach(x => x.setAttribute('aria-selected', String(x.dataset.tab === tabOf(name))));
-    if (name === 'setup') renderSetup();
-    if (name === 'dict') renderDict();
-    if (name === 'progress') renderProgress();
-    if (name === 'abc') renderAbc();
+    for (const n of SCREENS) $('#screen-' + n).hidden = name !== n;
+    document.querySelectorAll('.backbar[data-for]').forEach(b => { b.hidden = b.dataset.for !== name; });
+    $('#bnav').hidden = name === 'onboard';
+    document.querySelectorAll('#bnav button').forEach(x => { if (x.dataset.tab === tab) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current'); });
+    ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, onboard: renderOnboard })[name]?.();
+    renderStreak();
     window.scrollTo(0, 0);
   }
-  document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => show(lastOf[b.dataset.tab] || b.dataset.tab));
+  document.querySelectorAll('#bnav button').forEach(b => b.onclick = () => {
+    const tab = b.dataset.tab;
+    // повторное нажатие на текущий раздел — на его главный экран
+    const target = tabOf(current) === tab ? tab : (lastOf[tab] || tab);
+    if (FLOW && tab !== 'lessons') { FLOW = null; Q = null; WR = null; IN = null; }
+    show(target === 'lessons' && curLesson && tabOf(current) !== 'lessons' && lastOf.lessons === 'lesson' ? 'lesson' : target);
+  });
+  document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => show(b.dataset.back));
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !$('#screen-quiz').hidden && document.activeElement && document.activeElement.tagName === 'BODY') {
       const b = $('#card .btn.primary'); if (b) b.click();
@@ -895,6 +929,366 @@
     }
   }
 
+  // ---------- активность: минуты и карточки за день ----------
+  let device = store.get('device', null);
+  if (!device) { device = Math.random().toString(36).slice(2, 10); try { localStorage.setItem('kana-tetrad:device', JSON.stringify(device)); } catch (e) { } }
+  let activity = store.get('activity', {});           // «дата|устройство» → { d, s (секунды), c (карточки) }
+  const todayKey = () => dayKey(Date.now());
+  function actRec() {
+    const id = todayKey() + '|' + device;
+    return activity[id] = activity[id] || { d: todayKey(), s: 0, c: 0 };
+  }
+  function countCard() { actRec().c++; store.set('activity', activity); }
+  function dayTotals(day) {
+    let s = 0, c = 0;
+    for (const id in activity) { const a = activity[id]; if (a.d === day) { s += a.s || 0; c += a.c || 0; } }
+    return { min: Math.floor(s / 60), cards: c };
+  }
+  const LEARNING = new Set(['quiz', 'write', 'lintro', 'lesson', 'abc', 'result']);
+  let lastInteract = 0;
+  ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { lastInteract = Date.now(); }, { passive: true }));
+  setInterval(() => {
+    if (document.visibilityState !== 'visible' || !LEARNING.has(current) || Date.now() - lastInteract > 60000) return;
+    const r = actRec(); r.s += 10;
+    if (r.s % 60 === 0) store.set('activity', activity); else try { localStorage.setItem('kana-tetrad:activity', JSON.stringify(activity)); } catch (e) { }
+    if (current === 'home') renderHome();
+  }, 10000);
+  function goalMet(day) {
+    const t = dayTotals(day), g = S.goal || def.goal;
+    return t.min >= g.min && t.cards >= g.cards;
+  }
+  function activeDays() {
+    const days = new Set(answers.map(a => dayKey(a.ts)));
+    for (const id in activity) { const a = activity[id]; if ((a.s || 0) >= 60 || (a.c || 0) > 0) days.add(a.d); }
+    return days;
+  }
+  function streakDays() {
+    const days = activeDays();
+    let n = 0; const d = new Date();
+    if (!days.has(dayKey(d.getTime()))) d.setDate(d.getDate() - 1);
+    while (days.has(dayKey(d.getTime()))) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  }
+  function renderStreak() {
+    const n = streakDays(), el = $('#streak');
+    el.hidden = n < 1;
+    el.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 3.5 5 5.5 5 10.5A5 5 0 0 1 7 13c0-2 1-3.5 2-4.5 0 2 1 3 2 3.5C11 9 10 6 12 2z"/></svg>';
+    el.append(String(n));
+    el.title = `${n} ${plural(n, 'день', 'дня', 'дней')} подряд с занятиями`;
+  }
+  const plural = (n, a, b, c) => { const m = n % 10, mm = n % 100; return m === 1 && mm !== 11 ? a : m >= 2 && m <= 4 && (mm < 12 || mm > 14) ? b : c; };
+  function buzz(ok) {
+    if (!S.vibrate || !navigator.vibrate) return;
+    try { navigator.vibrate(ok ? 18 : [40, 50, 40]); } catch (e) { }
+  }
+
+  // ---------- уроки: прогресс ----------
+  let lessonsDone = store.get('lessons', {});         // id → { intro, write, quiz (лучший %), done }
+  const saveLessons = () => store.set('lessons', lessonsDone);
+  const PASS = 0.8;
+  const lessonState = l => lessonsDone[l.id] || {};
+  const isDone = l => !!lessonState(l).done;
+  function recommended() { return LESSONS.find(l => !isDone(l)) || null; }
+  const lessonNo = l => LESSONS.indexOf(l) + 1;
+  let FLOW = null;                                      // { lesson, step } — квиз или прописи запущены из урока
+  let curLesson = null;
+
+  function lessonQuizItems(l) {
+    if (!l.rows.length) return l.words.map(([kana, mean, kanji, read]) => ({ kind: 'word', kana, w: { kana, mean, kanji, read, topic: 'Урок' } }));
+    const own = lessonKana(l).map(k => ({ kind: 'kana', kana: k }));
+    const prev = LESSONS.slice(0, LESSONS.indexOf(l)).flatMap(x => lessonKana(x)).filter(k => k.length === 1);
+    const review = shuffle(prev.slice()).slice(0, Math.min(5, prev.length)).map(k => ({ kind: 'kana', kana: k }));
+    return { own, review };
+  }
+  function startLessonQuiz(l) {
+    FLOW = { lesson: l, step: 'quiz' };
+    const it = lessonQuizItems(l);
+    if (Array.isArray(it)) return startQuiz(it, it.length, { mode: 'type' });
+    const own = it.own.length > 8 ? it.own : it.own.concat(it.own);   // небольшие уроки — каждый знак дважды
+    startQuiz(own.concat(it.review), own.length + it.review.length, { mode: 'type' });
+  }
+  function startLessonWrite(l) {
+    FLOW = { lesson: l, step: 'write' };
+    startWriting(lessonWritable(l), 5, { ghostFirst: 3 });
+  }
+  function markStep(l, step, val) {
+    const st = lessonsDone[l.id] = Object.assign({}, lessonsDone[l.id]);
+    if (step === 'quiz') { st.quiz = Math.max(st.quiz || 0, val); if (val >= PASS * 100 && !st.done) st.done = Date.now(); }
+    else st[step] = st[step] || Date.now();
+    saveLessons();
+  }
+  function backToLesson() { const l = FLOW && FLOW.lesson; FLOW = null; Q = null; WR = null; if (l) openLesson(l); else show('lessons'); }
+
+  // ---------- экран «Уроки» ----------
+  function renderLessons() {
+    const el = $('#screen-lessons'); el.replaceChildren();
+    const rec = recommended();
+    el.append(h('h1', { class: 'h1' }, 'Уроки'),
+      h('p', { class: 'small muted' }, 'Сначала хирагана, затем катакана. Все уроки открыты; рекомендуем идти по порядку.'),
+      h('h2', { class: 'h2' }, `Хирагана · пройдено ${LESSONS.filter(isDone).length} из ${LESSONS.length}`));
+    const list = h('div', { class: 'lessons' });
+    for (const l of LESSONS) {
+      const st = lessonState(l), done = !!st.done, isRec = rec === l;
+      const kana = l.rows.length ? lessonKana(l).slice(0, 12).join(' ') + (lessonKana(l).length > 12 ? ' …' : '') : 'っ ー は へ を';
+      list.append(h('button', { type: 'button', class: 'lrow' + (done ? ' done' : '') + (isRec ? ' rec' : ''), onclick: () => openLesson(l) },
+        h('span', { class: 'n' }, done ? '✓' : String(lessonNo(l))),
+        h('span', {}, h('div', { class: 't' }, l.title), h('div', { class: 'k' }, kana)),
+        done ? h('span', { class: 'badge ok' }, `${st.quiz}%`) : isRec ? h('span', { class: 'badge rec' }, 'Следующий') : st.intro || st.write || st.quiz ? h('span', { class: 'badge soon' }, 'начат') : null));
+    }
+    el.append(list, h('h2', { class: 'h2' }, 'Катакана'),
+      h('div', { class: 'lrow', style: 'cursor:default' }, h('span', { class: 'n' }, 'ア'), h('span', {}, h('div', { class: 't' }, 'Уроки катаканы'), h('div', { class: 'small muted' }, 'Появятся на следующем этапе')), h('span', { class: 'badge soon' }, 'скоро')));
+  }
+
+  // ---------- экран урока ----------
+  function openLesson(l) { curLesson = l; show('lesson'); }
+  function renderLesson() {
+    const l = curLesson; if (!l) return show('lessons');
+    const st = lessonState(l);
+    const el = $('#screen-lesson'); el.replaceChildren();
+    const kanas = lessonKana(l);
+    el.append(h('div', { class: 'backbar' }, h('button', { class: 'link back', type: 'button', onclick: () => show('lessons') }, '← Уроки')));
+    const head = h('div', { class: 'lhead' },
+      h('div', { class: 'small muted' }, `Урок ${lessonNo(l)} · хирагана`),
+      h('div', { class: 'hello' }, h('h1', { class: 'h1' }, l.title), st.done ? h('span', { class: 'badge ok' }, `Пройден · ${st.quiz}%`) : recommended() === l ? h('span', { class: 'badge rec' }, 'Рекомендуемый') : null));
+    if (kanas.length) {
+      const row = h('div', { class: 'lkana' });
+      kanas.forEach(k => { const b = h('button', { type: 'button', class: k.length > 1 ? 'w2' : '', title: 'Прослушать', 'aria-label': 'Прослушать ' + k, onclick: () => playKana(k, b) }, k); row.append(b); });
+      head.append(row);
+    }
+    head.append(h('p', { class: 'lintro-text' }, l.intro));
+    el.append(h('div', { class: 'sheet' }, head));
+
+    const writable = lessonWritable(l);
+    const steps = [
+      { key: 'intro', t: 'Знакомство', d: l.rows.length ? `${kanas.length} ${plural(kanas.length, 'знак', 'знака', 'знаков')}: произношение, порядок штрихов, как запомнить` : 'Пауза っ, долгие гласные и частицы', go: () => startIntro(l) },
+      writable.length ? { key: 'write', t: 'Прописи', d: 'Каждый знак 5 раз: 3 по подложке, 2 по памяти', go: () => startLessonWrite(l) } : null,
+      { key: 'quiz', t: 'Проверка', d: `Квиз на чтение${l.rows.length ? ' с повторением прошлых уроков' : ' слов'}. Нужно ${PASS * 100}% верных`, go: () => startLessonQuiz(l) },
+    ].filter(Boolean);
+    const sl = h('div', { class: 'steps' });
+    steps.forEach((s, i) => {
+      const done = s.key === 'quiz' ? (st.quiz || 0) >= PASS * 100 : !!st[s.key];
+      sl.append(h('div', { class: 'stepc' + (done ? ' done' : '') },
+        h('span', { class: 'n' }, done ? '✓' : String(i + 1)),
+        h('div', {}, h('div', { class: 't' }, s.t + (s.key === 'quiz' && st.quiz ? ` · лучший результат ${st.quiz}%` : '')), h('div', { class: 'd' }, s.d)),
+        h('button', { class: 'btn ' + (done ? 'ghost' : 'primary'), type: 'button', onclick: s.go }, done ? 'Ещё раз' : 'Начать')));
+    });
+    el.append(h('h2', { class: 'h2' }, 'Шаги урока'), sl);
+
+    el.append(h('h2', { class: 'h2' }, 'Слова урока'));
+    const words = h('div', { class: 'lwords' });
+    for (const [kana, mean, kanji, read] of l.words) {
+      const rd = h('span', { class: 'rd hid', title: 'Нажмите, чтобы показать чтение', onclick: () => rd.classList.remove('hid') }, displayReading(kana, S.sys, read));
+      words.append(h('div', { class: 'lword' },
+        h('div', {}, h('div', { class: 'k' }, kana), rd),
+        sayButton({ kana, kanji, word: true }) || h('span'),
+        h('div', { class: 'm' }, mean)));
+      prefetchWord(kana, kanji);
+    }
+    el.append(h('div', { class: 'sheet' }, h('p', { class: 'small muted', style: 'margin:0 0 6px' }, 'Попробуйте прочитать сами, потом нажмите на размытое чтение или прослушайте.'), words));
+
+    if (l.similar && l.similar.length) {
+      el.append(h('h2', { class: 'h2' }, 'Не перепутать'),
+        h('div', { class: 'sheet lsim' }, ...l.similar.map(([a, b, t]) => h('div', {}, h('span', { class: 'k' }, a + ' · ' + b), t))));
+    }
+    el.append(h('h2', { class: 'h2' }, 'Распечатать'),
+      h('div', { class: 'pdfrow' },
+        iconBtn('btn ghost', 'next', 'Конспект в PDF', () => makePdf('notes', l), 'Скачать конспект урока'),
+        writable.length ? iconBtn('btn ghost', 'next', 'Прописи в PDF', () => makePdf('sheet', l), 'Скачать прописи урока') : null,
+        h('span', { class: 'small muted', id: 'pdf-msg' })));
+  }
+
+  // ---------- знакомство со знаками ----------
+  let IN = null;
+  function startIntro(l) { IN = { l, i: 0 }; FLOW = { lesson: l, step: 'intro' }; show('lintro'); renderIntro(); }
+  function introCards(l) {
+    if (!l.rows.length) return (l.points || []).map(([t, p]) => ({ point: true, t, p })).concat(l.similar.length ? [{ similar: true }] : []);
+    return lessonKana(l).map(k => ({ k, note: l.notes[k] || l.notes[toHira(k)] || null })).concat(l.similar.length ? [{ similar: true }] : []);
+  }
+  function renderIntro() {
+    const l = IN.l, cards = introCards(l), c = cards[IN.i];
+    $('#i-ctr').textContent = `${IN.i + 1} / ${cards.length}`;
+    $('#i-prog').style.width = ((IN.i + 1) / cards.length * 100) + '%';
+    const el = $('#lintro'); el.replaceChildren();
+    const box = h('div', { class: 'icard' });
+    if (c.point) {
+      box.append(h('div', { class: 'vtitle' }, c.t), h('div', { class: 'ibox' }, h('p', {}, c.p)));
+    } else if (c.similar) {
+      box.append(h('div', { class: 'vtitle' }, 'Не перепутать'),
+        ...l.similar.map(([a, b, t]) => h('div', { class: 'ibox' }, h('div', { style: 'font-family:var(--kana);font-size:40px;line-height:1.2' }, a + '　' + b), h('p', {}, t))));
+    } else {
+      const k = c.k;
+      const pair = h('div', { class: 'pair' });
+      if (KVG[k]) pair.append(h('div', { class: 'so' }, strokeOrder(k)));
+      pair.append(h('div', { class: 'glyph-big' }, k));
+      const play = h('button', { class: 'iconbtn say', type: 'button', onclick: () => playKana(k, play) }, svgIcon('sound'), 'Произношение');
+      box.append(pair,
+        h('div', { class: 'rd' }, displayReading(k, S.sys), h('span', {}, ' · ' + displayReading(k, otherSys(S.sys)))),
+        play,
+        KVG[k] ? h('div', { class: 'small muted' }, 'Нажмите на клетку слева, чтобы повторить порядок штрихов') : null);
+      if (c.note) {
+        box.append(h('div', { class: 'ibox' }, h('span', { class: 'lab' }, 'Как запомнить'), h('p', {}, c.note[0])));
+        box.append(h('div', { class: 'ibox' }, h('span', { class: 'lab' }, 'Произношение'), h('p', {}, c.note[1])));
+      }
+      setTimeout(() => playKana(k), 300);
+    }
+    const last = IN.i >= cards.length - 1;
+    box.append(h('div', { class: 'actions' },
+      IN.i > 0 ? iconBtn('btn ghost', 'undo', 'Назад', () => { IN.i--; renderIntro(); }) : h('span'),
+      iconBtn('btn primary', 'next', last ? 'Готово' : 'Дальше', () => {
+        if (!last) { IN.i++; renderIntro(); return; }
+        markStep(l, 'intro'); IN = null; FLOW = null; openLesson(l);
+      })));
+    el.append(box);
+  }
+  $('#btn-iquit').onclick = () => { IN = null; FLOW = null; openLesson(curLesson); };
+
+  // ---------- Сегодня ----------
+  function greet() { const hr = new Date().getHours(); return hr < 5 ? 'Доброй ночи' : hr < 12 ? 'Доброе утро' : hr < 18 ? 'Добрый день' : 'Добрый вечер'; }
+  function weakKana() {
+    const st = kanaStats(), out = [];
+    for (const ch in st) { const s = st[ch]; if (s.length >= 2) { const acc = s.reduce((x, y) => x + y, 0) / s.length; if (acc < 0.85) out.push({ ch, acc }); } }
+    return out.sort((a, b) => a.acc - b.acc).slice(0, 15);
+  }
+  const CTA_ICONS = {
+    lesson: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+    weak: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4"/></svg>',
+    quiz: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>',
+    abc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5l4 4L9 19l-5 1 1-5z"/></svg>',
+  };
+  function cta(icon, title, desc, kana, onclick, cls) {
+    const ico = h('span', { class: 'ico' }); ico.innerHTML = CTA_ICONS[icon];
+    return h('button', { type: 'button', class: 'cta ' + (cls || ''), onclick }, ico,
+      h('span', {}, h('div', { class: 't' }, title), kana ? h('div', { class: 'k' }, kana) : null, desc ? h('div', { class: 'd' }, desc) : null),
+      h('span', { class: 'go', 'aria-hidden': 'true' }, '›'));
+  }
+  function renderHome() {
+    const el = $('#screen-home'); el.replaceChildren();
+    const g = S.goal || def.goal, t = dayTotals(todayKey());
+    const pm = Math.min(1, t.min / g.min), pc = Math.min(1, t.cards / g.cards);
+    const met = pm >= 1 && pc >= 1;
+    const box = h('div', { class: 'home' });
+    box.append(h('div', { class: 'hello' }, h('h1', { class: 'h1' }, greet()),
+      h('button', { class: 'link', type: 'button', onclick: () => show('me') }, 'Изменить цель')));
+    box.append(h('div', { class: 'sheet goal' },
+      h('div', { class: 'goal-row' }, h('div', { class: 'top' }, h('span', {}, 'Занятия'), h('b', {}, `${t.min} из ${g.min} мин`)), h('div', { class: 'bar' + (pm >= 1 ? ' done' : '') }, h('i', { style: `width:${pm * 100}%` }))),
+      h('div', { class: 'goal-row' }, h('div', { class: 'top' }, h('span', {}, 'Карточки и прописи'), h('b', {}, `${t.cards} из ${g.cards}`)), h('div', { class: 'bar' + (pc >= 1 ? ' done' : '') }, h('i', { style: `width:${pc * 100}%` }))),
+      met ? h('div', { class: 'goal-done' }, '○ Цель на сегодня выполнена') : null));
+    const rec = recommended();
+    if (rec) {
+      const st = lessonState(rec), started = st.intro || st.write || st.quiz;
+      const kanas = lessonKana(rec);
+      box.append(cta('lesson', `${started ? 'Продолжить' : 'Начать'}: урок ${lessonNo(rec)}`, rec.title, kanas.length ? kanas.slice(0, 8).join(' ') : null, () => openLesson(rec), 'main'));
+    } else {
+      box.append(cta('lesson', 'Все уроки хираганы пройдены', 'Уроки катаканы появятся в следующем обновлении', null, () => show('lessons'), 'main'));
+    }
+    const weak = weakKana();
+    if (weak.length) box.append(cta('weak', 'Слабые знаки', `${weak.length} ${plural(weak.length, 'знак', 'знака', 'знаков')} — короткий квиз на чтение`, weak.map(w => w.ch).slice(0, 10).join(' '),
+      () => { const items = weak.map(w => ({ kind: 'kana', kana: w.ch })); startQuiz(items, items.length * 2, { mode: 'type' }); }, 'alt'));
+    box.append(h('div', { class: 'quick' },
+      cta('quiz', 'Квиз', 'Свободная тренировка', null, () => show('setup'), 'alt'),
+      cta('abc', 'Азбука и прописи', 'Озвучка и письмо', null, () => show('abc'), 'alt')));
+    // неделя
+    const days = activeDays(), wk = h('div', { class: 'week', 'aria-label': 'Последние 7 дней' });
+    const names = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i); const k = dayKey(d.getTime());
+      wk.append(h('div', { class: (goalMet(k) ? 'goal' : days.has(k) ? 'on' : '') + (i === 0 ? ' today' : ''), title: goalMet(k) ? 'цель выполнена' : days.has(k) ? 'были занятия' : 'без занятий' }, names[d.getDay()], h('i')));
+    }
+    box.append(h('div', { class: 'sheet' }, h('div', { class: 'small muted', style: 'margin-bottom:6px' }, `Неделя · ${streakDays()} ${plural(streakDays(), 'день', 'дня', 'дней')} подряд`), wk,
+      h('div', { class: 'legend small muted', style: 'margin-top:8px' }, h('span', { class: 'kc good' }, ''), 'были занятия', h('span', { class: 'kc', style: 'background:var(--ok);border-color:var(--ok)' }, ''), 'цель выполнена')));
+    el.append(box);
+  }
+
+  // ---------- Практика ----------
+  function renderPractice() {
+    const el = $('#screen-practice'); el.replaceChildren();
+    const weak = weakKana();
+    el.append(h('h1', { class: 'h1' }, 'Практика'), h('p', { class: 'small muted' }, 'Свободные тренировки — в любом порядке и сколько угодно.'),
+      h('div', { class: 'practice' },
+        cta('quiz', 'Квиз', 'Хирагана, катакана или слова: нарисовать знак по звучанию или прочитать', null, () => show('setup')),
+        cta('abc', 'Азбука и прописи', 'Таблицы с озвучкой, прописи выбранных знаков с подложкой', null, () => show('abc')),
+        weak.length ? cta('weak', 'Слабые знаки', 'Квиз по знакам, на которых вы чаще ошибаетесь', weak.map(w => w.ch).slice(0, 10).join(' '), () => { const items = weak.map(w => ({ kind: 'kana', kana: w.ch })); startQuiz(items, items.length * 2, { mode: 'type' }); }) : null));
+  }
+
+  // ---------- Я: настройки ----------
+  function toggle(id, on, onchange, disabled) {
+    const inp = h('input', { type: 'checkbox', id, role: 'switch', disabled: !!disabled });
+    inp.checked = !!on; inp.addEventListener('change', () => onchange(inp.checked));
+    return h('span', { class: 'tgl' }, inp, h('span'));
+  }
+  function segm(label, options, cur, onpick) {
+    return h('div', { class: 'segm', role: 'group', 'aria-label': label },
+      ...options.map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(cur === v), onclick: () => onpick(v) }, t)));
+  }
+  const GOAL_MIN = [10, 20, 30, 45, 60], GOAL_CARDS = [20, 50, 100, 150];
+  function renderSettings() {
+    const el = $('#settings'); el.replaceChildren();
+    const g = S.goal || def.goal;
+    const setGoal = (k, v) => { S.goal = Object.assign({}, g, { [k]: v }); save(); renderSettings(); renderStreak(); };
+    el.append(
+      h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Цель: минут в день'), segm('Минут в день', GOAL_MIN.map(v => [v, String(v)]), g.min, v => setGoal('min', v)),
+        h('div', { class: 'd' }, 'Считается время в уроках, квизах и прописях.')),
+      h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Цель: карточек и прописей в день'), segm('Карточек в день', GOAL_CARDS.map(v => [v, String(v)]), g.cards, v => setGoal('cards', v)),
+        h('div', { class: 'd' }, 'Каждый ответ в квизе и каждая попытка в прописях. Цель выполнена, когда набраны и минуты, и карточки.' + (window.KanaSync && window.KanaSync.account ? ' Цель сохраняется в аккаунте.' : ''))),
+      h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Транскрипция'), segm('Транскрипция', [['ru', 'Кириллица'], ['lat', 'Латиница']], S.sys, v => { S.sys = v; save(); renderSettings(); })),
+      h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Голос озвучки'), segm('Голос', [['m', 'Мужской'], ['f', 'Женский']], S.voice === 'f' ? 'f' : 'm', v => { S.voice = v; save(); renderSettings(); playKana('あ'); }),
+        h('div', { class: 'd' }, 'VOICEVOX:青山龍星 (мужской), VOICEVOX:波音リツ (женский)')),
+      h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Проверка рисунка'), segm('Строгость', [[0, 'Строго'], [1, 'Обычно'], [2, 'Мягко']], S.len, v => { S.len = v; save(); renderSettings(); })),
+      h('div', { class: 'set switch' }, h('div', {}, h('div', { class: 'lbl' }, 'Вибрация'), h('div', { class: 'd' }, navigator.vibrate ? 'Короткий отклик на верный и неверный ответ' : 'Этот браузер не поддерживает вибрацию (например, Safari на iPhone)')),
+        toggle('set-vibrate', S.vibrate && !!navigator.vibrate, v => { S.vibrate = v; save(); buzz(true); }, !navigator.vibrate)),
+      h('div', { class: 'set switch' }, h('div', {}, h('div', { class: 'lbl' }, 'Напоминания о занятиях'), h('div', { class: 'd' }, 'Появятся в одном из следующих обновлений')),
+        toggle('set-notify', false, () => { }, true)));
+  }
+  function renderMe() {
+    if (window.KanaSync) window.KanaSync.renderAccount($('#account-box'));
+    renderSettings();
+    renderProgress();
+  }
+
+  // ---------- первый запуск ----------
+  function renderOnboard() {
+    const el = $('#screen-onboard'); el.replaceChildren();
+    const g = Object.assign({}, def.goal, S.goal);
+    const draw = () => {
+      el.replaceChildren(h('div', { class: 'onboard' },
+        h('div', { class: 'hero', 'aria-hidden': 'true' }, 'かな'),
+        h('h1', { class: 'h1' }, 'Добро пожаловать в Кана-тетрадь'),
+        h('p', {}, 'Здесь можно выучить хирагану и катакану по урокам, тренироваться в квизах и прописях и учить первые слова. Сначала — небольшая настройка, её всегда можно поменять в разделе «Я».'),
+        h('div', { class: 'sheet' },
+          h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Сколько минут в день вы готовы заниматься?'), segm('Минут в день', GOAL_MIN.map(v => [v, v + ' мин']), g.min, v => { g.min = v; draw(); })),
+          h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Сколько карточек и прописей в день?'), segm('Карточек в день', GOAL_CARDS.map(v => [v, String(v)]), g.cards, v => { g.cards = v; draw(); }),
+            h('div', { class: 'd' }, 'Для начала хватит 50: это примерно один урок и короткий квиз.')),
+          h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Как показывать чтение?'), segm('Транскрипция', [['ru', 'Кириллицей: си, ти, цу'], ['lat', 'Латиницей: shi, chi, tsu']], S.sys, v => { S.sys = v; draw(); }))),
+        h('div', { class: 'start' }, iconBtn('btn primary', 'next', 'Начать', () => { S.goal = g; S.onboarded = true; save(); show('home'); })),
+        h('p', { class: 'small' }, 'Уже занимались на другом устройстве? ', h('button', { class: 'link', type: 'button', onclick: () => { S.goal = g; S.onboarded = true; save(); show('me'); } }, 'Войдите в аккаунт'), ' — цель и прогресс подтянутся.')));
+    };
+    draw();
+  }
+
+  // ---------- PDF урока ----------
+  function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('не загрузился ' + src)); document.head.append(s); }); }
+  async function makePdf(kind, l) {
+    const msg = $('#pdf-msg'); if (msg) msg.textContent = 'Готовлю PDF…';
+    try {
+      if (!window.PDFLib) await loadScript('vendor/pdf-lib.min.js');
+      if (!window.fontkit) await loadScript('vendor/fontkit.umd.min.js');
+      const ctx = { no: lessonNo(l), kana: kind === 'sheet' ? lessonWritable(l) : lessonKana(l), read: (k, sys, ov) => displayReading(k, sys, ov), sys: S.sys };
+      const bytes = await window.KanaPdf[kind === 'sheet' ? 'sheet' : 'notes'](l, ctx);
+      const name = `Урок ${lessonNo(l)} — ${kind === 'sheet' ? 'прописи' : 'конспект'}.pdf`;
+      deliverFile(bytes, name, 'application/pdf');
+      if (msg) msg.textContent = 'Готово: ' + name;
+      window.__lastPdf = { name, size: bytes.length };
+    } catch (e) { if (msg) msg.textContent = 'Не получилось собрать PDF: ' + e.message; }
+  }
+  function deliverFile(bytes, name, type) {
+    const file = new File([bytes], name, { type });
+    const mobile = /iPhone|iPad|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (mobile && navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: name }).catch(() => { }); return; }
+    const url = URL.createObjectURL(file), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
   // ---------- связь с синхронизацией ----------
   const hash36 = str => { let x = 0x811c9dc5; for (let i = 0; i < str.length; i++) { x ^= str.charCodeAt(i); x = Math.imul(x, 0x01000193) >>> 0; } return x.toString(36); };
   const sampleId = (ch, s) => ch + ':' + hash36(JSON.stringify(s));
@@ -906,6 +1300,8 @@
       for (const ch in samples) for (const s of samples[ch]) out.push({ c: 'samples', id: sampleId(ch, s), data: { ch, s } });
       out.push({ c: 'settings', id: 'main', data: Object.assign({}, S) });
       for (const a of answers) { const { id, ...rest } = a; out.push({ c: 'answers', id, data: rest }); }
+      for (const id in lessonsDone) out.push({ c: 'lessons', id, data: lessonsDone[id] });
+      for (const id in activity) out.push({ c: 'activity', id, data: activity[id] });
       return out;
     },
     apply(c, id, data) {
@@ -919,23 +1315,32 @@
       }
       else if (c === 'settings' && data) { for (const k in S) delete S[k]; Object.assign(S, def, data); }
       else if (c === 'answers') { answers = answers.filter(a => a.id !== id); if (data) answers.push({ id, ...data }); }
+      else if (c === 'lessons') { if (data) lessonsDone[id] = data; else delete lessonsDone[id]; }
+      else if (c === 'activity') {
+        // своё устройство считает само: чужая копия не должна откатить сегодняшние секунды
+        if (!data) delete activity[id];
+        else if (id.endsWith('|' + device) && activity[id]) activity[id] = { d: data.d, s: Math.max(data.s || 0, activity[id].s || 0), c: Math.max(data.c || 0, activity[id].c || 0) };
+        else activity[id] = data;
+      }
     },
     commit() {
       applying = true;
       answers.sort((a, b) => a.ts - b.ts);
       store.set('words', userWords); store.set('deleted', [...deleted]); store.set('samples', samples); store.set('settings', S); store.set('answers', answers);
+      store.set('lessons', lessonsDone); store.set('activity', activity);
       applying = false;
       loadSamples();
-      if (current === 'setup') renderSetup(); else if (current === 'dict') renderDict(); else if (current === 'progress') renderProgress(); else if (current === 'abc') renderAbc();
+      ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice })[current]?.();
+      renderStreak();
     },
     resetLocal() {
-      userWords = []; deleted = new Set(); samples = {}; answers = [];
+      userWords = []; deleted = new Set(); samples = {}; answers = []; lessonsDone = {}; activity = {};
       for (const k in S) delete S[k]; Object.assign(S, JSON.parse(JSON.stringify(def)));
       this.commit();
     },
-    rerender() { if (current === 'progress') renderProgress(); },
+    rerender() { if (current === 'me') renderMe(); },
   };
 
-  window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next };
-  show('setup');
+  window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next, show, openLesson, get lessonsDone() { return lessonsDone; }, dayTotals, todayKey };
+  show(S.onboarded ? 'home' : 'onboard');
 })();

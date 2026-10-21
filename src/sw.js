@@ -36,6 +36,17 @@ self.addEventListener('fetch', event => {
     return;
   }
   if (url.pathname.startsWith('/api/')) return;   // остальное API всегда идёт на сервер
+  if (url.pathname.includes('/audio/words/')) {
+    // озвучка слов: скачивается при первом прослушивании и остаётся в кэше текущей версии
+    event.respondWith(caches.open(CACHE).then(async c => {
+      const hit = await c.match(req, { ignoreSearch: true });
+      if (hit) return hit;
+      const res = await fetch(req);
+      if (res.ok) c.put(req, res.clone());
+      return res;
+    }));
+    return;
+  }
   if (req.mode === 'navigate') {
     // страница всегда из кэша текущей версии: мгновенно и офлайн; новая версия приходит через обновление воркера
     event.respondWith(caches.match('./index.html', { cacheName: CACHE }).then(r => r || fetch(req)));

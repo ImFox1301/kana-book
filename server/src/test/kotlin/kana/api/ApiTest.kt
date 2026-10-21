@@ -102,6 +102,9 @@ class ApiTest(@Autowired val mvc: MockMvc, @Autowired val om: ObjectMapper) {
         assertEquals(401, call(json(post("/api/sync"), mapOf("cursor" to 0))).status)
         val c = register(uname())
         assertEquals(400, sync(c, 0, mapOf("c" to "evil", "id" to "x", "t" to 1)).status)
+        // уроки и активность синхронизируются
+        assertEquals(200, sync(c, 0, mapOf("c" to "lessons", "id" to "h1", "t" to 1, "data" to mapOf("done" to 1, "quiz" to 100)),
+            mapOf("c" to "activity", "id" to "2026-10-21|dev", "t" to 1, "data" to mapOf("d" to "2026-10-21", "s" to 600, "c" to 40))).status)
         // запрос с чужого сайта
         val cross = json(post("/api/sync"), mapOf("cursor" to 0), c).header("Origin", "https://evil.example")
         assertEquals(403, call(cross).status)

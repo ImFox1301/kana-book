@@ -1,6 +1,7 @@
 // Сквозная проверка вкладки «Азбука»: озвучка, выбор ряда, прописи с подложкой и проверкой.
 // Запуск: node tools/e2e/serve.js & node tools/e2e/abc-e2e.js http://localhost:8790
 const { chromium } = require('playwright');
+const { ready, openQuizSetup, openAbc } = require('./common.js');
 const path = require('path');
 const KVG = require(path.resolve(__dirname, '../../src/kvg.json'));
 const BASE = process.argv[2] || 'http://localhost:8790';
@@ -26,8 +27,8 @@ async function draw(page, ch) {
   const audio = [];
   page.on('response', r => { if (r.url().includes('/audio/')) audio.push([decodeURIComponent(r.url().split('/audio/')[1]), r.status()]); });
 
-  await page.goto(BASE + '/'); await page.waitForSelector('#btn-start');
-  await page.click('#tab-abc');
+  await page.goto(BASE + '/'); await ready(page);
+  await openAbc(page);
   check(await page.locator('#abc .abc-cell:not(.empty)').count() === 104, 'таблица хираганы: 104 знака и сочетания');
   await page.click('#abc .abc-cell[aria-label^="Прослушать か"]');
   await page.waitForTimeout(400);
@@ -92,13 +93,13 @@ async function draw(page, ch) {
   const tts = [];
   page.on('request', r => { if (r.url().includes('/api/tts')) tts.push(decodeURIComponent(r.url())); });
   await page.click('#add-panel summary');
-  await page.fill('#add-kana', 'ねこ'); await page.fill('#add-mean', 'кошка'); await page.fill('#add-kanji', '猫');
+  await page.fill('#add-kana', 'うさぎ'); await page.fill('#add-mean', 'заяц'); await page.fill('#add-kanji', '兎');
   await page.click('#add-form button[type=submit]');
   await page.waitForTimeout(300);
-  check(tts.some(u => u.includes('t=ねこ') && u.includes('k=猫')), 'при добавлении слово сразу озвучивается сервером (с иероглифами)');
-  await page.click('button[aria-label="Прослушать ねこ"]'); await page.waitForTimeout(300);
+  check(tts.some(u => u.includes('t=うさぎ') && u.includes('k=兎')), 'при добавлении слово сразу озвучивается сервером (с иероглифами)');
+  await page.click('button[aria-label="Прослушать うさぎ"]'); await page.waitForTimeout(300);
   check(await page.evaluate(() => caches.has('tts-v1')), 'озвучка своего слова сохранена для офлайна');
-  await page.click('#tab-quiz');
+  await openQuizSetup(page);
   await page.click('.opt:has(.t:text-is("Слова"))'); await page.click('.opt:has(.t:text-is("Обратный перевод"))');
   await page.click('#btn-start');
   check(await page.locator('#card .say').count() === 0, 'в обратном переводе кнопки озвучки нет до ответа');

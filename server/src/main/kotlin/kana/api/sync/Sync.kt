@@ -95,7 +95,7 @@ class SyncService(private val jdbc: JdbcTemplate, private val mapper: ObjectMapp
     }
 
     companion object {
-        val COLLECTIONS = setOf("words", "hidden", "samples", "settings", "answers")
+        val COLLECTIONS = setOf("words", "hidden", "samples", "settings", "answers", "lessons", "activity")
         const val MAX_CHANGES = 2000
         const val MAX_ID = 300
         const val MAX_DATA = 64 * 1024
