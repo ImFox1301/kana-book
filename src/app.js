@@ -1712,7 +1712,8 @@
     const el = $('#settings'); el.replaceChildren();
     const g = S.goal || def.goal;
     const setGoal = (k, v) => { S.goal = Object.assign({}, g, { [k]: v }); save(); renderSettings(); renderStreak(); };
-    el.append(
+    const add = (...xs) => el.append(...xs.flat().filter(x => x != null && x !== false));   // DOM append печатает null как текст
+    add(
       guest() ? null : h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Цель: минут в день'), segm('Минут в день', GOAL_MIN.map(v => [v, String(v)]), g.min, v => setGoal('min', v)),
         h('div', { class: 'd' }, 'Считается время в уроках, квизах и прописях.')),
       guest() ? null : h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Цель: карточек и прописей в день'), segm('Карточек в день', GOAL_CARDS.map(v => [v, String(v)]), g.cards, v => setGoal('cards', v)),

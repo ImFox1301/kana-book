@@ -54,6 +54,7 @@ async function openBot(page, sel) {
   check((await G.page.textContent('#screen-lessons')).includes('доступны с аккаунтом') && await G.page.locator('#screen-lessons .lrow').count() === 5, 'гость: уроки закрыты, чтение в поездке открыто');
   await G.page.click('#tab-me');
   check(await G.page.isHidden('#stats') && !(await G.page.textContent('#settings')).includes('Цель'), 'гость: в «Я» нет прогресса и цели');
+  check(!/null|undefined/.test(await G.page.textContent('#screen-me')), 'гость: в «Я» нет «null» и «undefined»');
   check(await G.page.isHidden('#tab-friends'), 'гость: вкладки «Друзья» нет');
   check(await G.page.isHidden('#streak'), 'гость: серии дней нет');
   await G.page.screenshot({ path: SHOTS + '/guest-me.png', fullPage: true });
