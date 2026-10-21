@@ -38,11 +38,13 @@ async function finishQuiz(page, wrongKanji) {
   // --- уроки катаканы ---
   await page.click('#tab-lessons');
   const txt = await page.textContent('#screen-lessons');
-  check(txt.includes('Хирагана · пройдено 0 из 18') && txt.includes('Катакана · пройдено 0 из 18'), 'в «Уроках» две азбуки по 18 уроков');
-  check(txt.includes('Чтение в поездке'), 'в «Уроках» есть раздел «Чтение в поездке»');
+  check(txt.includes('Базовый курс · 18 уроков') && txt.includes('0 из 18 пройдено') && (await page.textContent('#lesson-tabs')).includes('Катакана'), 'в «Уроках» курсы по 18 уроков, переключатель азбук');
+  check((await page.textContent('#lesson-tabs')).includes('Чтение'), 'в «Уроках» есть раздел «Чтение в поездке»');
   await page.screenshot({ path: SHOTS + '/kata-lessons.png', fullPage: true });
-  await page.locator('#screen-lessons .lessons').nth(1).locator('.lrow').first().click();
-  check((await page.textContent('#screen-lesson')).includes('Урок 1 · катакана'), 'урок 1 катаканы');
+  await page.click('#lesson-tabs button:has-text("Катакана")');
+  check((await page.textContent('#screen-lessons')).includes('Катакана') && await page.locator('#screen-lessons .lrow').count() === 18, 'катакана: 18 уроков');
+  await page.locator('#screen-lessons .lessons .lrow').first().click();
+  check((await page.textContent('#screen-lesson')).includes('Урок 1 / катакана'), 'урок 1 катаканы');
   await page.screenshot({ path: SHOTS + '/kata-lesson.png', fullPage: true });
   await page.click('#screen-lesson .stepc:has-text("Знакомство") .btn');
   await page.waitForSelector('#lintro .icard');
@@ -59,7 +61,7 @@ async function finishQuiz(page, wrongKanji) {
   await finishQuiz(page);
   check((await page.textContent('#screen-result')).includes('Катакана, урок 1 пройден: 100%'), 'урок 1 катаканы пройден');
   await page.click('#screen-result .btn:has-text("Следующий урок")');
-  check((await page.textContent('#screen-lesson')).includes('Урок 2 · катакана'), 'переход к уроку 2 катаканы');
+  check((await page.textContent('#screen-lesson')).includes('Урок 2 / катакана'), 'переход к уроку 2 катаканы');
 
   // урок звуков заимствований
   await page.click('#tab-lessons');

@@ -112,18 +112,20 @@ docker build -t kana-tetrad . && docker run --rm -p 8080:80 kana-tetrad
 
 ## Структура
 
-- `src/app.html`, `src/app.js` — интерфейс квиза и словаря
+- `src/app.html`, `src/style.css`, `src/app.js` — разметка, стили (по UI-киту KANA: токены цвета, карточки, навигация снизу на телефоне и слева на компьютере, тёмная тема) и логика интерфейса
 - `src/pwa.js`, `src/sw.js` — установка, офлайн-кэш и обновления
 - `src/sync.js` — аккаунт и синхронизация
 - `server/` — API аккаунтов и синхронизации
 - `tts/` — сервис озвучки своих слов (VOICEVOX CORE, только linux/amd64)
 - `tools/e2e/` — стенд и сквозная проверка синхронизации двух устройств
-- `assets/fonts` — Klee One и Onest (OFL), урезанные до каны, латиницы и кириллицы
+- `assets/fonts` — Noto Sans и Noto Sans JP (OFL), урезанные до каны, латиницы, кириллицы и нужных иероглифов
+- `assets/img` — иллюстрации UI-кита (Фудзи, пагода, тории, Токио) в WebP
+- `tools/e2e/shots.js` — скриншоты основных экранов для сверки с макетами (телефон, компьютер, тёмная тема)
 - `assets/icons`, `tools/make_icons.py` — иконки приложения
 - `src/recognizer.js` — распознаватель рукописной каны
 - `assets/audio`, `tools/make_audio.py` — произношение каны: [VOICEVOX](https://voicevox.hiroshiba.jp/), голоса VOICEVOX:青山龍星 и VOICEVOX:波音リツ ([условия использования](https://github.com/VOICEVOX/voicevox_vvm#readme): бесплатно с указанием «VOICEVOX:имя»)
 - `src/lessons.js` — уроки: тексты, мнемоники, произношение, слова
-- `src/pdf.js`, `assets/pdf`, `assets/vendor` — PDF урока: шрифты для PDF и pdf-lib/fontkit (MIT)
+- `src/pdf.js`, `assets/pdf`, `assets/vendor` — PDF урока: шрифты для PDF (Klee One и Onest, OFL) и pdf-lib/fontkit (MIT)
 - `src/kvg.json` — штрихи каны из [KanjiVG](https://kanjivg.tagaini.net) (CC BY-SA 3.0, © Ulrich Apel)
 - `src/kana.js` — таблицы каны, транскрипции Хэпбёрна и Поливанова, проверка ответов
 - `src/words.js` — стартовый словарь

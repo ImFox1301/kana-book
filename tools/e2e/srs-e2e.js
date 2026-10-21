@@ -50,7 +50,7 @@ async function answerCard(page, wrong) {
   const st = await page.evaluate(() => Object.fromEntries([...__kana.srsState().values()].map(s => [s.k, s.box])));
   check(st['き'] === 2 && st['か'] === 1 && st['ぬ'] === 0, 'коробки: き — 2, か — 1, ぬ — 0');
   const home = await page.textContent('#screen-home');
-  check(home.includes('Повторение · 4 знака'), 'на «Сегодня» — «Повторение · 4 знака»');
+  check(home.includes('4 знака на сегодня'), 'на «Сегодня» — «Повторение: 4 знака на сегодня»');
   await page.screenshot({ path: SHOTS + '/srs-home.png', fullPage: true });
   await page.click('#screen-home .cta.review');
   await page.waitForSelector('#screen-quiz:not([hidden])');
@@ -70,7 +70,7 @@ async function answerCard(page, wrong) {
   await answerCard(page); await page.click('#card .verdict .btn.primary');
   await page.waitForSelector('#screen-result:not([hidden])');
   check((await page.textContent('#screen-result')).includes('Повторение на сегодня выполнено'), 'повторение на сегодня выполнено');
-  await page.click('#screen-result .btn:has-text("На главную")');
+  await page.click('#screen-result .btn:has-text("На главный экран")');
   const home2 = await page.textContent('#screen-home');
   check(home2.includes('Повторение на сегодня выполнено') && /завтра \d/.test(home2), 'на «Сегодня»: повторение выполнено, прогноз на завтра');
   const st2 = await page.evaluate(() => Object.fromEntries([...__kana.srsState().values()].map(s => [s.k, [s.box, Math.round((s.due - Date.now()) / 864e5)]])));
@@ -108,7 +108,7 @@ async function answerCard(page, wrong) {
 
   // --- квиз на слух: слова ---
   await page.click('#tab-practice'); await page.click('#tab-practice');
-  await page.click('#screen-practice .cta:has-text("Квиз на слух")');
+  await page.click('#screen-practice .cta:has-text("Аудирование")');
   await page.click('#sel-script .opt:has(.t:text-is("Слова"))');
   await page.click('#btn-start');
   await page.waitForSelector('#card .choices.word');

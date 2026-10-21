@@ -52,7 +52,7 @@ async function openBot(page, sel) {
   check(await G.page.locator('#screen-home .cta').count() >= 5, 'гость: тренировки доступны');
   await G.page.click('#tab-lessons');
   check((await G.page.textContent('#screen-lessons')).includes('доступны с аккаунтом') && await G.page.locator('#screen-lessons .lrow').count() === 5, 'гость: уроки закрыты, чтение в поездке открыто');
-  await G.page.click('#btn-settings');
+  await G.page.click('#tab-me'); await G.page.click('#btn-settings');
   check(!(await G.page.textContent('#settings')).includes('Цель') && !(await G.page.textContent('#settings')).includes('Напоминания'), 'гость: в настройках нет цели и напоминаний');
   await G.page.click('#tab-dict');
   check(await G.page.isVisible('#dict-guest') && await G.page.isHidden('#add-panel') && await G.page.isHidden('#import-panel') && await G.page.isHidden('#backup-panel'), 'гость: добавление, импорт и копия слов — только с аккаунтом');
@@ -60,7 +60,7 @@ async function openBot(page, sel) {
   await G.page.click('#tab-me');
   check(await G.page.isHidden('#stats'), 'гость: в «Я» нет прогресса');
   check(!/null|undefined/.test(await G.page.textContent('#screen-me')), 'гость: в «Я» нет «null» и «undefined»');
-  check(await G.page.isHidden('#tab-friends'), 'гость: вкладки «Друзья» нет');
+  check(await G.page.evaluate(() => document.querySelector('#tab-friends').hidden), 'гость: вкладки «Друзья» нет');
   check(await G.page.isHidden('#streak'), 'гость: серии дней нет');
   await G.page.screenshot({ path: SHOTS + '/guest-me.png', fullPage: true });
 
@@ -84,8 +84,8 @@ async function openBot(page, sel) {
   check(true, 'Иван: вход выполнен — настройка цели');
   await A.page.click('#screen-onboard .btn.primary');
   await A.page.waitForSelector('#screen-home:not([hidden])');
-  check((await A.page.textContent('#screen-home')).includes('урок 1'), 'Иван: уроки и цель открыты');
-  check(await A.page.isVisible('#tab-friends'), 'Иван: телефон привязан — вкладка «Друзья» есть');
+  check((await A.page.textContent('#screen-home')).includes('Урок 1.'), 'Иван: уроки и цель открыты');
+  check(await A.page.evaluate(() => !document.querySelector('#tab-friends').hidden), 'Иван: телефон привязан — вкладка «Друзья» есть');
   await A.page.click('#tab-me');
   check((await A.page.textContent('#account-box .who')) === 'Иван' && (await A.page.textContent('#account-box')).includes('Телефон привязан'), 'Иван: имя из Telegram, телефон привязан');
 
@@ -94,7 +94,7 @@ async function openBot(page, sel) {
   await B.page.goto(BASE + '/');
   await B.page.waitForSelector('#btn-guest');
   const maria = await signup(B.page, { name: 'Мария', user: 'maria_' + sfx });
-  check(await B.page.isVisible('#tab-friends'), 'Мария: «Друзья» доступны и без привязки телефона');
+  check(await B.page.evaluate(() => !document.querySelector('#tab-friends').hidden), 'Мария: «Друзья» доступны и без привязки телефона');
   await B.page.click('#tab-me');
   await B.page.click('#btn-link-start');
   nonce = await openBot(B.page, '#btn-tg-link');
@@ -105,11 +105,11 @@ async function openBot(page, sel) {
   check((await B.page.textContent('#account-box .who')) === 'Мария', 'Мария: имя осталось своё');
 
   // --- приглашение ссылкой: Иван → Мария ---
-  await A.page.click('#tab-friends');
-  await A.page.waitForSelector('#screen-friends .btn:has-text("Пригласить ссылкой")');
+  await A.page.click('#tab-me'); await A.page.click('#me-friends');
+  await A.page.waitForSelector('#screen-friends .btn:has-text("Пригласить по ссылке")');
   check((await A.page.textContent('#screen-friends')).includes('Пока никого'), 'Иван: друзей пока нет');
   await A.page.evaluate(() => { navigator.share = undefined; navigator.clipboard.writeText = async () => { }; });
-  await A.page.click('#screen-friends .btn:has-text("Пригласить ссылкой")');
+  await A.page.click('#screen-friends .btn:has-text("Пригласить по ссылке")');
   await A.page.waitForSelector('#invite-url');
   const inviteUrl = await A.page.textContent('#invite-url');
   check(/#invite=[\w-]+$/.test(inviteUrl), 'Иван: ссылка-приглашение создана');
@@ -121,7 +121,7 @@ async function openBot(page, sel) {
   await B.page.click('#btn-invite-accept');
   await B.page.waitForSelector('#screen-friends .fcard');
   check((await B.page.textContent('#screen-friends .fcard')).includes('Иван'), 'Мария: Иван в друзьях');
-  await A.page.click('#tab-home'); await A.page.click('#tab-friends');
+  await A.page.click('#tab-home'); await A.page.click('#tab-me'); await A.page.click('#me-friends');
   await A.page.waitForSelector('#screen-friends .fcard');
   check((await A.page.textContent('#screen-friends .fcard')).includes('Мария'), 'Иван: Мария в друзьях');
 
@@ -136,7 +136,7 @@ async function openBot(page, sel) {
   await C.page.waitForSelector('#btn-avatar img');
   check(await C.page.isVisible('#btn-avatar-del'), 'Олег: фото профиля загружено');
   await C.page.screenshot({ path: SHOTS + '/me-avatar.png', fullPage: true });
-  await C.page.click('#tab-friends');
+  await C.page.click('#tab-me'); await C.page.click('#me-friends');
   await C.page.fill('#friend-q', 'ivan_' + sfx.slice(0, 2));
   await C.page.click('#btn-friend-search');
   await C.page.waitForSelector('#screen-friends .err');
@@ -148,13 +148,13 @@ async function openBot(page, sel) {
   await C.page.click('#found .btn');
   await C.page.waitForSelector('#friends-msg');
   check((await C.page.textContent('#screen-friends')).includes('Ждут ответа'), 'Олег: заявка отправлена');
-  await A.page.reload(); await A.page.waitForSelector('#friends-dot:not([hidden])', { timeout: 10000 });
+  await A.page.reload(); await A.page.waitForSelector('#me-dot:not([hidden])', { timeout: 10000 });
   check(true, 'Иван: на вкладке «Друзья» отметка о заявке');
-  await A.page.click('#tab-friends');
+  await A.page.click('#tab-me'); await A.page.click('#me-friends');
   await A.page.waitForSelector('#incoming');
   await A.page.click('#incoming .btn:has-text("Принять")');
   await A.page.waitForFunction(() => document.querySelectorAll('#screen-friends .fcard').length === 2);
-  check(await A.page.isHidden('#friends-dot'), 'Иван: заявка принята, двое друзей');
+  check(await A.page.isHidden('#me-dot'), 'Иван: заявка принята, двое друзей');
   await A.page.waitForFunction(() => [...document.querySelectorAll('#screen-friends .fcard')].some(c => c.textContent.includes('Олег') && c.querySelector('.ava img') && c.querySelector('.ava img').naturalWidth > 0));
   check(true, 'Иван: у Олега в карточке его фото');
   await A.page.screenshot({ path: SHOTS + '/friends.png', fullPage: true });

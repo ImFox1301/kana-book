@@ -1,544 +1,23 @@
 <title>Кана-тетрадь</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=Onest:wght@400;500;600;700&display=swap">
-<style>
-/* Тетрадь для прописей: бумага с сеткой гэнко:ёси, тушь, индиго для действий, красная тушь учителя для оценок */
-:root {
-  --paper: #f5f6f2; --sheet: #fcfcfa; --ink: #1d2126; --ink-2: #565d66; --rule: #d9ddd3; --guide: #c9d3dd;
-  --indigo: #2f4f86; --indigo-soft: #e3e9f4; --on-indigo: #ffffff;
-  --ok: #3f7a4a; --ok-soft: #e2efe2; --shu: #c23b2a; --shu-soft: #f6e1dc; --stroke: #1d2126; --warn: #9a6a12; --warn-soft: #f5ead2;
-  --kana: "Klee One", "Hiragino Mincho ProN", "Yu Mincho", serif;
-  --ui: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --r: 10px;
-}
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --paper: #15181c; --sheet: #1c2025; --ink: #e8eaec; --ink-2: #a3aab3; --rule: #2e343b; --guide: #34404d;
-  --indigo: #8fb0e8; --indigo-soft: #233147; --on-indigo: #0f1724;
-  --ok: #7cc28a; --ok-soft: #1f3324; --shu: #f08a78; --shu-soft: #3d2420; --stroke: #eef0f2; --warn: #e2b35c; --warn-soft: #3a2f18; color-scheme: dark } }
-:root[data-theme="dark"] {
-  --paper: #15181c; --sheet: #1c2025; --ink: #e8eaec; --ink-2: #a3aab3; --rule: #2e343b; --guide: #34404d;
-  --indigo: #8fb0e8; --indigo-soft: #233147; --on-indigo: #0f1724;
-  --ok: #7cc28a; --ok-soft: #1f3324; --shu: #f08a78; --shu-soft: #3d2420; --stroke: #eef0f2; --warn: #e2b35c; --warn-soft: #3a2f18; color-scheme: dark }
-* { box-sizing: border-box }
-[hidden] { display: none !important }
-html, body { background: var(--paper); color: var(--ink) }
-body { font-family: var(--ui); font-size: 15px; line-height: 1.5; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 40px }
-.wrap { max-width: 760px; margin: 0 auto }
-header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 18px 14px; flex-wrap: wrap }
-.brand { display: flex; align-items: baseline; gap: 10px }
-.brand b { font-family: var(--kana); font-size: 28px; font-weight: 600; letter-spacing: .02em }
-.brand span { font-size: 17px; font-weight: 600 }
-nav.tabs { display: flex; gap: 4px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 999px; padding: 3px }
-nav.tabs button { border: 0; background: none; color: var(--ink-2); font: 500 14px var(--ui); padding: 6px 14px; border-radius: 999px; cursor: pointer }
-nav.tabs button[aria-selected="true"] { background: var(--indigo); color: var(--on-indigo) }
-button { font-family: var(--ui) }
-:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
-
-.sheet { background: var(--sheet); border: 1px solid var(--rule); border-radius: 14px; padding: 18px }
-.step { display: grid; grid-template-columns: 34px 1fr; gap: 4px 12px; padding-block: 18px; border-top: 1px dashed var(--rule) }
-.step:first-child { border-top: 0; padding-top: 4px }
-.step .num { font-family: var(--kana); font-size: 22px; color: var(--indigo); line-height: 1.2; text-align: center }
-.step h3 { margin: 0 0 10px; font-size: 16px; font-weight: 600 }
-.step .body { min-width: 0 }
-.muted { color: var(--ink-2) }
-.small { font-size: 13px }
-
-.seg { display: flex; flex-wrap: wrap; gap: 8px }
-.opt { position: relative; display: flex; flex-direction: column; gap: 2px; border: 1.5px solid var(--rule); background: var(--sheet); border-radius: var(--r); padding: 10px 14px; cursor: pointer; text-align: left; color: var(--ink); min-width: 120px; flex: 1 1 120px }
-.opt .k { font-family: var(--kana); font-size: 24px; line-height: 1.1 }
-.opt .t { font-weight: 600; font-size: 14px }
-.opt .d { font-size: 12.5px; color: var(--ink-2) }
-.opt[aria-pressed="true"] { border-color: var(--indigo); background: var(--indigo-soft) }
-
-.groups { display: grid; gap: 14px }
-.ghead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px }
-.ghead .label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); font-weight: 600 }
-.link { border: 0; background: none; color: var(--indigo); font: 500 13px var(--ui); cursor: pointer; padding: 2px 4px }
-.chips { display: flex; flex-wrap: wrap; gap: 6px }
-.chip { border: 1.5px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 8px; padding: 6px 10px; cursor: pointer; display: flex; flex-direction: column; align-items: flex-start; gap: 0 }
-.chip .k { font-family: var(--kana); font-size: 17px; letter-spacing: .06em; line-height: 1.25 }
-.chip .n { font-size: 11.5px; color: var(--ink-2) }
-.chip[aria-pressed="true"] { border-color: var(--indigo); background: var(--indigo-soft) }
-.chip.word .k { font-size: 14px; font-family: var(--ui); font-weight: 600; letter-spacing: 0 }
-
-.count { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
-.stepper { display: flex; align-items: stretch; border: 1.5px solid var(--rule); border-radius: var(--r); overflow: hidden; background: var(--sheet) }
-.stepper button { border: 0; background: none; color: var(--ink); width: 40px; font-size: 20px; cursor: pointer }
-.stepper input { width: 70px; border: 0; border-inline: 1px solid var(--rule); background: none; color: var(--ink); text-align: center; font: 600 18px var(--ui); font-variant-numeric: tabular-nums; padding: 8px 0 }
-.preset { border: 1px solid var(--rule); background: none; color: var(--ink-2); border-radius: 999px; padding: 5px 11px; font-size: 13px; cursor: pointer }
-.hint { font-size: 13px; color: var(--ink-2); margin-top: 8px }
-.sub { margin-top: 14px; display: grid; gap: 8px }
-.sub .lbl { font-size: 13px; font-weight: 600; color: var(--ink-2) }
-.start { display: flex; justify-content: flex-end; padding-top: 6px }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: var(--r); padding: 11px 18px; font: 600 15px var(--ui); cursor: pointer; border: 1.5px solid transparent }
-.btn.primary { background: var(--indigo); color: var(--on-indigo) }
-.btn.ghost { background: var(--sheet); color: var(--ink); border-color: var(--rule) }
-.btn:disabled { opacity: .45; cursor: not-allowed }
-.btn svg { width: 20px; height: 20px; flex: none }
-.warn { color: var(--shu); font-size: 13px; margin-top: 6px }
-
-/* ---- квиз ---- */
-.qbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px }
-.qbar .prog { flex: 1; height: 6px; background: var(--rule); border-radius: 99px; overflow: hidden }
-.qbar .prog i { display: block; height: 100%; background: var(--indigo); width: 0; transition: width .25s }
-.qbar .ctr { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 14px }
-.qbar .tally { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; display: flex; gap: 10px }
-.iconbtn { border: 1px solid var(--rule); background: var(--sheet); color: var(--ink-2); border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 13px; display: inline-flex; gap: 6px; align-items: center }
-.iconbtn svg { width: 16px; height: 16px }
-.card { background: var(--sheet); border: 1px solid var(--rule); border-radius: 16px; padding: 20px; display: grid; gap: 16px; justify-items: center }
-.prompt { text-align: center; display: grid; gap: 4px; justify-items: center }
-.prompt .lab { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); font-weight: 600 }
-.prompt .big { font-size: 40px; font-weight: 700; line-height: 1.15; letter-spacing: .01em }
-.prompt .kana { font-family: var(--kana); font-size: 84px; line-height: 1.1; font-weight: 600 }
-.prompt .kana.word { font-size: clamp(40px, 11vw, 64px) }
-.prompt .meaning { font-size: 17px; color: var(--ink-2) }
-.prompt .tag { font-size: 12.5px; color: var(--ink-2); background: var(--paper); border: 1px solid var(--rule); border-radius: 99px; padding: 2px 10px }
-.slots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center }
-.slot { width: 46px; height: 46px; border: 1.5px solid var(--rule); border-radius: 6px; background: var(--paper); padding: 0; cursor: pointer; position: relative; display: grid; place-items: center }
-.slot canvas { width: 100%; height: 100% }
-.slot[aria-current="true"] { border-color: var(--indigo); box-shadow: 0 0 0 2px var(--indigo-soft) }
-.slot .sm { position: absolute; bottom: 1px; right: 3px; font-size: 9px; color: var(--ink-2) }
-.slot.ok { border-color: var(--ok) } .slot.bad { border-color: var(--shu) }
-.pad { position: relative; width: min(100%, 340px); aspect-ratio: 1; max-width: 100% }
-.pad canvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 6px; touch-action: none; cursor: crosshair }
-.padtools { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap }
-.answer { width: min(100%, 340px); font: 600 26px var(--ui); text-align: center; padding: 12px; border: 1.5px solid var(--rule); border-radius: var(--r); background: var(--paper); color: var(--ink) }
-.answer:focus { border-color: var(--indigo); outline: none }
-.actions { display: flex; gap: 10px; justify-content: space-between; width: 100%; flex-wrap: wrap }
-.msg { min-height: 20px; font-size: 13.5px; color: var(--shu); text-align: center }
-
-.verdict { display: grid; gap: 14px; width: 100%; justify-items: center; text-align: center }
-.mark { font-family: var(--kana); font-size: 64px; line-height: 1; font-weight: 600 }
-.mark.ok { color: var(--ok) } .mark.bad { color: var(--shu) } .mark.skip { color: var(--ink-2) }
-.vtitle { font-weight: 700; font-size: 18px }
-.compare { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; align-items: flex-start }
-.compare figure { margin: 0; display: grid; gap: 6px; justify-items: center }
-.compare figcaption { font-size: 12.5px; color: var(--ink-2) }
-.box { width: 120px; height: 120px; background: var(--paper); border: 1px solid var(--rule); border-radius: 8px }
-.glyph { font-family: var(--kana); font-size: 92px; line-height: 120px; width: 120px; height: 120px; text-align: center; background: var(--paper); border: 1px solid var(--rule); border-radius: 8px }
-.glyphs { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap }
-.glyphs .glyph { width: 84px; height: 84px; font-size: 62px; line-height: 84px }
-.glyphs canvas.box { width: 84px; height: 84px }
-.correct-reading { font-size: 30px; font-weight: 700 }
-.your { font-size: 15px; color: var(--ink-2) }
-.your s { color: var(--shu) }
-.note { font-size: 13px; color: var(--ink-2); max-width: 46ch }
-
-/* ---- итоги ---- */
-.score { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap }
-.score > div { flex: 1 1 140px; max-width: 200px; background: var(--paper); border: 1px solid var(--rule); border-radius: 12px; padding: 14px; text-align: center }
-.score .v { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1 }
-.score .l { font-size: 13px; color: var(--ink-2) }
-.score .ok .v { color: var(--ok) } .score .bad .v { color: var(--shu) }
-.mistakes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center }
-.mistakes div { border: 1px solid var(--rule); border-radius: 8px; padding: 6px 10px; text-align: center; background: var(--paper) }
-.mistakes .k { font-family: var(--kana); font-size: 26px; display: block; line-height: 1.2 }
-.mistakes .r { font-size: 12px; color: var(--ink-2) }
-
-/* ---- словарь ---- */
-.dict-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px }
-.dict-tools input[type=search] { flex: 1 1 200px; min-width: 0; padding: 9px 12px; border: 1.5px solid var(--rule); border-radius: var(--r); background: var(--sheet); color: var(--ink); font: 15px var(--ui) }
-.wlist { display: grid; gap: 18px }
-.wlist h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2) }
-.wrow { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.5fr) 36px 32px; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 14px }
-.wrow .k { font-family: var(--kana); font-size: 20px; overflow-wrap: anywhere }
-.wrow .rd { color: var(--ink-2); overflow-wrap: anywhere }
-.wrow .m { overflow-wrap: anywhere }
-.wrow .say { padding: 6px; justify-content: center } .wrow .say .ic svg { width: 18px; height: 18px }
-.say.playing { animation: ping .7s ease-out }
-.vreading { display: grid; justify-items: center; gap: 6px }
-.del { border: 0; background: none; color: var(--ink-2); cursor: pointer; font-size: 18px; border-radius: 6px }
-.del:hover { color: var(--shu) }
-details.panel { background: var(--sheet); border: 1px solid var(--rule); border-radius: 12px; padding: 12px 16px; margin-bottom: 12px }
-details.panel summary { cursor: pointer; font-weight: 600 }
-.form { display: grid; gap: 10px; margin-top: 12px }
-.form .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px }
-.form label { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2) }
-.form input, .form textarea, .form select { padding: 9px 11px; border: 1.5px solid var(--rule); border-radius: 8px; background: var(--paper); color: var(--ink); font: 15px var(--ui); min-width: 0 }
-.form textarea { min-height: 120px; font-family: ui-monospace, Menlo, monospace; font-size: 13px }
-.form .k { font-family: var(--kana); font-size: 18px }
-pre.fmt { background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 10px; font-size: 12.5px; overflow-x: auto; margin: 6px 0 }
-.okmsg { color: var(--ok); font-size: 13.5px }
-.howto { font-size: 14px; color: var(--ink-2); max-width: 65ch }
-.howto li { margin-bottom: 4px }
-@media (max-width: 520px) {
-  .wrow { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 36px 28px; }
-  .wrow .rd { display: none }
-  .prompt .kana { font-size: 72px }
-  .step { grid-template-columns: 26px 1fr; gap: 4px 8px }
-}
-.statrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 18px }
-.statrow > div { background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px }
-.statrow .v { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2 }
-.statrow .l { font-size: 12.5px; color: var(--ink-2) }
-.sh { margin: 14px 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2) }
-.kgrid { display: grid; grid-template-columns: repeat(5, minmax(0, 52px)); gap: 5px }
-.kc.gap { visibility: hidden }
-.kc { display: grid; justify-items: center; border-radius: 7px; padding: 4px 0 2px; border: 1px solid var(--rule); background: var(--paper) }
-.kc span { font-family: var(--kana); font-size: 22px; line-height: 1.15 }
-.kc small { font-size: 10px; color: var(--ink-2); font-variant-numeric: tabular-nums; min-height: 13px }
-.kc.good { background: var(--ok-soft); border-color: var(--ok) }
-.kc.mid { background: var(--warn-soft); border-color: var(--warn) }
-.kc.weak { background: var(--shu-soft); border-color: var(--shu) }
-.kc.none span { color: var(--ink-2); opacity: .55 }
-.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px }
-.legend .kc { width: 14px; height: 14px; padding: 0; display: inline-block; margin-left: 6px }
-.weaklist { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--rule) }
-.weaklist > div { font-family: var(--kana); font-size: 20px }
-.weaklist b { font-family: var(--ui); font-size: 15px; font-weight: 600 }
-.kgrids { display: flex; flex-wrap: wrap; gap: 8px 32px }
-.account { margin-bottom: 12px; display: grid; gap: 10px }
-.account .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
-.account input { padding: 9px 11px; border: 1.5px solid var(--rule); border-radius: 8px; background: var(--paper); color: var(--ink); font: 15px var(--ui); min-width: 0; flex: 1 1 160px }
-.account .who { font-weight: 600 }
-.account .err { color: var(--shu); font-size: 13.5px }
-.account .st { font-size: 13px; color: var(--ink-2) }
-/* азбука */
-.abc-top { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between }
-.segm { display: inline-flex; background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap }
-.segm button { border: 0; background: none; color: var(--ink-2); font: 500 14px var(--ui); padding: 7px 12px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px }
-.segm button[aria-pressed="true"] { background: var(--sheet); color: var(--ink); box-shadow: 0 0 0 1.5px var(--indigo) }
-.ic { display: inline-flex } .ic svg { width: 17px; height: 17px }
-.abc-hint { margin: 6px 0 0 }
-.abc-credit { margin: 10px 0 0; font-size: 12px }
-.abc-grid { display: grid; grid-template-columns: 34px repeat(5, minmax(0, 1fr)); gap: 5px; max-width: 520px }
-.abc-grid.yoon { grid-template-columns: 34px repeat(3, minmax(0, 1fr)); max-width: 340px }
-.abc-head { font-size: 11.5px; color: var(--ink-2); text-align: center; text-transform: uppercase; letter-spacing: .06em; padding-bottom: 2px }
-.abc-row { border: 0; background: none; color: var(--indigo); font: 600 12.5px var(--ui); cursor: pointer; border-radius: 8px; padding: 0 2px; text-align: center }
-.abc-row:hover:not(:disabled) { background: var(--indigo-soft) }
-.abc-row.on { background: var(--indigo); color: var(--on-indigo) }
-.abc-row:disabled { color: var(--ink-2); cursor: default; opacity: .6 }
-.abc-cell { position: relative; display: grid; justify-items: center; align-content: center; gap: 0; border: 1.5px solid var(--rule); background: var(--paper); color: var(--ink); border-radius: 9px; padding: 6px 0 4px; cursor: pointer; min-height: 58px }
-.abc-cell.empty { border: 0; background: none; cursor: default }
-.abc-cell .k { font-family: var(--kana); font-size: 26px; line-height: 1.1 }
-.abc-grid.yoon .abc-cell .k { font-size: 22px }
-.abc-cell .r { font-size: 11.5px; color: var(--ink-2); line-height: 1.3 }
-.abc-cell.on { border-color: var(--indigo); background: var(--indigo-soft) }
-.abc-cell .tick { position: absolute; top: 2px; right: 5px; font-size: 11px; color: var(--indigo); font-weight: 700 }
-.abc-cell:disabled { cursor: default; opacity: .5 }
-.abc-cell.playing { animation: ping .7s ease-out }
-@keyframes ping { 0% { box-shadow: 0 0 0 0 var(--indigo); border-color: var(--indigo) } 100% { box-shadow: 0 0 0 10px transparent } }
-.abc-bar { position: sticky; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); margin-top: 12px; z-index: 5 }
-.abc-bar-in { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; justify-content: space-between; background: var(--sheet); border: 1.5px solid var(--indigo); border-radius: 14px; padding: 10px 12px; box-shadow: 0 8px 24px rgba(20, 30, 50, .14) }
-.abc-sel { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0 }
-.abc-sel .k { font-family: var(--kana); font-size: 18px; overflow-wrap: anywhere }
-.abc-opts { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap }
-.stepper.sm button { width: 34px; font-size: 18px }
-.stepper.sm input { width: 50px; font-size: 16px; padding: 6px 0 }
-.check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; user-select: none }
-.check input { width: 18px; height: 18px; accent-color: var(--indigo) }
-/* прописи */
-.w-head { display: flex; gap: 16px; align-items: center; justify-content: center; flex-wrap: wrap; width: 100% }
-.w-model { display: grid; gap: 4px; justify-items: center }
-.w-model canvas.box { width: 96px; height: 96px; cursor: pointer }
-.w-info { display: grid; gap: 6px; justify-items: start; min-width: 0 }
-.w-kana { font-family: var(--kana); font-size: 44px; line-height: 1; font-weight: 600 }
-.w-read { font-size: 22px; font-weight: 700 }
-.w-read .muted { font-size: 15px; font-weight: 400 }
-.dots { display: flex; gap: 5px; flex-wrap: wrap; max-width: 220px }
-.dots i { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--indigo); display: block }
-.dots i.on { background: var(--indigo) }
-.pad.ok canvas { box-shadow: 0 0 0 3px var(--ok) }
-.pad.bad canvas { box-shadow: 0 0 0 3px var(--shu) }
-.w-msg.ok { color: var(--ok) } .w-msg.bad { color: var(--shu) }
-.w-table { display: grid; gap: 4px; width: min(100%, 420px) }
-.w-row { display: grid; grid-template-columns: 44px 60px 1fr auto; gap: 10px; align-items: center; padding: 4px 8px; border-radius: 8px; font-size: 14px }
-.w-row .k { font-family: var(--kana); font-size: 26px }
-.w-row .r { color: var(--ink-2) }
-.w-row.hard { background: var(--shu-soft) }
-.w-row .bad { color: var(--shu); font-weight: 600 }
-/* ---- навигация: снизу на телефоне, слева на компьютере ---- */
-:root { --nav-h: 62px }
-body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0px)) }
-.bnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
-  background: var(--sheet); border-top: 1px solid var(--rule);
-  padding: 4px max(6px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(6px, env(safe-area-inset-left, 0px)) }
-.bnav button { border: 0; background: none; color: var(--ink-2); display: grid; justify-items: center; gap: 2px; padding: 6px 2px 7px; font: 500 11.5px var(--ui); cursor: pointer; border-radius: 10px; min-height: 52px }
-.bnav button svg { width: 24px; height: 24px }
-.bnav button { position: relative }
-.bnav .dot { position: absolute; top: 6px; left: calc(50% + 8px); min-width: 9px; height: 9px; border-radius: 99px; background: var(--shu); border: 2px solid var(--sheet) }
-.bnav button[aria-current="page"] { color: var(--indigo) }
-.bnav button[aria-current="page"] svg { stroke-width: 2.3 }
-@media (min-width: 960px) {
-  body { padding-bottom: 40px; padding-left: calc(96px + max(16px, env(safe-area-inset-left, 0px))) }
-  .bnav { top: 0; right: auto; width: 88px; grid-auto-flow: row; grid-auto-columns: auto; grid-auto-rows: min-content; align-content: start; gap: 6px; padding: 80px 8px 16px max(8px, env(safe-area-inset-left, 0px)); border-top: 0; border-right: 1px solid var(--rule) }
-  .bnav button { padding: 10px 2px }
-  .updbar { padding-left: 96px }
-}
-.updbar { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px)) }
-@media (min-width: 960px) { .updbar { bottom: 0 } }
-.abc-bar { bottom: calc(var(--nav-h) + 10px + env(safe-area-inset-bottom, 0px)) }
-@media (min-width: 960px) { .abc-bar { bottom: 10px } }
-.streak { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; font-size: 14px; color: var(--shu); font-variant-numeric: tabular-nums }
-.streak svg { width: 18px; height: 18px }
-.backbar { margin: -4px 0 10px }
-.back { font-size: 14px; padding: 4px 0 }
-.h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); margin: 22px 0 8px; font-weight: 600 }
-.h2:first-child { margin-top: 4px }
-.h1 { font-size: 24px; margin: 4px 0 2px; text-wrap: balance }
-
-/* ---- Сегодня ---- */
-.home { display: grid; gap: 12px }
-.hello { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap }
-.goal { display: grid; gap: 10px }
-.goal-row { display: grid; gap: 4px }
-.goal-row .top { display: flex; justify-content: space-between; font-size: 14px; gap: 8px }
-.goal-row .top b { font-variant-numeric: tabular-nums }
-.bar { height: 8px; background: var(--rule); border-radius: 99px; overflow: hidden }
-.bar i { display: block; height: 100%; background: var(--indigo); border-radius: 99px; transition: width .3s }
-.bar.done i { background: var(--ok) }
-.goal-done { color: var(--ok); font-weight: 600; font-size: 14px }
-.cta { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; width: 100%; text-align: left; border: 1.5px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 14px; padding: 14px 16px; cursor: pointer; font: inherit }
-.cta:hover { border-color: var(--indigo) }
-.cta.main { border-color: var(--indigo); background: var(--indigo-soft) }
-.cta .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--indigo); color: var(--on-indigo) }
-.cta .ico svg { width: 22px; height: 22px }
-.cta.alt .ico { background: var(--paper); color: var(--indigo); border: 1px solid var(--rule) }
-.cta .t { font-weight: 700; font-size: 16px }
-.cta .d { font-size: 13.5px; color: var(--ink-2) }
-.cta .k { font-family: var(--kana); font-size: 20px; letter-spacing: .08em; color: var(--ink) }
-.cta .go { color: var(--indigo); font-size: 22px }
-.quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px }
-.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; font-size: 12px; color: var(--ink-2) }
-.week i { display: block; height: 28px; border-radius: 8px; background: var(--paper); border: 1px solid var(--rule); margin-top: 4px }
-.week .on i { background: var(--ok-soft); border-color: var(--ok) }
-.week .goal i { background: var(--ok); border-color: var(--ok) }
-.week .today { color: var(--ink); font-weight: 700 }
-
-/* ---- уроки ---- */
-.lessons { display: grid; gap: 8px }
-.lrow { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; width: 100%; text-align: left; border: 1.5px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 12px; padding: 10px 12px; cursor: pointer; font: inherit }
-.lrow:hover { border-color: var(--indigo) }
-.lrow .n { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-variant-numeric: tabular-nums; border: 1.5px solid var(--rule); color: var(--ink-2) }
-.lrow.done .n { background: var(--ok); border-color: var(--ok); color: var(--sheet) }
-.lrow.rec { border-color: var(--indigo); background: var(--indigo-soft) }
-.lrow.rec .n { border-color: var(--indigo); color: var(--indigo) }
-.lrow .t { font-weight: 600 }
-.lrow .k { font-family: var(--kana); font-size: 17px; letter-spacing: .06em; color: var(--ink-2); overflow-wrap: anywhere }
-.badge { font-size: 12px; font-weight: 600; border-radius: 99px; padding: 3px 9px; white-space: nowrap }
-.badge.ok { background: var(--ok-soft); color: var(--ok) }
-.badge.rec { background: var(--indigo); color: var(--on-indigo) }
-.badge.soon { background: var(--paper); color: var(--ink-2); border: 1px solid var(--rule) }
-.lhead { display: grid; gap: 8px }
-.lkana { display: flex; flex-wrap: wrap; gap: 8px }
-.lkana button { font-family: var(--kana); font-size: 34px; line-height: 1; width: 64px; height: 64px; border-radius: 12px; border: 1.5px solid var(--rule); background: var(--paper); color: var(--ink); cursor: pointer; display: grid; place-items: center }
-.lkana button.w2 { width: 84px; font-size: 28px }
-.lkana button.playing { animation: ping .7s ease-out }
-.lintro-text { max-width: 65ch; color: var(--ink); line-height: 1.6 }
-.steps { display: grid; gap: 8px; counter-reset: st }
-.stepc { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; border: 1px solid var(--rule); border-radius: 12px; padding: 12px; background: var(--sheet) }
-.stepc .n { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; border: 1.5px solid var(--indigo); color: var(--indigo); font-size: 14px }
-.stepc.done .n { background: var(--ok); border-color: var(--ok); color: var(--sheet) }
-.stepc .t { font-weight: 600 }
-.stepc .d { font-size: 13px; color: var(--ink-2) }
-.lwords { display: grid; gap: 2px }
-.lword { display: grid; grid-template-columns: minmax(0, 1.2fr) 40px minmax(0, 1.4fr); gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--rule) }
-.lword .k { font-family: var(--kana); font-size: 22px; overflow-wrap: anywhere }
-.lword .rd { font-size: 13px; color: var(--ink-2) }
-.lword .rd.hid { filter: blur(5px); cursor: pointer }
-.lword .m { font-size: 14px; overflow-wrap: anywhere }
-.pdfrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
-.lsim { display: grid; gap: 6px; font-size: 14px }
-.lsim .k { font-family: var(--kana); font-size: 22px; margin-right: 6px }
-/* ---- выбор из вариантов: на слух и похожие знаки ---- */
-.choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; max-width: 420px }
-.choices:not(.four) { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) }
-.choice { position: relative; min-height: 76px; border: 1.5px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 14px; cursor: pointer; font: 600 22px var(--ui); display: grid; place-items: center; padding: 10px }
-.choices.kana .choice { font: 600 44px/1.1 var(--kana) }
-.choices.kana.word .choice { font-size: clamp(22px, 6.5vw, 30px) }
-.choice:hover { border-color: var(--indigo) }
-.choice:active { background: var(--indigo-soft) }
-.choice .n { position: absolute; top: 5px; left: 9px; font: 600 11px var(--ui); color: var(--ink-2) }
-@media (pointer: coarse) { .choice .n { display: none } }
-.say.big { padding: 14px 22px; font-size: 15px; border-radius: 14px; border-color: var(--indigo); color: var(--indigo); margin: 6px 0 }
-.say.big svg { width: 28px; height: 28px }
-.kana-in { font-family: var(--kana); font-size: 20px }
-.simrow { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap }
-.simrow div { border: 1px solid var(--rule); border-radius: 10px; padding: 6px 12px; display: grid; justify-items: center; background: var(--paper) }
-.simrow div.on { border-color: var(--ok); background: var(--ok-soft) }
-.simrow .k { font-family: var(--kana); font-size: 30px; line-height: 1.2 }
-.simrow .r { font-size: 12.5px; color: var(--ink-2) }
-.simscreen { display: grid; gap: 12px }
-.simscreen .segm { justify-self: start }
-.simconf { display: grid; gap: 10px; justify-items: start }
-.simconf .lbl, .simstart .lbl { font-weight: 600 }
-.simgroups { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px }
-.simg { display: grid; gap: 4px; text-align: left; border: 1.5px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 12px; padding: 10px 12px; cursor: pointer; font: inherit }
-.simg[aria-pressed="true"] { border-color: var(--indigo); background: var(--indigo-soft) }
-.simg .k { font-family: var(--kana); font-size: 26px; letter-spacing: .12em; line-height: 1.2 }
-.simg .d { font-size: 12.5px; color: var(--ink-2); line-height: 1.4 }
-.simstart { display: grid; gap: 12px }
-.simstart .start { justify-content: flex-start }
-/* ---- друзья ---- */
-.fcard { display: grid; gap: 8px; border: 1px solid var(--rule); border-radius: 14px; padding: 14px; background: var(--sheet) }
-.fcard .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap }
-.fcard .nm { font-weight: 700; font-size: 17px }
-.fcard .lg { color: var(--ink-2); font-size: 13px }
-.fcard .streak { font-size: 14px }
-.fstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px }
-.fstats > div { background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 8px; text-align: center }
-.fstats .v { font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums }
-.fstats .l { font-size: 11.5px; color: var(--ink-2) }
-.freq { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px dashed var(--rule) }
-.freq:last-child { border-bottom: 0 }
-.fsearch { display: flex; gap: 8px; flex-wrap: wrap }
-.fsearch input { flex: 1; min-width: 160px; font: 16px var(--ui); padding: 10px 12px; border: 1.5px solid var(--rule); border-radius: 10px; background: var(--sheet); color: var(--ink) }
-.invite-card { border: 1.5px solid var(--indigo); background: var(--indigo-soft) }
-.onboard .row, .authpage .row, .sheet > .row { display: flex; gap: 8px; flex-wrap: wrap }
-.tgsheet .st, .tglink .st, .tgbox .st { font-size: 13.5px; color: var(--ink-2); line-height: 1.45 }
-.tgunder { display: grid; gap: 10px; justify-items: center; margin-top: 16px }
-.orline { width: 100%; display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 13px }
-.orline::before, .orline::after { content: ''; flex: 1; border-top: 1px solid var(--rule) }
-.tgunder .st { text-align: center; font-size: 12.5px; color: var(--ink-2); max-width: 36ch }
-.tgbox.compact { justify-items: center }
-.tgicon { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px 8px 8px; border-radius: 99px; border: 1.5px solid var(--rule); background: var(--sheet); color: var(--ink); text-decoration: none; font-weight: 600; font-size: 15px }
-.tgicon svg { width: 22px; height: 22px; padding: 7px; border-radius: 50%; background: #2a9fd8; color: #fff; box-sizing: content-box }
-.tgicon:hover { border-color: #2a9fd8 }
-.btn.tg svg { width: 18px; height: 18px; margin-right: 8px }
-.ava-btn { border: 0; padding: 0; background: none; cursor: pointer; border-radius: 50%; position: relative }
-.ava-btn:focus-visible { outline: 2px solid var(--indigo); outline-offset: 3px }
-.notif-ask { display: grid; gap: 10px; border-color: var(--indigo) }
-.tgbox { display: grid; gap: 8px; justify-items: start }
-.btn.tg { background: #2a9fd8; color: #fff; text-decoration: none; display: inline-flex; align-items: center; justify-content: center }
-.tgsheet { display: grid; gap: 8px }
-.tglink { display: grid; gap: 8px; justify-items: start; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--rule) }
-.tgline { margin-top: 8px }
-.guest-card { display: grid; gap: 10px; border: 1.5px solid var(--indigo); background: var(--indigo-soft); border-radius: 14px; padding: 16px }
-.guest-card p { margin: 0; line-height: 1.5 }
-.guest-card .row { display: flex; gap: 8px; flex-wrap: wrap }
-
-/* ---- вход и регистрация ---- */
-.authpage { display: grid; gap: 12px; max-width: 460px; margin: 0 auto; width: 100% }
-.authform { display: grid; gap: 14px }
-.fld { display: grid; gap: 5px }
-.fld .lbl { font-weight: 600; font-size: 14px }
-.fld input { font: 16px var(--ui); padding: 11px 12px; border: 1.5px solid var(--rule); border-radius: 10px; background: var(--sheet); color: var(--ink); width: 100%; box-sizing: border-box }
-.fld input:focus { border-color: var(--indigo); outline: none }
-.fld .st { font-size: 12.5px; color: var(--ink-2) }
-.authform .btn.primary { justify-self: start; padding-inline: 22px }
-.authform .err { color: var(--shu); font-size: 13.5px }
-.ask-name { display: grid; gap: 6px; padding: 12px; margin-bottom: 10px; border-radius: 12px; background: var(--indigo-soft); border: 1px solid var(--indigo) }
-.account .login { color: var(--ink-2); font-size: 13px }
-.account #btn-edit-name { font-size: 12.5px; margin-left: 6px }
-.account #acc-name-edit { font: 15px var(--ui); padding: 8px 10px; border: 1.5px solid var(--rule); border-radius: 10px; background: var(--sheet); color: var(--ink); min-width: 0; flex: 1 }
-
-/* ---- напоминания ---- */
-.remind-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap }
-.remind-row input[type=time] { font: 600 18px var(--ui); padding: 8px 10px; border: 1.5px solid var(--rule); border-radius: 10px; background: var(--sheet); color: var(--ink); font-variant-numeric: tabular-nums }
-#push-msg { margin-top: -4px }
-
-/* ---- конструктор предложений ---- */
-.ru-sent { font-size: 22px; font-weight: 700; line-height: 1.3; text-wrap: balance; max-width: 30ch }
-.btray { min-height: 64px; width: 100%; max-width: 520px; border: 1.5px dashed var(--rule); border-radius: 14px; padding: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; background: var(--paper) }
-.bbank { width: 100%; max-width: 520px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center }
-.btok { font: 600 22px/1.2 var(--kana); border: 1.5px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 10px; padding: 8px 12px; cursor: pointer; min-width: 44px }
-.btok:hover:not(:disabled) { border-color: var(--indigo) }
-.btok:disabled { opacity: .25; cursor: default }
-.btray .btok { border-color: var(--indigo); background: var(--indigo-soft) }
-.bline { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center }
-.bline .btok { cursor: default; font-size: 20px; padding: 6px 10px }
-.bline .btok.ok { border-color: var(--ok); background: var(--ok-soft) }
-.bline .btok.bad { border-color: var(--shu); background: var(--shu-soft) }
-.bline.mine .btok { font-size: 16px; padding: 4px 8px }
-.blevel { display: grid; gap: 0 }
-.blevel-intro { border: 1px solid var(--rule); border-top: 0; border-radius: 0 0 12px 12px; margin: -6px 4px 0; padding: 14px 14px 12px; background: var(--sheet); display: grid; gap: 10px; justify-items: start }
-.blevel-intro p { margin: 0; line-height: 1.55 }
-.lrow[aria-expanded="true"] { border-color: var(--indigo) }
-.mistakes .k { overflow-wrap: anywhere; max-width: 18ch; margin: 0 auto }
-
-/* ---- чтение в поездке: таблички ---- */
-.signplate { display: inline-block; font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Noto Sans CJK JP", "Yu Gothic", Meiryo, sans-serif; font-weight: 700; font-size: 44px; line-height: 1.15; letter-spacing: .06em;
-  color: #fff; background: #23395d; border: 3px solid #fff; outline: 2px solid #23395d; border-radius: 8px; padding: 10px 22px; box-shadow: 0 3px 10px rgba(20, 30, 50, .18); max-width: 100%; overflow-wrap: anywhere }
-.signplate.long { font-size: 32px }
-.choices.mean { grid-template-columns: 1fr; max-width: 460px }
-.choices.mean .choice { font: 600 16px/1.35 var(--ui); min-height: 54px; text-align: left; place-items: center start; padding: 12px 16px 12px 30px }
-.rlist { display: grid; gap: 0; padding: 6px 14px }
-.ritem { display: grid; grid-template-columns: minmax(96px, auto) 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule) }
-.ritem:last-child { border-bottom: 0 }
-.ritem .signplate { font-size: 20px; padding: 4px 10px; border-width: 2px; outline-width: 1px; box-shadow: none; justify-self: start }
-.ritem .m { font-weight: 600 }
-.ritem .rd { font-size: 13px; color: var(--ink-2); cursor: pointer }
-.ritem .rd.hid { filter: blur(5px); user-select: none }
-@media (max-width: 420px) { .signplate { font-size: 36px } .signplate.long { font-size: 26px } }
-.ritem .signplate, .ritem .signplate.long { font-size: 18px }
-.srsdone { display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline; padding: 12px 16px }
-.srsdone b { color: var(--ok) }
-.result-banner { border-radius: 12px; padding: 12px 14px; font-weight: 600; text-align: center; width: 100% }
-.result-banner.ok { background: var(--ok-soft); color: var(--ok) }
-.result-banner.bad { background: var(--warn-soft); color: var(--warn) }
-
-/* ---- знакомство со знаком ---- */
-.icard { display: grid; gap: 14px; width: 100%; justify-items: center; text-align: center }
-.icard .pair { display: flex; gap: 18px; align-items: center; justify-content: center; flex-wrap: wrap }
-.icard .glyph-big { font-family: var(--kana); font-size: 112px; line-height: 1; font-weight: 600 }
-.icard .rd { font-size: 26px; font-weight: 700 }
-.icard .rd span { font-size: 16px; font-weight: 400; color: var(--ink-2) }
-.icard .so canvas.box { width: 128px; height: 128px; cursor: pointer }
-.ibox { text-align: left; width: 100%; max-width: 560px; border-radius: 12px; padding: 12px 14px; background: var(--paper); border: 1px solid var(--rule); display: grid; gap: 4px }
-.ibox .lab { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); font-weight: 600 }
-.ibox p { margin: 0; line-height: 1.55 }
-
-/* ---- практика ---- */
-.practice { display: grid; gap: 10px }
-
-/* ---- настройки ---- */
-.set { display: grid; gap: 4px; padding: 12px 0; border-bottom: 1px dashed var(--rule) }
-.set:last-child { border-bottom: 0 }
-.set .lbl { font-weight: 600; font-size: 14.5px }
-.set .d { font-size: 13px; color: var(--ink-2) }
-.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px }
-.tgl { position: relative; width: 46px; height: 28px; flex: none }
-.tgl input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer }
-.tgl span { position: absolute; inset: 0; border-radius: 99px; background: var(--rule); transition: background .2s; pointer-events: none }
-.tgl span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--sheet); box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s }
-.tgl input:checked + span { background: var(--indigo) }
-.tgl input:checked + span::after { transform: translateX(18px) }
-.tgl input:focus-visible + span { outline: 2px solid var(--indigo); outline-offset: 2px }
-.tgl input:disabled + span { opacity: .5 }
-
-/* ---- первый запуск ---- */
-.onboard { display: grid; gap: 18px; max-width: 560px; margin: 8px auto 0 }
-.onboard .hero { font-family: var(--kana); font-size: 56px; color: var(--indigo); line-height: 1 }
-.onboard p { margin: 0; color: var(--ink-2); line-height: 1.55 }
-.topright { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
-.iconbtn.gear { padding: 7px; border-radius: 10px } .iconbtn.gear svg { width: 20px; height: 20px }
-.iconbtn.gear[aria-current="page"] { color: var(--indigo); border-color: var(--indigo) }
-/* фото профиля */
-.ava { width: 44px; height: 44px; border-radius: 50%; flex: none; display: grid; place-items: center; overflow: hidden; font-weight: 700; color: #fff; font-size: 17px; background: var(--indigo); user-select: none }
-.ava img { width: 100%; height: 100%; object-fit: cover; display: block }
-.ava.big { width: 84px; height: 84px; font-size: 32px }
-.profile { display: flex; gap: 16px; align-items: center; flex-wrap: wrap }
-.profile .who { font-size: 20px; font-weight: 700 }
-.profile .ava-edit { display: grid; gap: 4px; justify-items: center }
-.fcard .top .pl { display: flex; gap: 10px; align-items: center }
-.installhint { background: var(--indigo-soft); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin-bottom: 12px }
-.updbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; justify-content: center; padding: 0 max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); pointer-events: none }
-.updbar > div { pointer-events: auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--ink); color: var(--paper); border-radius: 12px; padding: 10px 12px 10px 16px; font-size: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.18); max-width: 520px }
-.updbar button { border: 0; border-radius: 8px; padding: 7px 12px; font: 600 14px var(--ui); cursor: pointer; background: var(--paper); color: var(--ink) }
-.updbar button.later { background: none; color: var(--paper); opacity: .8 }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important } }
-</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&family=Noto+Sans+JP:wght@400&display=swap">
+<style>/*CSS*/</style>
 
 <nav class="bnav" id="bnav" aria-label="Разделы">
-  <button type="button" id="tab-home" data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg><span>Сегодня</span></button>
-  <button type="button" id="tab-lessons" data-tab="lessons"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5"/><path d="M9 8h6M9 11h4"/></svg><span>Уроки</span></button>
-  <button type="button" id="tab-practice" data-tab="practice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5l4 4L9 19l-5 1 1-5z"/><path d="M14 6l4 4"/></svg><span>Практика</span></button>
-  <button type="button" id="tab-dict" data-tab="dict"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Словарь</span></button>
-  <button type="button" id="tab-friends" data-tab="friends" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.5 3.5-5.5 6.5-5.5s5.5 2 6.5 5.5"/><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c1.8.8 3 2.5 3.5 5.2"/></svg><span>Друзья</span><i class="dot" id="friends-dot" hidden></i></button>
-  <button type="button" id="tab-me" data-tab="me"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span>Я</span></button>
+  <div class="sb brand"><b>KANA</b><span>Японский каждый день</span></div>
+  <button type="button" id="tab-home" data-tab="home"><span class="pill"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 12 3 21 10 M5 9v12h5v-7h4v7h5V9"/></svg></span><span>Сегодня</span></button>
+  <button type="button" id="tab-lessons" data-tab="lessons"><span class="pill"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h7l2 2 2-2h7v16h-7l-2 2-2-2H3z M12 6v16 M6 8h3 M15 8h3"/></svg></span><span>Уроки</span></button>
+  <button type="button" id="tab-practice" data-tab="practice"><span class="pill"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16 16 4l4 4L8 20H4z M13 7l4 4"/></svg></span><span>Практика</span></button>
+  <button type="button" id="tab-dict" data-tab="dict"><span class="pill"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h14v16H6z M3 7v15h13 M10 8h6 M10 12h4"/></svg></span><span>Словарь</span></button>
+  <button type="button" id="tab-friends" data-tab="friends"><span class="pill"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0 M2 22v-3a8 8 0 0 1 16 0v3 M18 4a4 4 0 0 1 0 8 M20 15q3 2 3 7"/></svg></span><span>Друзья</span><i class="dot" id="friends-dot" hidden></i></button>
+  <button type="button" id="tab-me" data-tab="me"><span class="pill"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0 M4 21v-3a8 8 0 0 1 16 0v3z"/></svg></span><span>Профиль</span><i class="dot" id="me-dot" hidden></i></button>
+  <div class="sb art"><img src="img/torii-s.webp" alt="" loading="lazy"><b>Маленькие шаги</b><span>приводят к большой цели.</span></div>
 </nav>
 
 <div class="wrap">
   <header class="top">
-    <div class="brand"><b>かな</b><span>Кана-тетрадь</span></div>
-    <div class="topright">
-      <button class="iconbtn" id="btn-install" type="button" hidden title="Установить Кана-тетрадь как приложение">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Установить</button>
-      <span class="streak" id="streak" hidden title="Дней подряд с занятиями"></span>
-      <button class="iconbtn gear" id="btn-settings" type="button" title="Настройки" aria-label="Настройки">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
-    </div>
+    <button class="iconbtn" id="btn-install" type="button" hidden title="Установить приложение"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v14 M6 11l6 6 6-6 M3 18v4h18v-4"/></svg>Установить</button>
   </header>
   <div class="installhint" id="install-hint" hidden>
     <b>Установка на iPhone и iPad:</b> откройте сайт в Safari, нажмите «Поделиться» и выберите «На экран Домой».
@@ -556,10 +35,10 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
   <section id="screen-lesson" hidden></section>
   <section id="screen-lintro" hidden>
     <div class="qbar">
-      <button class="iconbtn" id="btn-iquit" type="button" title="Вернуться к уроку">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>К уроку</button>
-      <div class="prog"><i id="i-prog"></i></div>
+      <button class="icbtn" id="btn-iquit" type="button" title="Вернуться к уроку" aria-label="Вернуться к уроку"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4 M10 6l-6 6 6 6"/></svg></button>
+      <h1 class="qt" id="i-title">Знакомство</h1>
       <div class="ctr" id="i-ctr"></div>
+      <div class="prog"><i id="i-prog"></i></div>
     </div>
     <div class="card" id="lintro"></div>
   </section>
@@ -568,56 +47,30 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
   <section id="screen-practice" hidden></section>
 
   <!-- НАСТРОЙКА КВИЗА -->
-  <div class="backbar" data-for="setup"><button class="link back" type="button" data-back="practice">← Практика</button></div>
-  <section id="screen-setup" class="sheet">
+  <section id="screen-setup" class="setup" hidden>
+    <div class="phead"><button class="icbtn back" type="button" data-back="practice" aria-label="Назад"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4 M10 6l-6 6 6 6"/></svg></button><h1 class="h1" id="setup-title">Настройка квиза</h1></div>
+    <div class="step"><h3>Что тренируем</h3><div class="seg" id="sel-script"></div></div>
+    <div class="step"><h3 id="rows-title">Ряды</h3><div id="sel-rows" class="groups"></div></div>
     <div class="step">
-      <div class="num">一</div>
-      <div class="body">
-        <h3>Что тренируем</h3>
-        <div class="seg" id="sel-script"></div>
+      <h3>Количество вопросов</h3>
+      <div class="count">
+        <div class="stepper">
+          <button type="button" id="cnt-minus" aria-label="Меньше">−</button>
+          <input id="cnt" type="number" inputmode="numeric" min="1" value="20" aria-label="Количество карточек">
+          <button type="button" id="cnt-plus" aria-label="Больше">+</button>
+        </div>
+        <div class="segm" id="cnt-presets"></div>
       </div>
+      <div class="hint" id="cnt-hint"></div>
     </div>
     <div class="step">
-      <div class="num">二</div>
-      <div class="body">
-        <h3 id="rows-title">Ряды</h3>
-        <div id="sel-rows" class="groups"></div>
-      </div>
-    </div>
-    <div class="step">
-      <div class="num">三</div>
-      <div class="body">
-        <h3>Сколько карточек</h3>
-        <div class="count">
-          <div class="stepper">
-            <button type="button" id="cnt-minus" aria-label="Меньше">−</button>
-            <input id="cnt" type="number" inputmode="numeric" min="1" value="20" aria-label="Количество карточек">
-            <button type="button" id="cnt-plus" aria-label="Больше">+</button>
-          </div>
-          <div class="chips" id="cnt-presets"></div>
-        </div>
-        <div class="hint" id="cnt-hint"></div>
-      </div>
-    </div>
-    <div class="step">
-      <div class="num">四</div>
-      <div class="body">
-        <h3>Тип квиза</h3>
-        <div class="seg" id="sel-mode"></div>
-        <div class="sub">
-          <div class="lbl">Транскрипция</div>
-          <div class="seg" id="sel-sys"></div>
-        </div>
-        <div class="sub" id="lenient-wrap">
-          <div class="lbl">Проверка рисунка</div>
-          <div class="seg" id="sel-len"></div>
-        </div>
-      </div>
+      <h3>Режим</h3>
+      <div class="seg" id="sel-mode"></div>
+      <div class="sub"><div class="lbl">Транскрипция</div><div class="seg" id="sel-sys"></div></div>
+      <div class="sub" id="lenient-wrap"><div class="lbl">Проверка рисунка</div><div class="seg" id="sel-len"></div></div>
     </div>
     <div class="start">
-      <button class="btn primary" id="btn-start">Начать квиз
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </button>
+      <button class="btn primary wide" id="btn-start">Начать тренировку<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16 M14 6l6 6-6 6"/></svg></button>
     </div>
     <div class="warn" id="start-warn" hidden></div>
   </section>
@@ -625,25 +78,33 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
   <!-- КВИЗ -->
   <section id="screen-quiz" hidden>
     <div class="qbar">
-      <button class="iconbtn" id="btn-quit" title="Закончить квиз и вернуться к настройке">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>Выйти</button>
-      <div class="prog"><i id="prog"></i></div>
+      <button class="icbtn" id="btn-quit" type="button" title="Закончить и посмотреть итоги" aria-label="Выйти"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4 M10 6l-6 6 6 6"/></svg></button>
+      <h1 class="qt" id="q-title">Квиз</h1>
       <div class="ctr" id="ctr">1 / 20</div>
+      <div class="prog"><i id="prog"></i></div>
     </div>
     <div class="card" id="card"></div>
   </section>
 
   <!-- ИТОГИ -->
-  <section id="screen-result" class="card" hidden></section>
+  <section id="screen-result" hidden></section>
 
   <!-- СЛОВАРЬ -->
   <section id="screen-dict" hidden>
+    <div class="phead"><h1 class="h1">Словарь</h1></div>
+    <div class="dict-top">
+      <label class="search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 10a6 6 0 1 1-12 0 6 6 0 0 1 12 0 M15 15l6 6"/></svg><input type="search" id="dict-q" placeholder="Слово, кана или перевод" aria-label="Поиск"></label>
+      <div class="segm tabs" id="dict-tabs" role="group" aria-label="Показать"></div>
+      <div class="topics" id="dict-topics" hidden></div>
+    </div>
     <div class="guest-card" id="dict-guest" hidden>
+      <div class="gh"><span class="tilei mint"><svg class="i" viewBox="0 0 24 24"><path d="M6 10h12v12H6z M8 10V6a4 4 0 0 1 8 0v4"/></svg></span><b>Свои слова — с аккаунтом</b></div>
       <p>Свои слова, импорт и резервная копия доступны с аккаунтом — так слова сохраняются и есть на всех ваших устройствах. Стартовый словарь можно смотреть, слушать и тренировать и без входа.</p>
       <div class="row"><button class="btn primary" type="button" id="dict-register">Создать аккаунт</button><button class="btn ghost" type="button" id="dict-login">Войти</button></div>
     </div>
+    <div class="panels" id="dict-panels">
     <details class="panel" id="add-panel">
-      <summary>Добавить слово</summary>
+      <summary><span class="tilei mint"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M3 12h18"/></svg></span><span>Добавить слово<small>Кана, перевод и тема</small></span><span class="chev"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></span></summary>
       <form class="form" id="add-form">
         <div class="row">
           <label>Слово каной<input id="add-kana" class="k" required placeholder="さかな"></label>
@@ -653,12 +114,12 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
         <label>Запись иероглифами — необязательно, для правильного ударения в озвучке<input id="add-kanji" class="k" placeholder="猫"></label>
         <label>Особое чтение (если читается не так, как пишется), латиница|кириллица<input id="add-read" placeholder="konnichiwa|коннитива"></label>
         <div id="add-preview" class="small muted"></div>
-        <div><button class="btn primary" type="submit">Добавить</button> <span class="okmsg" id="add-ok"></span></div>
+        <div><button class="btn primary" type="submit">Сохранить слово</button> <span class="okmsg" id="add-ok"></span></div>
       </form>
       <datalist id="topics"></datalist>
     </details>
     <details class="panel" id="import-panel">
-      <summary>Импорт списка слов</summary>
+      <summary><span class="tilei"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17V3 M6 9l6-6 6 6 M3 17v5h18v-5"/></svg></span><span>Импорт словаря<small>CSV, TXT или колода Anki</small></span><span class="chev"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></span></summary>
       <div class="form">
         <div class="howto">Одна строка — одно слово. Поля через точку с запятой, табуляцию или запятую: <b>кана; перевод; тема; особое чтение; иероглифы</b>. Всё после перевода необязательно. Подойдёт экспорт колоды Anki в текст или таблица, сохранённая как CSV.</div>
         <pre class="fmt">ねこ;кошка;Животные
@@ -670,7 +131,7 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
       </div>
     </details>
     <details class="panel" id="backup-panel">
-      <summary>Резервная копия и мой почерк</summary>
+      <summary><span class="tilei"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v14 M6 11l6 6 6-6 M3 18v4h18v-4"/></svg></span><span>Резервная копия<small>Слова и образцы почерка</small></span><span class="chev"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></span></summary>
       <div class="form">
         <div class="howto">Слова и образцы почерка синхронизируются с аккаунтом на всех ваших устройствах. Копия — на всякий случай: её можно сохранить у себя и потом восстановить.</div>
         <div class="dict-tools">
@@ -682,12 +143,12 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
         <div class="dict-tools"><span class="small muted" id="samples-info"></span><button class="link" id="samples-clear" type="button">Удалить образцы почерка</button><button class="link" id="dict-reset" type="button">Вернуть стартовый словарь</button></div>
       </div>
     </details>
-    <div class="dict-tools"><input type="search" id="dict-q" placeholder="Поиск по слову или переводу" aria-label="Поиск"><span class="small muted" id="dict-count"></span></div>
-    <div class="sheet"><div class="wlist" id="wlist"></div></div>
+    </div>
+    <div class="dict-count" id="dict-count"></div>
+    <div class="wlist" id="wlist"></div>
   </section>
 
   <!-- ПОХОЖИЕ ЗНАКИ -->
-  <div class="backbar" data-for="similar"><button class="link back" type="button" data-back="practice">← Практика</button></div>
   <section id="screen-similar" class="simscreen" hidden></section>
 
   <!-- ДРУЗЬЯ -->
@@ -704,8 +165,8 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
   <section id="screen-reading" class="simscreen" hidden></section>
 
   <!-- АЗБУКА -->
-  <div class="backbar" data-for="abc"><button class="link back" type="button" data-back="practice">← Практика</button></div>
   <section id="screen-abc" hidden>
+    <div class="phead"><button class="icbtn back" type="button" data-back="practice" aria-label="Назад"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4 M10 6l-6 6 6 6"/></svg></button><h1 class="h1">Азбука</h1></div>
     <div class="sheet" id="abc"></div>
     <div class="abc-bar" id="abc-bar" hidden></div>
   </section>
@@ -713,30 +174,39 @@ body { padding-bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0p
   <!-- ПРОПИСИ -->
   <section id="screen-write" hidden>
     <div class="qbar">
-      <button class="iconbtn" id="btn-wquit" type="button" title="Закончить прописи">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>Закончить</button>
-      <div class="prog"><i id="w-prog"></i></div>
+      <button class="icbtn" id="btn-wquit" type="button" title="Закончить прописи" aria-label="Закончить прописи"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4 M10 6l-6 6 6 6"/></svg></button>
+      <h1 class="qt">Прописи</h1>
       <div class="ctr" id="w-ctr"></div>
+      <div class="prog"><i id="w-prog"></i></div>
     </div>
     <div class="card" id="write"></div>
   </section>
 
-  <!-- Я: аккаунт, цель, настройки, прогресс -->
+  <!-- ПРОФИЛЬ: аккаунт, цель, сводка; настройки — отдельно -->
   <section id="screen-me" hidden>
-    <div class="sheet account" id="account-box" hidden></div>
+    <div class="phead"><h1 class="h1">Профиль</h1>
+      <button class="icbtn" id="btn-settings" type="button" title="Настройки" aria-label="Настройки"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M5 19l2-2 M17 7l2-2"/></svg></button></div>
+    <div id="account-box" hidden></div>
+    <div id="me-extra" style="display:contents"></div>
+  </section>
+
+  <!-- МОЙ ПРОГРЕСС -->
+  <section id="screen-progress" hidden>
+    <div class="phead"><button class="icbtn back" type="button" data-back="me" aria-label="Назад"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4 M10 6l-6 6 6 6"/></svg></button><h1 class="h1">Мой прогресс</h1></div>
+    <div id="progress-top"></div>
     <h2 class="h2">Прогресс по знакам</h2>
     <div class="sheet" id="stats"></div>
   </section>
 
   <!-- НАСТРОЙКИ -->
   <section id="screen-settings" hidden>
-    <h1 class="h1">Настройки</h1>
-    <div class="sheet" id="settings"></div>
+    <div class="phead"><button class="icbtn back" type="button" id="btn-settings-back" aria-label="Назад"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4 M10 6l-6 6 6 6"/></svg></button><h1 class="h1">Настройки</h1></div>
+    <div id="settings"></div>
   </section>
 </div>
 
 <div class="updbar" id="update-bar" hidden role="status">
-  <div>Доступна новая версия Кана-тетради
+  <div>Доступна новая версия приложения
     <button type="button" id="btn-update">Обновить</button>
     <button type="button" class="later" id="btn-update-later">Позже</button>
   </div>

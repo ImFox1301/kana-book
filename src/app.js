@@ -10,15 +10,29 @@
     for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(c));
     return el;
   };
-  const ICON = {
-    next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
-    skip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l8 7-8 7zM17 5v14"/></svg>',
-    undo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
-    clear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
-    play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
-    slot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+  // иконки UI-кита: сетка 24, штрих 1.7
+  const KI = {
+    arrow: 'M4 12h16 M14 6l6 6-6 6', back: 'M20 12H4 M10 6l-6 6 6 6', book: 'M3 4h7l2 2 2-2h7v16h-7l-2 2-2-2H3z M12 6v16 M6 8h3 M15 8h3',
+    cards: 'M6 3h14v16H6z M3 7v15h13 M10 8h6 M10 12h4', check: 'M4 12l5 5L20 6', clock: 'M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0 M12 5v7l4 3',
+    close: 'M5 5l14 14 M19 5 5 19', download: 'M12 3v14 M6 11l6 6 6-6 M3 18v4h18v-4', flame: 'M12 2c1 6 8 8 8 14a8 8 0 0 1-16 0c0-4 3-6 4-8 0 5 4 5 4-6z',
+    friends: 'M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0 M2 22v-3a8 8 0 0 1 16 0v3 M18 4a4 4 0 0 1 0 8 M20 15q3 2 3 7', heart: 'M12 21 3 12C-3 3 8-1 12 6 16-1 27 3 21 12z',
+    help: 'M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0 M9 8q1-5 6-2t-3 7 M12 17v1', home: 'M3 10 12 3 21 10 M5 9v12h5v-7h4v7h5V9', lock: 'M6 10h12v12H6z M8 10V6a4 4 0 0 1 8 0v4',
+    moon: 'M20 16A10 10 0 0 1 8 3 10 10 0 1 0 20 16', pen: 'M4 16 16 4l4 4L8 20H4z M13 7l4 4', play: 'M8 4l13 8-13 8z', plus: 'M12 3v18 M3 12h18',
+    repeat: 'M4 8h14l-4-4 M20 16H6l4 4 M18 8l3 3 M6 16l-3-3', search: 'M16 10a6 6 0 1 1-12 0 6 6 0 0 1 12 0 M15 15l6 6',
+    settings: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M5 19l2-2 M17 7l2-2',
+    sound: 'M4 9h4l5-5v16l-5-5H4z M17 8q5 4 0 8 M20 4q8 8 0 16', upload: 'M12 17V3 M6 9l6-6 6 6 M3 17v5h18v-5', user: 'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0 M4 21v-3a8 8 0 0 1 16 0v3z',
+    wave: 'M2 12h2 M6 8v8 M10 3v18 M14 6v12 M18 9v6 M22 12h1', chev: 'M9 5l7 7-7 7', trash: 'M4 7h16 M9 7V4h6v3 M6 7l1 14h10l1-14',
+    undo: 'M9 14 4 9l5-5 M4 9h10a6 6 0 0 1 0 12h-3', skip: 'M5 5l8 7-8 7z M17 5v14', sign: 'M3 4h18v11H3z M12 15v6 M8 21h8 M7 9h10', blocks: 'M3 4h7v6H3z M14 4h7v6h-7z M3 14h18v6H3z',
   };
-  const iconBtn = (cls, icon, label, onclick, title) => { const b = h('button', { class: cls, type: 'button', onclick, title: title || label }); b.innerHTML = ICON[icon]; b.append(label); return b; };
+  const svgOf = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="${KI[n]}"/></svg>`;
+  const I = n => { const t = document.createElement('template'); t.innerHTML = svgOf(n); return t.content.firstChild; };
+  const ICON = { next: svgOf('arrow'), skip: svgOf('skip'), undo: svgOf('undo'), clear: svgOf('trash'), play: svgOf('play'), slot: svgOf('chev') };
+  // стрелка «дальше» — справа от подписи, остальные иконки — слева
+  const iconBtn = (cls, icon, label, onclick, title) => { const b = h('button', { class: cls, type: 'button', onclick, title: title || label }); b.innerHTML = ICON[icon]; if (icon === 'next') b.prepend(label); else b.append(label); return b; };
+  // заголовок экрана: стрелка назад, название, кнопки справа
+  const pageHead = (title, back, right, cls) => h('div', { class: 'phead' + (cls ? ' ' + cls : '') },
+    back ? h('button', { class: 'icbtn back', type: 'button', 'aria-label': 'Назад', onclick: typeof back === 'function' ? back : () => show(back) }, I('back')) : null,
+    h('h1', { class: 'h1' }, title), right ? h('div', { class: 'right' }, right) : null);
 
   // ---------- хранилище в браузере ----------
   const store = {
@@ -29,7 +43,7 @@
     },
   };
   // то, что синхронизируется с аккаунтом
-  const SYNCED = new Set(['words', 'deleted', 'samples', 'settings', 'answers', 'lessons', 'activity']);
+  const SYNCED = new Set(['words', 'deleted', 'samples', 'settings', 'answers', 'lessons', 'activity', 'favs']);
   let applying = false;
 
   // ---------- распознаватель ----------
@@ -55,6 +69,8 @@
   // ---------- слова ----------
   let userWords = store.get('words', []);
   let deleted = new Set(store.get('deleted', []));
+  let favs = new Set(store.get('favs', []));             // избранные слова (синхронизируются)
+  const toggleFav = w => { const id = wid(w); if (favs.has(id)) favs.delete(id); else favs.add(id); store.set('favs', [...favs]); };
   const wid = w => w.kana + '|' + w.mean;
   function allWords() {
     const b = BUILTIN_WORDS.map(([kana, mean, topic, read]) => ({ kana, mean, topic, read, builtin: true }));
@@ -160,6 +176,7 @@
       opt(ln, 2, S.len, 'Мягко', 'для первых попыток', null, v => { S.len = v; save(); renderSetup(); }));
     $('#lenient-wrap').hidden = S.mode !== 'draw';
     $('#btn-start').disabled = n === 0;
+    $('#setup-title').textContent = S.mode === 'listen' ? 'Настройка аудио' : 'Настройка квиза';
   }
   $('#cnt').addEventListener('change', e => { const n = selectedItems().length; S.count = Math.min(500, Math.max(n || 1, parseInt(e.target.value) || n)); save(); renderSetup(); });
   $('#cnt-minus').onclick = () => { S.count = Math.max(selectedItems().length || 1, S.count - 1); save(); renderSetup(); };
@@ -183,7 +200,7 @@
   let Q = null;
   function startQuiz(items, count, opts = {}) {
     if (!opts.keepFlow && FLOW && FLOW.step !== 'quiz') FLOW = null;
-    Q = { deck: buildDeck(items, count), i: 0, results: [], mode: opts.mode || S.mode, sys: S.sys, len: S.len, pool: items, review: !!opts.review, back: opts.back || 'setup', again: opts.again || null, track: opts.track || null };
+    Q = { t0: Date.now(), deck: buildDeck(items, count), i: 0, results: [], mode: opts.mode || S.mode, sys: S.sys, len: S.len, pool: items, review: !!opts.review, back: opts.back || 'setup', again: opts.again || null, track: opts.track || null };
     show('quiz'); renderCard();
   }
   $('#btn-start').onclick = () => {
@@ -277,7 +294,7 @@
         let left = shown; const part = [];
         strokes.forEach(s => { if (left <= 0) return; part.push(s.slice(0, Math.max(1, left))); left -= s.length; });
         drawStrokes(g, part, W, css('--stroke'), 0.05);
-        g.font = `600 ${W * 0.1}px Onest, sans-serif`; g.fillStyle = css('--shu');
+        g.font = `700 ${W * 0.1}px "Noto Sans", sans-serif`; g.fillStyle = css('--accent');
         part.forEach((s, i) => g.fillText(String(i + 1), Math.min(W * 0.92, Math.max(2, s[0].x * W - W * 0.09)), Math.max(W * 0.1, s[0].y * W)));
         if (shown < total) { shown += 1.2; timer = requestAnimationFrame(frame); }
       };
@@ -290,6 +307,7 @@
 
   function renderCard() {
     const it = Q.deck[Q.i];
+    $('#q-title').textContent = FLOW && FLOW.lesson ? FLOW.lesson.title : Q.review ? 'Повторение' : Q.track ? Q.track.title : ({ listen: 'Аудирование', sim: 'Похожие знаки', build: 'Соберите фразу', mean: 'Чтение' })[Q.mode] || 'Квиз';
     $('#ctr').textContent = `${Q.i + 1} / ${Q.deck.length}`;
     $('#prog').style.width = (Q.i / Q.deck.length * 100) + '%';
     const card = $('#card'); card.replaceChildren();
@@ -405,8 +423,9 @@
       pool.replaceChildren(...bank.map(b => h('button', { type: 'button', class: 'btok', 'data-t': b.t, disabled: sel.includes(b), onclick: () => { sel.push(b); msg.textContent = ''; draw(); } }, b.t)));
     };
     draw();
-    card.append(h('div', { class: 'prompt' }, h('span', { class: 'lab' }, 'Соберите по-японски'), h('span', { class: 'ru-sent' }, it.w.mean)),
-      tray, pool, h('div', { class: 'padtools' }, iconBtn('iconbtn', 'undo', 'Убрать последний', () => { sel.pop(); draw(); }), iconBtn('iconbtn', 'clear', 'Сначала', () => { sel.length = 0; draw(); })), msg);
+    card.append(h('div', { class: 'h3 blab0' }, 'Соберите по-японски'), h('div', { class: 'prompt short' }, h('span', { class: 'ru-sent' }, it.w.mean)),
+      h('div', { class: 'blab' }, 'Ваш ответ'), tray, h('div', { class: 'blab' }, 'Доступные слова'), pool,
+      h('div', { class: 'blinks' }, h('button', { class: 'link muted', type: 'button', onclick: () => { sel.pop(); draw(); } }, 'Убрать последнее'), ' · ', h('button', { class: 'link muted', type: 'button', onclick: () => { sel.length = 0; draw(); } }, 'Очистить')), msg);
     const submit = () => {
       if (!sel.length) { msg.textContent = 'Соберите фразу из блоков или нажмите «Пропустить».'; return; }
       const got = sel.map(b => b.t), key = got.join('|');
@@ -422,21 +441,20 @@
   }
   function renderBuilder() {
     const el = $('#screen-builder'); el.replaceChildren();
-    el.append(h('div', { class: 'backbar' }, h('button', { class: 'link back', type: 'button', onclick: () => show('practice') }, '← Практика')),
-      h('h1', { class: 'h1' }, 'Конструктор предложений'),
-      h('p', { class: 'small muted' }, 'Русская фраза — соберите её по-японски из блоков. Среди блоков есть лишние частицы. После ответа — чтение, озвучка и пояснение. Уровни идут от простого к сложному, у каждого — одна новая конструкция.'));
+    el.append(pageHead('Конструктор фраз', 'practice'),
+      h('p', { class: 'psub' }, 'Русская фраза — соберите её по-японски из блоков. Среди блоков есть лишние частицы. После ответа — чтение, озвучка и пояснение. Уровни идут от простого к сложному, у каждого — одна новая конструкция.'));
     const list = h('div', { class: 'lessons' });
     BUILDER.forEach((lv, i) => {
       const best = (lessonsDone['b-' + lv.id] || {}).quiz, done = best >= PASS * 100;
-      const more = h('div', { class: 'blevel-intro', hidden: true }, h('p', {}, lv.intro), iconBtn('btn primary', 'next', `Начать · ${lv.items.length} фраз`, () => startBuilder(lv)));
+      const more = h('div', { class: 'blevel-intro', hidden: true }, h('p', {}, lv.intro), iconBtn('btn primary wide', 'next', `Начать · ${lv.items.length} фраз`, () => startBuilder(lv)));
       list.append(h('div', { class: 'blevel' },
         h('button', { type: 'button', class: 'lrow' + (done ? ' done' : ''), 'aria-expanded': 'false', onclick: e => { const b = e.currentTarget; more.hidden = !more.hidden; b.setAttribute('aria-expanded', String(!more.hidden)); } },
-          h('span', { class: 'n' }, done ? '✓' : String(i + 1)),
-          h('span', {}, h('div', { class: 't' }, lv.title), h('div', { class: 'k' }, lv.pattern)),
-          best ? h('span', { class: 'badge ' + (done ? 'ok' : 'soon') }, best + '%') : h('span', { class: 'badge soon' }, lv.items.length + ' фраз')),
+          h('span', { class: 'n' }, I('book')),
+          h('span', {}, h('div', { class: 't' }, lv.title), h('div', { class: 'k' }, `${lv.pattern} · ${lv.items.length} фраз`)),
+          h('span', { class: 'end' }, best ? h('span', { class: 'pct' }, best + '%') : null, I(done ? 'check' : 'chev'))),
         more));
     });
-    el.append(list, h('div', { class: 'actions', style: 'justify-content:flex-start' }, iconBtn('btn ghost', 'next', 'Все уровни вперемешку · 10', () => startBuilder(null))));
+    el.append(list, h('div', { class: 'actions' }, iconBtn('btn ghost wide', 'next', 'Все уровни вперемешку · 10', () => startBuilder(null))));
   }
 
   // ---------- чтение в поездке ----------
@@ -459,9 +477,9 @@
     for (const t of READING) {
       const best = (lessonsDone['r-' + t.id] || {}).quiz;
       box.append(h('button', { type: 'button', class: 'lrow' + (best >= PASS * 100 ? ' done' : ''), onclick: () => { RT = t; show('reading'); } },
-        h('span', { class: 'n', lang: 'ja' }, best >= PASS * 100 ? '✓' : t.icon),
-        h('span', {}, h('div', { class: 't' }, t.title), h('div', { class: 'k' }, t.items.slice(0, 5).map(x => x[0]).join('・'))),
-        best ? h('span', { class: 'badge ' + (best >= PASS * 100 ? 'ok' : 'soon') }, best + '%') : h('span', { class: 'badge soon' }, t.items.length + ' надп.')));
+        h('span', { class: 'n', lang: 'ja' }, t.icon),
+        h('span', {}, h('div', { class: 't' }, t.title), h('div', { class: 'd' }, `${t.items.length} надписей · ` + t.items.slice(0, 3).map(x => x[0]).join('・'))),
+        h('span', { class: 'end' }, best ? h('span', { class: 'pct' }, best + '%') : null, I(best >= PASS * 100 ? 'check' : 'chev'))));
     }
     return box;
   }
@@ -474,20 +492,21 @@
   function renderReading() {
     const el = $('#screen-reading'); el.replaceChildren();
     if (!RT) {
-      el.append(h('div', { class: 'backbar' }, h('button', { class: 'link back', type: 'button', onclick: () => show('practice') }, '← Практика')),
-        h('h1', { class: 'h1' }, 'Чтение в поездке'),
-        h('p', { class: 'small muted' }, 'Вывески, указатели и меню по темам. Надписи каной тренируются и на чтение, надписи иероглифами достаточно узнавать в лицо — чтение показывается после ответа. Шрифт — как на настоящих табличках, а не рукописный.'),
+      el.append(pageHead('Чтение в поездке', 'practice'),
+        h('p', { class: 'psub' }, 'Короткие надписи для реальной жизни'), h('div', { class: 'banner', style: 'background-image:url(img/tokyo-s.webp)' }),
+        h('p', { class: 'small muted', style: 'margin:0' }, 'Вывески, указатели и меню по темам. Надписи каной тренируются и на чтение, надписи иероглифами достаточно узнавать в лицо — чтение показывается после ответа. Шрифт — как на настоящих табличках, а не рукописный.'),
         readingList(),
-        h('div', { class: 'actions', style: 'justify-content:flex-start' }, iconBtn('btn ghost', 'next', 'Все темы вперемешку', () => startReading(null, 'mean'))));
+        h('div', { class: 'actions' }, iconBtn('btn ghost wide', 'next', 'Все темы вперемешку', () => startReading(null, 'mean'))));
       return;
     }
     const t = RT, items = readingItems(t), kanaOnly = items.filter(x => !hasKanji(x.w.sign));
-    el.append(h('div', { class: 'backbar' }, h('button', { class: 'link back', type: 'button', onclick: () => { RT = null; renderReading(); } }, '← Все темы')),
-      h('div', { class: 'hello' }, h('h1', { class: 'h1' }, t.title), (lessonsDone['r-' + t.id] || {}).quiz ? h('span', { class: 'badge ' + (lessonsDone['r-' + t.id].quiz >= PASS * 100 ? 'ok' : 'soon') }, `Лучший результат · ${lessonsDone['r-' + t.id].quiz}%`) : null),
+    el.append(pageHead(t.title, () => { RT = null; renderReading(); window.scrollTo(0, 0); }),
+      h('div', { class: 'crumb' }, 'Чтение в поездке' + ((lessonsDone['r-' + t.id] || {}).quiz ? ` · лучший результат ${lessonsDone['r-' + t.id].quiz}%` : '')),
+      h('div', { class: 'banner', style: 'background-image:url(img/pagoda-s.webp)' }),
       h('p', { class: 'lintro-text' }, t.intro),
-      h('div', { class: 'actions', style: 'justify-content:flex-start' },
-        iconBtn('btn primary', 'next', `Что означает? · ${items.length}`, () => startReading(t, 'mean'), 'Квиз: выбрать значение надписи'),
-        kanaOnly.length ? iconBtn('btn ghost', 'next', `Прочитать · ${kanaOnly.length}`, () => startReading(t, 'type'), 'Квиз: написать чтение надписей каной') : null));
+      h('div', { class: 'actions col' },
+        iconBtn('btn primary wide', 'next', `Что означает? · ${items.length}`, () => startReading(t, 'mean'), 'Квиз: выбрать значение надписи'),
+        kanaOnly.length ? iconBtn('btn ghost wide', 'next', `Прочитать · ${kanaOnly.length}`, () => startReading(t, 'type'), 'Квиз: написать чтение надписей каной') : null));
     const list = h('div', { class: 'sheet rlist' });
     for (const it of items) {
       const rd = h('span', { class: 'rd hid', title: 'Нажмите, чтобы показать чтение', onclick: () => rd.classList.remove('hid') }, (hasKanji(it.w.sign) ? it.kana + ' · ' : '') + displayReading(it.kana, S.sys, it.w.read));
@@ -633,13 +652,20 @@
     const missed = []; const seen = new Set();
     for (const r of rs) if (r.status !== 'ok' && !seen.has(r.it.kana)) { seen.add(r.it.kana); missed.push(r.it); }
     const el = $('#screen-result'); el.replaceChildren();
-    el.append(h('div', { class: 'prompt' }, h('span', { class: 'lab' }, 'Итоги квиза'), h('span', { class: 'big' }, `${ok} из ${rs.length}`),
-      rs.length < Q.deck.length ? h('span', { class: 'small muted' }, `Квиз завершён досрочно: пройдено ${rs.length} из ${Q.deck.length} карточек`) : null));
-    el.append(h('div', { class: 'score', style: 'width:100%' },
-      h('div', { class: 'ok' }, h('div', { class: 'v' }, ok), h('div', { class: 'l' }, 'правильных')),
-      h('div', { class: 'bad' }, h('div', { class: 'v' }, bad + skip), h('div', { class: 'l' }, 'неправильных' + (skip ? `, из них пропущено ${skip}` : '')))));
+    const share = rs.length ? ok / rs.length : 0;
+    const mins = Math.max(1, Math.round((Date.now() - (Q.t0 || Date.now())) / 60000));
+    el.append(pageHead('Результат занятия', () => { const b = Q && Q.back; if (FLOW) return backToLesson(); Q = null; show(b || 'practice'); }),
+      h('div', { class: 'res-top' }, h('div', { class: 'mark ' + (share >= PASS ? 'ok' : rs.length ? 'bad' : 'skip'), 'aria-hidden': 'true' }),
+        h('h1', {}, share >= PASS ? 'Отличная работа!' : share >= 0.5 ? 'Хорошая попытка' : 'Есть над чем поработать'),
+        h('p', {}, rs.length < Q.deck.length ? `Завершено досрочно: пройдено ${rs.length} из ${Q.deck.length} карточек` : share >= PASS ? 'Вы стали на шаг ближе к цели' : 'Повторите ошибки — так знаки запомнятся быстрее')));
+    const row = (cls, icon, v, l) => h('div', { class: cls }, h('span', { class: 'ic2' }, I(icon)), h('div', { class: 'v' }, v), h('div', { class: 'l' }, l));
+    el.append(h('div', { class: 'score' },
+      row('ok', 'check', `${ok} из ${rs.length}`, 'Верных ответов'),
+      bad + skip ? row('bad', 'close', String(bad + skip), 'Неверных' + (skip ? `, из них пропущено ${skip}` : '')) : null,
+      guest() ? null : row('', 'flame', `+${ok * 10} XP`, 'Получено опыта'),
+      row('', 'clock', `${mins} мин`, 'Время занятия')));
     if (missed.length) {
-      el.append(h('div', { class: 'small muted' }, 'Над чем поработать'),
+      el.append(h('div', { class: 'h3' }, 'Над чем поработать'),
         h('div', { class: 'mistakes' }, ...missed.map(it => h('div', {}, h('span', { class: 'k' }, it.kana), h('span', { class: 'r' }, readingOf(it, Q.sys) + (it.w ? ' · ' + it.w.mean : ''))))));
     }
     const missedItems = missed;
@@ -647,7 +673,7 @@
       const l = FLOW.lesson, pct = Math.round(ok / Math.max(1, Q.deck.length) * 100), passed = pct >= PASS * 100;
       markStep(l, 'quiz', pct);
       const next = LESSONS[LESSONS.indexOf(l) + 1];
-      el.prepend(h('div', { class: 'result-banner ' + (passed ? 'ok' : 'bad') }, passed ? `${lessonLabel(l)} пройден: ${pct}%` : `${pct}% — для прохождения нужно ${PASS * 100}%. Повторите знакомство и попробуйте ещё раз.`));
+      el.children[1].after(h('div', { class: 'result-banner ' + (passed ? 'ok' : 'bad') }, passed ? `${lessonLabel(l)} пройден: ${pct}%` : `${pct}% — для прохождения нужно ${PASS * 100}%. Повторите знакомство и попробуйте ещё раз.`));
       el.append(h('div', { class: 'actions', style: 'justify-content:center' },
         passed && next ? iconBtn('btn primary', 'next', `Следующий урок: ${next.title}`, () => { FLOW = null; Q = null; openLesson(next); }) : null,
         iconBtn(passed ? 'btn ghost' : 'btn primary', 'undo', 'Пройти проверку ещё раз', () => startLessonQuiz(l)),
@@ -656,17 +682,17 @@
     }
     if (Q.review) {
       const left = srsDue().length;
-      el.prepend(h('div', { class: 'result-banner ' + (left ? 'bad' : 'ok') }, left ? `Повторение: ещё ${left} ${plural(left, 'знак', 'знака', 'знаков')} на сегодня` : 'Повторение на сегодня выполнено'));
+      el.children[1].after(h('div', { class: 'result-banner ' + (left ? 'bad' : 'ok') }, left ? `Повторение: ещё ${left} ${plural(left, 'знак', 'знака', 'знаков')} на сегодня` : 'Повторение на сегодня выполнено'));
       el.append(h('div', { class: 'actions', style: 'justify-content:center' },
         left ? iconBtn('btn primary', 'next', `Продолжить повторение (${left})`, startReview) : null,
-        h('button', { class: left ? 'btn ghost' : 'btn primary', type: 'button', onclick: () => { Q = null; show('home'); } }, 'На главную')));
+        h('button', { class: left ? 'btn ghost' : 'btn primary', type: 'button', onclick: () => { Q = null; show('home'); } }, 'На главный экран')));
       return show('result');
     }
     const back = Q.back, again = Q.again;
     if (Q.track && rs.length === Q.deck.length && !guest()) {
       const pct = Math.round(ok / Q.deck.length * 100), id = Q.track.id;
       lessonsDone[id] = { quiz: Math.max(pct, (lessonsDone[id] || {}).quiz || 0) }; saveLessons();
-      el.prepend(h('div', { class: 'result-banner ' + (pct >= PASS * 100 ? 'ok' : 'bad') }, `${Q.track.title}: ${pct}%`));
+      el.children[1].after(h('div', { class: 'result-banner ' + (pct >= PASS * 100 ? 'ok' : 'bad') }, `${Q.track.title}: ${pct}%`));
     }
     el.append(h('div', { class: 'actions', style: 'justify-content:center' },
       missedItems.length ? iconBtn('btn primary', 'undo', `Повторить ошибки (${missedItems.length})`, () => startQuiz(missedItems, missedItems.length * 2, { mode: Q.mode, back })) : null,
@@ -849,14 +875,7 @@
     box.addEventListener('change', () => { S.ghost = box.checked; save(); after && after(); });
     return h('label', { class: 'check', for: box.id }, box, 'Подложка для обводки');
   }
-  function svgIcon(name) {
-    const sp = h('span', { class: 'ic', 'aria-hidden': 'true' });
-    sp.innerHTML = {
-      sound: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>',
-      check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
-    }[name];
-    return sp;
-  }
+  function svgIcon(name) { const sp = h('span', { class: 'ic', 'aria-hidden': 'true' }); sp.innerHTML = svgOf(name); return sp; }
 
   // ---------- прописи ----------
   let WR = null;
@@ -943,6 +962,7 @@
     WR.submit = submit;
   }
   function renderWriteResult() {
+    document.body.classList.remove('no-nav');   // итоги — с навигацией, как итоги квиза
     $('#w-prog').style.width = '100%';
     const el = $('#write'); el.replaceChildren();
     const totalOk = WR.stats.reduce((a, s) => a + s.ok, 0), totalBad = WR.stats.reduce((a, s) => a + s.bad, 0);
@@ -975,24 +995,27 @@
 
   // ---------- переключение экранов ----------
   let current = 'home';
-  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me', 'similar', 'reading', 'builder', 'login', 'register', 'friends', 'settings'];
-  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice', reading: 'practice', builder: 'practice', login: 'me', register: 'me', friends: 'friends', settings: null };
+  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me', 'similar', 'reading', 'builder', 'login', 'register', 'friends', 'settings', 'progress'];
+  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice', reading: 'practice', builder: 'practice', login: 'me', register: 'me', friends: 'friends', settings: 'me', progress: 'me' };
   const tabOf = name => (FLOW && ['quiz', 'result', 'write'].includes(name)) ? 'lessons' : TAB_OF[name];
   const lastOf = { home: 'home', lessons: 'lessons', practice: 'practice', dict: 'dict', me: 'me', friends: 'friends' };
+  let beforeAuth = null;
   function show(name) {
+    if (!['login', 'register'].includes(current) && ['login', 'register'].includes(name)) beforeAuth = current;
     const tab = tabOf(name);
-    if (tab && !FLOW) lastOf[tab] = ['quiz', 'result', 'write', 'login', 'register'].includes(name) ? lastOf[tab] : name;
+    if (tab && !FLOW) lastOf[tab] = ['quiz', 'result', 'write', 'login', 'register', 'settings'].includes(name) ? lastOf[tab] : name;
     current = name;
     for (const n of SCREENS) $('#screen-' + n).hidden = name !== n;
     document.querySelectorAll('.backbar[data-for]').forEach(b => { b.hidden = b.dataset.for !== name; });
-    $('#bnav').hidden = name === 'onboard';
+    // упражнения на весь экран — без нижней навигации, как в макетах
+    const full = ['onboard', 'quiz', 'write', 'lintro', 'login', 'register'].includes(name);
+    $('#bnav').hidden = name === 'onboard'; document.body.classList.toggle('no-nav', full); document.body.classList.toggle('no-side', name === 'onboard');
     document.querySelectorAll('#bnav button').forEach(x => { if (x.dataset.tab === tab) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current'); });
     ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, onboard: renderOnboard, similar: renderSimilar, reading: renderReading, builder: renderBuilder,
       // экран входа рисует sync.js; на самом старте он ещё не загружен — дорисуем чуть позже
       login: () => window.KanaSync ? window.KanaSync.renderAuthPage($('#screen-login'), 'login') : setTimeout(() => { if (current === 'login') show('login'); }, 30),
       register: () => window.KanaSync ? window.KanaSync.renderAuthPage($('#screen-register'), 'register') : setTimeout(() => { if (current === 'register') show('register'); }, 30),
-      friends: () => { renderFriends(); loadFriends(); }, settings: renderSettings })[name]?.();
-    $('#btn-settings').toggleAttribute('aria-current', name === 'settings'); $('#btn-settings').hidden = name === 'onboard';
+      friends: () => { renderFriends(); loadFriends(); }, settings: renderSettings, progress: renderProgressScreen })[name]?.();
     updateTabs();
     // фокус в первое поле — только если пользователь ещё никуда не нажал (иначе текст уйдёт не в то поле)
     if (name === 'login' || name === 'register') setTimeout(() => { const f = $('#screen-' + name + ' input'); if (f && (!document.activeElement || document.activeElement === document.body)) f.focus(); }, 50);
@@ -1007,8 +1030,10 @@
     show(target === 'lessons' && curLesson && tabOf(current) !== 'lessons' && lastOf.lessons === 'lesson' ? 'lesson' : target);
   });
   document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => show(b.dataset.back));
-  $('#btn-settings').onclick = () => { if (current === 'settings') show(lastScreen || 'home'); else { lastScreen = current; show('settings'); } };
   let lastScreen = null;
+  const openSettings = () => { if (current !== 'settings') lastScreen = current; show('settings'); };
+  $('#btn-settings').onclick = openSettings;
+  $('#btn-settings-back').onclick = () => show(lastScreen && lastScreen !== 'settings' ? lastScreen : 'me');
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !$('#screen-quiz').hidden && document.activeElement && document.activeElement.tagName === 'BODY') {
       const b = $('#card .btn.primary'); if (b) b.click();
@@ -1022,29 +1047,41 @@
   // ---------- словарь ----------
   $('#dict-register').onclick = () => show('register'); $('#dict-login').onclick = () => show('login');
   function saveWords() { store.set('words', userWords); store.set('deleted', [...deleted]); }
+  function wordRow(w, g) {
+    const fav = favs.has(wid(w));
+    const fb = g ? null : h('button', { class: 'fav', type: 'button', 'aria-pressed': String(fav), title: fav ? 'Убрать из избранного' : 'В избранное', 'aria-label': (fav ? 'Убрать из избранного ' : 'В избранное ') + w.kana,
+      onclick: () => { toggleFav(w); renderDict(); } }, I('heart'));
+    return h('div', { class: 'wrow' },
+      h('span', { class: 'k' + ([...(w.kanji || w.kana)].length > 5 ? ' long' : ''), lang: 'ja' }, w.kanji || w.kana),
+      h('span', { class: 'mid' }, h('span', { class: 'rd' + (w.kanji ? ' kn' : '') }, w.kanji ? w.kana + ' · ' + displayReading(w.kana, S.sys, w.read) : displayReading(w.kana, S.sys, w.read)), h('span', { class: 'm' }, w.mean)),
+      h('span', { class: 'acts' }, sayButton({ kana: w.kana, kanji: w.kanji, word: true }) || h('span', { class: 'say-none', title: 'Для своих слов нужен японский голос в системе устройства' }), fb,
+        g ? null : h('button', { class: 'del', type: 'button', title: 'Удалить слово', 'aria-label': 'Удалить ' + w.kana, onclick: () => {
+          if (w.builtin) deleted.add(wid(w)); else userWords = userWords.filter(x => wid(x) !== wid(w));
+          favs.delete(wid(w)); store.set('favs', [...favs]);
+          saveWords(); renderDict();
+        } }, I('close'))));
+  }
   function renderDict() {
     // свои слова, импорт и копия — только с аккаунтом (слова синхронизируются)
     const g = guest();
     $('#dict-guest').hidden = !g;
-    for (const id of ['add-panel', 'import-panel', 'backup-panel']) $('#' + id).hidden = g;
+    $('#dict-panels').hidden = g;
+    const view = ['all', 'fav', 'topics'].includes(S.dictView) ? S.dictView : 'all';
+    $('#dict-tabs').replaceChildren(...[['all', 'Все'], ['fav', 'Избранное'], ['topics', 'Темы']].map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(view === v), onclick: () => { S.dictView = v; save(); renderDict(); } }, t)));
     const q = ($('#dict-q').value || '').trim().toLowerCase();
     const ws = allWords();
     $('#topics').replaceChildren(...topicsOf(ws).map(t => h('option', { value: t })));
+    const tps = topicsOf(ws), topic = tps.includes(S.dictTopic) ? S.dictTopic : tps[0];
+    $('#dict-topics').hidden = view !== 'topics';
+    if (view === 'topics') $('#dict-topics').replaceChildren(...tps.map(t => h('button', { type: 'button', 'aria-pressed': String(t === topic), onclick: () => { S.dictTopic = t; save(); renderDict(); } }, t, h('small', {}, String(ws.filter(w => (w.topic || 'Без темы') === t).length)))));
     const list = $('#wlist'); list.replaceChildren();
-    const filt = ws.filter(w => !q || w.kana.includes(q) || w.mean.toLowerCase().includes(q) || displayReading(w.kana, 'ru', w.read).includes(q) || displayReading(w.kana, 'lat', w.read).includes(q));
+    let filt = ws.filter(w => !q || w.kana.includes(q) || (w.kanji || '').includes(q) || w.mean.toLowerCase().includes(q) || displayReading(w.kana, 'ru', w.read).includes(q) || displayReading(w.kana, 'lat', w.read).includes(q));
+    if (view === 'fav') filt = filt.filter(w => favs.has(wid(w)));
+    if (view === 'topics') filt = filt.filter(w => (w.topic || 'Без темы') === topic);
     $('#dict-count').textContent = `${filt.length} из ${ws.length} слов`;
-    for (const t of topicsOf(filt)) {
-      list.append(h('div', {}, h('h4', {}, t), ...filt.filter(w => (w.topic || 'Без темы') === t).map(w => h('div', { class: 'wrow' },
-        h('span', { class: 'k' }, w.kana),
-        h('span', { class: 'rd' }, displayReading(w.kana, 'ru', w.read) + ' · ' + displayReading(w.kana, 'lat', w.read)),
-        h('span', { class: 'm' }, w.mean),
-        sayButton({ kana: w.kana, kanji: w.kanji, word: true }) || h('span', { class: 'say-none', title: 'Для своих слов нужен японский голос в системе устройства' }),
-        g ? null : h('button', { class: 'del', type: 'button', title: 'Удалить слово', 'aria-label': 'Удалить ' + w.kana, onclick: () => {
-          if (w.builtin) deleted.add(wid(w)); else userWords = userWords.filter(x => wid(x) !== wid(w));
-          saveWords(); renderDict();
-        } }, '×')))));
-    }
-    if (!filt.length) list.append(h('div', { class: 'muted' }, 'Ничего не найдено.'));
+    if (view === 'all') for (const t of topicsOf(filt)) list.append(h('div', {}, h('h4', {}, t), h('div', { class: 'grp' }, ...filt.filter(w => (w.topic || 'Без темы') === t).map(w => wordRow(w, g)))));
+    else list.append(h('div', { class: 'grp' }, ...filt.map(w => wordRow(w, g))));
+    if (!filt.length) list.append(h('div', { class: 'sheet empty' }, view === 'fav' && !q ? [h('b', {}, 'Пока нет избранных слов'), h('p', {}, g ? 'Избранное доступно с аккаунтом.' : 'Нажмите на сердечко у слова — оно появится здесь.')] : [h('b', {}, 'Ничего не найдено'), h('p', {}, 'Попробуйте другое слово или перевод.')]));
     const n = Object.values(samples).reduce((a, s) => a + s.length, 0);
     $('#samples-info').textContent = `Образцов почерка: ${n}`;
   }
@@ -1116,20 +1153,8 @@
   }
   const dayKey = ts => { const d = new Date(ts); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
   function renderProgress() {
-    if (window.KanaSync) window.KanaSync.renderAccount($('#account-box'));
     const el = $('#stats'); el.replaceChildren();
-    const total = answers.length, ok = answers.filter(a => a.r === 'ok').length;
-    const weekAgo = Date.now() - 7 * 864e5, week = answers.filter(a => a.ts >= weekAgo), weekOk = week.filter(a => a.r === 'ok').length;
-    const days = new Set(answers.map(a => dayKey(a.ts)));
-    let streak = 0; const d = new Date();
-    if (!days.has(dayKey(d.getTime()))) d.setDate(d.getDate() - 1);
-    while (days.has(dayKey(d.getTime()))) { streak++; d.setDate(d.getDate() - 1); }
-    const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
-    el.append(h('div', { class: 'statrow' },
-      h('div', {}, h('div', { class: 'v' }, String(total)), h('div', { class: 'l' }, 'ответов всего')),
-      h('div', {}, h('div', { class: 'v' }, pct(ok, total)), h('div', { class: 'l' }, 'верных за всё время')),
-      h('div', {}, h('div', { class: 'v' }, pct(weekOk, week.length)), h('div', { class: 'l' }, `верных за 7 дней (${week.length})`)),
-      h('div', {}, h('div', { class: 'v' }, String(streak)), h('div', { class: 'l' }, 'дней подряд'))));
+    const total = answers.length;
     const fc = srsForecast();
     if (fc.total) el.append(h('p', { class: 'small muted' }, `В интервальном повторении: ${fc.total}. Держатся неделю и дольше: ${fc.learned}. На сегодня: ${fc.due}, на завтра: ${fc.tomorrow}.`));
     if (!total) { el.append(h('p', { class: 'muted' }, 'Пройдите первый квиз — здесь появится, какие знаки уже держатся, а какие путаются.')); return; }
@@ -1217,11 +1242,9 @@
     return n;
   }
   function renderStreak() {
-    const n = guest() ? 0 : streakDays(), el = $('#streak');
-    el.hidden = n < 1;
-    el.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 3.5 5 5.5 5 10.5A5 5 0 0 1 7 13c0-2 1-3.5 2-4.5 0 2 1 3 2 3.5C11 9 10 6 12 2z"/></svg>';
-    el.append(String(n));
-    el.title = `${n} ${plural(n, 'день', 'дня', 'дней')} подряд с занятиями`;
+    const el = $('#home-flame'); if (!el) return;
+    const n = guest() ? 0 : streakDays();
+    el.classList.toggle('on', n > 0); el.replaceChildren(I('flame'), n ? String(n) : '');
   }
   const plural = (n, a, b, c) => { const m = n % 10, mm = n % 100; return m === 1 && mm !== 11 ? a : m >= 2 && m <= 4 && (mm < 12 || mm > 14) ? b : c; };
   // Отклик: верно — один импульс, ошибка — два.
@@ -1383,13 +1406,13 @@
     const groups = simGroups(sc);
     const sel = S.simSel && S.simSel[sc] ? S.simSel[sc].filter(id => groups.some(g => g.id === id)) : groups.map(g => g.id);
     const setSel = v => { S.simSel = Object.assign({ h: null, k: null }, S.simSel, { [sc]: v }); save(); renderSimilar(); };
-    el.append(h('h1', { class: 'h1' }, 'Похожие знаки'),
-      h('p', { class: 'small muted' }, 'Карточки с выбором из похожих знаков: то по знаку найти чтение, то по чтению — знак. После ответа — подсказка, как их различать.'),
+    el.append(pageHead('Похожие знаки', 'practice'),
+      h('p', { class: 'psub' }, 'Карточки с выбором из похожих знаков: то по знаку найти чтение, то по чтению — знак. После ответа — подсказка, как их различать.'),
       segm('Азбука', [['h', 'Хирагана'], ['k', 'Катакана']], sc, v => { S.simScript = v; save(); renderSimilar(); }));
     const conf = confusions(sc);
     if (conf.length) {
       el.append(h('div', { class: 'sheet simconf' }, h('div', { class: 'lbl' }, 'Чаще всего путаете'),
-        h('div', { class: 'chips' }, ...conf.map(c => h('span', { class: 'chip', style: 'cursor:default' }, h('span', { class: 'k' }, c.pair.join(' · ')), h('span', { class: 'n' }, `${c.n} ${plural(c.n, 'раз', 'раза', 'раз')}`)))),
+        h('div', { class: 'chips' }, ...conf.map(c => h('span', { class: 'chip static' }, h('span', { class: 'k' }, c.pair.join(' · ')), h('span', { class: 'n' }, `${c.n} ${plural(c.n, 'раз', 'раза', 'раз')}`)))),
         iconBtn('btn primary', 'undo', 'Потренировать эти пары', () => startSim(conf.map(c => ({ k: c.pair })), conf.length * 6))));
     }
     const allOn = sel.length === groups.length;
@@ -1404,38 +1427,46 @@
     el.append(h('div', { class: 'sheet simstart' },
       h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Карточек'), segm('Карточек', [10, 20, 30, 50].map(v => [v, String(v)]), S.simCount || 20, v => { S.simCount = v; save(); renderSimilar(); }),
         h('div', { class: 'd' }, n ? `Знаков в выбранных группах: ${n}. Каждый появится хотя бы раз${count > (S.simCount || 20) ? `, поэтому карточек будет ${count}` : ''}.` : 'Отметьте хотя бы одну группу.')),
-      h('div', { class: 'start' }, (() => { const b = iconBtn('btn primary', 'next', 'Начать', () => startSim(chosen, count)); b.id = 'btn-sim-start'; b.disabled = !n; return b; })())));
+      h('div', { class: 'start' }, (() => { const b = iconBtn('btn primary wide', 'next', 'Начать тренировку', () => startSim(chosen, count)); b.id = 'btn-sim-start'; b.disabled = !n; return b; })())));
   }
 
   // ---------- экран «Уроки» ----------
+  const COURSE = { h: { name: 'Хирагана', pic: 'fuji' }, k: { name: 'Катакана', pic: 'torii' }, r: { name: 'Чтение в поездке', pic: 'tokyo' } };
   function renderLessons() {
     const el = $('#screen-lessons'); el.replaceChildren();
-    if (guest()) {
-      el.append(h('h1', { class: 'h1' }, 'Уроки'),
-        guestCard('Уроки хираганы и катаканы ведут вас по порядку и запоминают, что пройдено, — поэтому они доступны с аккаунтом. Без него можно тренироваться в «Практике».'),
-        h('h2', { class: 'h2' }, 'Чтение в поездке'), h('p', { class: 'small muted' }, 'Вывески, указатели и меню по темам.'), readingList());
+    const rec = guest() ? null : recommended();
+    const tab = ['h', 'k', 'r'].includes(S.lessonTab) ? S.lessonTab : (rec ? rec.script : 'h');
+    el.append(pageHead('Уроки'), segm('Курс', [['h', 'Хирагана'], ['k', 'Катакана'], ['r', 'Чтение']], tab, v => { S.lessonTab = v; save(); renderLessons(); }));
+    el.lastChild.classList.add('tabs'); el.lastChild.id = 'lesson-tabs';
+    const pic = n => h('div', { class: 'pic', style: `background-image:url(img/${n}-s.webp)` });
+    if (tab === 'r') {
+      el.append(h('div', { class: 'sheet course' }, pic('tokyo'), h('div', { class: 'body' }, h('h2', {}, 'Чтение в поездке'), h('div', { class: 'meta' }, `Вывески, указатели и меню · ${READING.length} тем`))),
+        h('h2', { class: 'h2' }, 'Темы'), readingList());
       return;
     }
-    const rec = recommended();
-    el.append(h('h1', { class: 'h1' }, 'Уроки'),
-      h('p', { class: 'small muted' }, 'Сначала хирагана, затем катакана. Все уроки открыты; рекомендуем идти по порядку.'));
-    for (const [sc, name] of [['h', 'Хирагана'], ['k', 'Катакана']]) {
-    const ls = LESSONS.filter(l => l.script === sc);
-    el.append(h('h2', { class: 'h2' }, `${name} · пройдено ${ls.filter(isDone).length} из ${ls.length}`));
+    if (guest()) {
+      el.append(h('div', { class: 'sheet course' }, pic(COURSE[tab].pic), h('div', { class: 'body' }, h('h2', {}, COURSE[tab].name),
+        h('div', { class: 'meta' }, 'Уроки по порядку, с прогрессом'))),
+        guestCard('Уроки хираганы и катаканы ведут вас по порядку и запоминают, что пройдено, — поэтому они доступны с аккаунтом. Без него можно тренироваться в «Практике».'),
+        h('h2', { class: 'h2' }, 'Чтение в поездке'), h('p', { class: 'psub' }, 'Вывески, указатели и меню по темам.'), readingList());
+      return;
+    }
+    const ls = LESSONS.filter(l => l.script === tab), done = ls.filter(isDone).length;
+    const next = ls.find(l => !isDone(l)) || null;
+    el.append(h('div', { class: 'sheet course' }, pic(COURSE[tab].pic), h('div', { class: 'body' },
+      h('h2', {}, COURSE[tab].name), h('div', { class: 'meta' }, `Базовый курс · ${ls.length} ${plural(ls.length, 'урок', 'урока', 'уроков')}`),
+      h('div', { class: 'bar' }, h('i', { style: `width:${done / ls.length * 100}%` })), h('div', { class: 'done' }, `${done} из ${ls.length} пройдено`),
+      next ? iconBtn('btn primary wide', 'next', done || lessonSteps(next).done ? 'Продолжить' : 'Начать', () => openLesson(next)) : h('div', { class: 'goal-done' }, 'Курс пройден'))));
+    el.append(h('h2', { class: 'h2' }, 'Уроки'));
     const list = h('div', { class: 'lessons' });
     for (const l of ls) {
-      const st = lessonState(l), done = !!st.done, isRec = rec === l;
-      const kana = lessonPreview(l);
-      list.append(h('button', { type: 'button', class: 'lrow' + (done ? ' done' : '') + (isRec ? ' rec' : ''), onclick: () => openLesson(l) },
-        h('span', { class: 'n' }, done ? '✓' : String(lessonNo(l))),
-        h('span', {}, h('div', { class: 't' }, l.title), h('div', { class: 'k' }, kana)),
-        done ? h('span', { class: 'badge ok' }, `${st.quiz}%`) : isRec ? h('span', { class: 'badge rec' }, 'Следующий') : st.intro || st.write || st.quiz ? h('span', { class: 'badge soon' }, 'начат') : null));
+      const st = lessonState(l), d = !!st.done, isRec = rec === l;
+      list.append(h('button', { type: 'button', class: 'lrow' + (d ? ' done' : '') + (isRec ? ' rec' : ''), onclick: () => openLesson(l) },
+        h('span', { class: 'n' }, I('book')),
+        h('span', {}, h('div', { class: 't' }, `${lessonNo(l)}. ${l.title}`), h('div', { class: 'k' }, lessonPreview(l))),
+        h('span', { class: 'end' }, d ? h('span', { class: 'pct' }, `${st.quiz}%`) : isRec ? h('span', { class: 'badge rec' }, 'Следующий') : st.intro || st.write || st.quiz ? h('span', { class: 'badge soon' }, 'начат') : null, I(d ? 'check' : 'chev'))));
     }
     el.append(list);
-    }
-    el.append(h('h2', { class: 'h2' }, 'Чтение в поездке'),
-      h('p', { class: 'small muted' }, 'Вывески, указатели и меню по темам — когда знаки уже знакомы.'),
-      readingList());
   }
 
   // ---------- экран урока ----------
@@ -1445,10 +1476,8 @@
     const st = lessonState(l);
     const el = $('#screen-lesson'); el.replaceChildren();
     const kanas = lessonKana(l);
-    el.append(h('div', { class: 'backbar' }, h('button', { class: 'link back', type: 'button', onclick: () => show('lessons') }, '← Уроки')));
-    const head = h('div', { class: 'lhead' },
-      h('div', { class: 'small muted' }, `Урок ${lessonNo(l)} · ${scriptName(l)}`),
-      h('div', { class: 'hello' }, h('h1', { class: 'h1' }, l.title), st.done ? h('span', { class: 'badge ok' }, `Пройден · ${st.quiz}%`) : recommended() === l ? h('span', { class: 'badge rec' }, 'Рекомендуемый') : null));
+    el.append(pageHead(l.title, 'lessons'), h('div', { class: 'crumb' }, `Урок ${lessonNo(l)} / ${scriptName(l)}` + (st.done ? ` · пройден, ${st.quiz}%` : recommended() === l ? ' · следующий' : '')));
+    const head = h('div', { class: 'lhead' });
     if (kanas.length) {
       const row = h('div', { class: 'lkana' });
       kanas.forEach(k => { const b = h('button', { type: 'button', class: k.length > 1 ? 'w2' : '', title: 'Прослушать', 'aria-label': 'Прослушать ' + k, onclick: () => playKana(k, b) }, k); row.append(b); });
@@ -1467,8 +1496,8 @@
     steps.forEach((s, i) => {
       const done = s.key === 'quiz' ? (st.quiz || 0) >= PASS * 100 : !!st[s.key];
       sl.append(h('div', { class: 'stepc' + (done ? ' done' : '') },
-        h('span', { class: 'n' }, done ? '✓' : String(i + 1)),
-        h('div', {}, h('div', { class: 't' }, s.t + (s.key === 'quiz' && st.quiz ? ` · лучший результат ${st.quiz}%` : '')), h('div', { class: 'd' }, s.d)),
+        h('span', { class: 'n' }, I(done ? 'check' : ({ intro: 'book', write: 'pen', quiz: 'cards' })[s.key])),
+        h('div', {}, h('div', { class: 't' }, `${i + 1}. ${s.t}` + (s.key === 'quiz' && st.quiz ? ` · ${st.quiz}%` : '')), h('div', { class: 'd' }, s.d)),
         h('button', { class: 'btn ' + (done ? 'ghost' : 'primary'), type: 'button', onclick: s.go }, done ? 'Ещё раз' : 'Начать')));
     });
     el.append(h('h2', { class: 'h2' }, 'Шаги урока'), sl);
@@ -1505,12 +1534,12 @@
   }
   function renderIntro() {
     const l = IN.l, cards = introCards(l), c = cards[IN.i];
-    $('#i-ctr').textContent = `${IN.i + 1} / ${cards.length}`;
+    $('#i-ctr').textContent = `${IN.i + 1} / ${cards.length}`; $('#i-title').textContent = l.title;
     $('#i-prog').style.width = ((IN.i + 1) / cards.length * 100) + '%';
     const el = $('#lintro'); el.replaceChildren();
     const box = h('div', { class: 'icard' });
     if (c.point) {
-      box.append(h('div', { class: 'vtitle' }, c.t), h('div', { class: 'ibox' }, h('p', {}, c.p)));
+      box.append(h('div', { class: 'hero2' }, h('div', { class: 'vtitle' }, c.t)), h('div', { class: 'ibox' }, h('p', {}, c.p)));
     } else if (c.similar) {
       box.append(h('div', { class: 'vtitle' }, 'Не перепутать'),
         ...l.similar.map(([a, b, t]) => h('div', { class: 'ibox' }, h('div', { style: 'font-family:var(--kana);font-size:40px;line-height:1.2' }, a + '　' + b), h('p', {}, t))));
@@ -1520,10 +1549,10 @@
       if (KVG[k]) pair.append(h('div', { class: 'so' }, strokeOrder(k)));
       pair.append(h('div', { class: 'glyph-big' }, k));
       const play = h('button', { class: 'iconbtn say', type: 'button', onclick: () => playKana(k, play) }, svgIcon('sound'), 'Произношение');
-      box.append(pair,
-        h('div', { class: 'rd' }, displayReading(k, S.sys), h('span', {}, ' · ' + displayReading(k, otherSys(S.sys)))),
+      box.append(h('div', { class: 'hero2' }, pair,
+        h('div', { class: 'rd' }, h('b', {}, displayReading(k, S.sys)), ' · ' + displayReading(k, otherSys(S.sys)) + ' · ' + (isKata(k[0]) ? 'катакана' : 'хирагана')),
         play,
-        KVG[k] ? h('div', { class: 'small muted' }, 'Нажмите на клетку слева, чтобы повторить порядок штрихов') : null);
+        KVG[k] ? h('div', { class: 'small muted' }, 'Нажмите на клетку слева, чтобы повторить порядок штрихов') : null));
       if (c.note) {
         box.append(h('div', { class: 'ibox' }, h('span', { class: 'lab' }, 'Как запомнить'), h('p', {}, c.note[0])));
         box.append(h('div', { class: 'ibox' }, h('span', { class: 'lab' }, 'Произношение'), h('p', {}, c.note[1])));
@@ -1548,87 +1577,113 @@
     for (const ch in st) { const s = st[ch]; if (s.length >= 2) { const acc = s.reduce((x, y) => x + y, 0) / s.length; if (acc < 0.85) out.push({ ch, acc }); } }
     return out.sort((a, b) => a.acc - b.acc).slice(0, 15);
   }
-  const CTA_ICONS = {
-    lesson: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
-    review: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="13" height="14" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v12"/><path d="M7 14l2 2 4-4"/></svg>',
-    listen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>',
-    reading: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="11" rx="2"/><path d="M12 15v6M8 21h8M7 9h10"/></svg>',
-    builder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="4" width="7" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/></svg>',
-    similar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9c2-2 4-2 6 0s4 2 6 0 3-1.5 4-1"/><path d="M4 15c2-2 4-2 6 0s4 2 6 0 3-1.5 4-1"/></svg>',
-    weak: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4"/></svg>',
-    quiz: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>',
-    abc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5l4 4L9 19l-5 1 1-5z"/></svg>',
-  };
+  const CTA_ICONS = { lesson: 'play', review: 'repeat', listen: 'sound', reading: 'sign', builder: 'blocks', similar: 'wave', weak: 'flame', quiz: 'cards', abc: 'pen', friends: 'friends', progress: 'clock' };
   function cta(icon, title, desc, kana, onclick, cls) {
-    const ico = h('span', { class: 'ico' }); ico.innerHTML = CTA_ICONS[icon];
+    const ico = h('span', { class: 'ico' }); ico.innerHTML = svgOf(CTA_ICONS[icon] || icon);
     return h('button', { type: 'button', class: 'cta ' + (cls || ''), onclick }, ico,
       h('span', {}, h('div', { class: 't' }, title), kana ? h('div', { class: 'k' }, kana) : null, desc ? h('div', { class: 'd' }, desc) : null),
-      h('span', { class: 'go', 'aria-hidden': 'true' }, '›'));
+      h('span', { class: 'go', 'aria-hidden': 'true' }, I('chev')));
+  }
+  const firstName = () => { const a = acct(); return a ? (a.displayName || a.username || '').trim().split(/\s+/)[0] : ''; };
+  const helloText = () => firstName() ? `Привет, ${firstName()}!` : greet();
+  const WEEKDAYS = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+  // шаги урока: сколько сделано из скольких
+  function lessonSteps(l) { const st = lessonState(l); const keys = ['intro'].concat(lessonWritable(l).length ? ['write'] : [], ['quiz']); return { n: keys.length, done: keys.filter(k => k === 'quiz' ? (st.quiz || 0) >= PASS * 100 : !!st[k]).length }; }
+  function heroBlock(sub) {
+    const n = guest() ? 0 : streakDays();
+    const flame = h('button', { class: 'flame' + (n ? ' on' : ''), type: 'button', id: 'home-flame', title: n ? `${n} ${plural(n, 'день', 'дня', 'дней')} подряд с занятиями` : 'Серия дней подряд', 'aria-label': 'Серия дней подряд', onclick: () => show(guest() ? 'me' : 'progress') }, I('flame'), n ? String(n) : '');
+    return h('div', { class: 'hero' }, h('h1', {}, helloText()), h('p', {}, sub), flame);
+  }
+  function continueCard() {
+    const rec = recommended();
+    const box = h('div', { class: 'sheet cont' });
+    if (!rec) {
+      box.append(h('div', { class: 'lab' }, 'Все уроки пройдены'), h('div', { class: 'ln' }, h('b', {}, 'Хирагана и катакана выучены — дальше чтение вывесок и меню')),
+        iconBtn('btn primary wide', 'next', 'Чтение в поездке', () => { RT = null; show('reading'); }));
+      return box;
+    }
+    const st = lessonSteps(rec), started = st.done > 0 || (lessonState(rec).quiz || 0) > 0, kanas = lessonKana(rec);
+    box.append(h('div', { class: 'lab' }, started ? 'Продолжить урок' : 'Следующий урок'),
+      h('div', { class: 'ln' }, h('b', {}, `${lessonLabel(rec)}. ${rec.title}`), h('span', { class: 'ctr' }, `${st.done} / ${st.n}`), kanas.length ? h('span', { class: 'k' }, kanas.slice(0, 8).join(' · ')) : null),
+      h('div', { class: 'bar' }, h('i', { style: `width:${st.done / st.n * 100}%` })),
+      iconBtn('btn primary wide', 'next', started ? 'Продолжить' : 'Начать урок', () => openLesson(rec)));
+    return box;
+  }
+  function goalCard(cls) {
+    const g = S.goal || def.goal, t = dayTotals(todayKey());
+    const pm = Math.min(1, t.min / g.min), pc = Math.min(1, t.cards / g.cards);
+    return h('div', { class: 'sheet goal ' + (cls || '') },
+      h('div', { class: 'cardhead' }, h('b', {}, 'Цель на сегодня'), h('button', { class: 'link', type: 'button', onclick: openSettings }, 'Изменить')),
+      h('div', { class: 'goal-row' }, h('div', { class: 'top' }, h('span', {}, I('clock'), 'Занятия'), h('b', {}, `${t.min} / ${g.min} мин`)), h('div', { class: 'bar' + (pm >= 1 ? ' done' : '') }, h('i', { style: `width:${pm * 100}%` }))),
+      h('div', { class: 'goal-row' }, h('div', { class: 'top' }, h('span', {}, I('cards'), 'Карточки и прописи'), h('b', {}, `${t.cards} / ${g.cards}`)), h('div', { class: 'bar' + (pc >= 1 ? ' done' : '') }, h('i', { style: `width:${pc * 100}%` }))),
+      pm >= 1 && pc >= 1 ? h('div', { class: 'goal-done' }, 'Цель на сегодня выполнена') : h('div', { class: 'small muted' }, `${streakDays()} ${plural(streakDays(), 'день', 'дня', 'дней')} подряд`));
+  }
+  function weekCard() {
+    const days = activeDays(), wk = h('div', { class: 'week', 'aria-label': 'Последние 7 дней' });
+    let n = 0;
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i); const k = dayKey(d.getTime()), on = days.has(k), met = goalMet(k);
+      if (on) n++;
+      wk.append(h('div', { class: (met ? 'goal' : on ? 'on' : '') + (i === 0 ? ' today' : ''), title: met ? 'цель выполнена' : on ? 'были занятия' : 'без занятий' },
+        WEEKDAYS[d.getDay()], h('i'), h('small', {}, String(dayTotals(k).min))));
+    }
+    return h('div', { class: 'sheet weekc' }, h('div', { class: 'cardhead' }, h('b', {}, 'Неделя'), h('span', {}, `${n} / 7`)), wk);
+  }
+  function wordOfDay() {
+    const ws = allWords().filter(w => w.mean); if (!ws.length) return null;
+    const day = Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 864e5);
+    const w = ws[(day * 7919) % ws.length];
+    const fav = favs.has(wid(w));
+    return h('div', { class: 'sheet wod wodc' }, h('b', {}, 'Слово дня'),
+      h('div', { class: 'big', lang: 'ja' }, w.kanji || w.kana),
+      h('div', { class: 'rd' }, (w.kanji ? w.kana + ' · ' : '') + displayReading(w.kana, S.sys, w.read)),
+      h('div', { class: 'm' }, w.mean),
+      h('div', { class: 'row' }, sayButton({ kana: w.kana, kanji: w.kanji, word: true }, 'Слушать'),
+        guest() ? null : h('button', { class: 'btn ghost sm', type: 'button', onclick: () => { toggleFav(w); renderHome(); } }, fav ? 'В избранном' : 'В избранное')));
   }
   function renderHome() {
     const el = $('#screen-home'); el.replaceChildren();
     if (guest()) return renderGuestHome(el);
+    const box = h('div', { class: 'home' });
+    box.append(h('div', { class: 'hello-d' }, h('h1', {}, helloText()), h('p', {}, 'Сегодня отличный день, чтобы сделать шаг к своей цели.')));
+    box.append(heroBlock('Сегодня отличный день, чтобы сделать ещё один шаг к своей цели.'), continueCard(), goalCard('goalc'));
     // уведомления не разрешены (Safari спрашивает только по нажатию) — без них не придут приглашения в друзья
     if (window.KANA_PWA && pushPossible() && Notification.permission === 'default' && !store.get('push-asked', false)) {
-      el.append(h('div', { class: 'sheet notif-ask', id: 'notif-ask' }, h('div', {}, h('b', {}, 'Разрешите уведомления'), h('div', { class: 'small muted' }, 'Чтобы узнавать о заявках и приглашениях в друзья. Напоминания о занятиях включаются отдельно в настройках.')),
+      box.append(h('div', { class: 'sheet notif-ask', id: 'notif-ask' }, h('div', {}, h('b', {}, 'Разрешите уведомления'), h('div', { class: 'small muted' }, 'Чтобы узнавать о заявках и приглашениях в друзья. Напоминания о занятиях включаются отдельно в настройках.')),
         h('div', { class: 'row' }, h('button', { class: 'btn primary', type: 'button', onclick: async () => { await pushSubscribe(null, true).catch(() => { }); store.set('push-asked', true); renderHome(); } }, 'Разрешить'),
           h('button', { class: 'link', type: 'button', onclick: () => { store.set('push-asked', true); renderHome(); } }, 'Не сейчас'))));
     }
-    const g = S.goal || def.goal, t = dayTotals(todayKey());
-    const pm = Math.min(1, t.min / g.min), pc = Math.min(1, t.cards / g.cards);
-    const met = pm >= 1 && pc >= 1;
-    const box = h('div', { class: 'home' });
-    box.append(h('div', { class: 'hello' }, h('h1', { class: 'h1' }, greet()),
-      h('button', { class: 'link', type: 'button', onclick: () => show('me') }, 'Изменить цель')));
-    box.append(h('div', { class: 'sheet goal' },
-      h('div', { class: 'goal-row' }, h('div', { class: 'top' }, h('span', {}, 'Занятия'), h('b', {}, `${t.min} из ${g.min} мин`)), h('div', { class: 'bar' + (pm >= 1 ? ' done' : '') }, h('i', { style: `width:${pm * 100}%` }))),
-      h('div', { class: 'goal-row' }, h('div', { class: 'top' }, h('span', {}, 'Карточки и прописи'), h('b', {}, `${t.cards} из ${g.cards}`)), h('div', { class: 'bar' + (pc >= 1 ? ' done' : '') }, h('i', { style: `width:${pc * 100}%` }))),
-      met ? h('div', { class: 'goal-done' }, '○ Цель на сегодня выполнена') : null));
-    const fc = srsForecast();
-    if (fc.due) box.append(cta('review', `Повторение · ${fc.due} ${plural(fc.due, 'знак', 'знака', 'знаков')}`, `Пора повторить, пока не забылось${fc.due > REVIEW_MAX ? ` — по ${REVIEW_MAX} за подход` : ''}`, srsDue().slice(0, 10).map(s => s.k).join(' '), startReview, 'main review'));
-    const rec = recommended();
-    if (rec) {
-      const st = lessonState(rec), started = st.intro || st.write || st.quiz;
-      const kanas = lessonKana(rec);
-      box.append(cta('lesson', `${started ? 'Продолжить' : 'Начать'}: ${lessonLabel(rec).replace(/^Урок/, 'урок')}`, rec.title, kanas.length ? kanas.slice(0, 8).join(' ') : null, () => openLesson(rec), 'main'));
-    } else {
-      box.append(cta('lesson', 'Все уроки пройдены', 'Хирагана и катакана выучены — дальше чтение вывесок и меню', null, () => show('reading'), 'main'));
-    }
-    if (!fc.due && fc.total) box.append(h('div', { class: 'sheet srsdone small' }, h('b', {}, '○ Повторение на сегодня выполнено'), h('span', { class: 'muted' }, fc.tomorrow ? ` · завтра ${fc.tomorrow} ${plural(fc.tomorrow, 'знак', 'знака', 'знаков')}` : '')));
-    const weak = weakKana();
-    if (weak.length) box.append(cta('weak', 'Слабые знаки', `${weak.length} ${plural(weak.length, 'знак', 'знака', 'знаков')} — короткий квиз на чтение`, weak.map(w => w.ch).slice(0, 10).join(' '),
-      () => { const items = weak.map(w => ({ kind: 'kana', kana: w.ch })); startQuiz(items, items.length * 2, { mode: 'type' }); }, 'alt'));
-    box.append(h('div', { class: 'quick' },
-      cta('quiz', 'Квиз', 'Свободная тренировка', null, () => show('setup'), 'alt'),
-      cta('abc', 'Азбука и прописи', 'Озвучка и письмо', null, () => show('abc'), 'alt'),
-      cta('listen', 'Квиз на слух', 'Узнать знак по звучанию', null, () => openListenSetup(), 'alt'),
-      cta('similar', 'Похожие знаки', 'シ・ツ, ぬ・め и другие', null, () => show('similar'), 'alt')));
-    // неделя
-    const days = activeDays(), wk = h('div', { class: 'week', 'aria-label': 'Последние 7 дней' });
-    const names = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i); const k = dayKey(d.getTime());
-      wk.append(h('div', { class: (goalMet(k) ? 'goal' : days.has(k) ? 'on' : '') + (i === 0 ? ' today' : ''), title: goalMet(k) ? 'цель выполнена' : days.has(k) ? 'были занятия' : 'без занятий' }, names[d.getDay()], h('i')));
-    }
-    box.append(h('div', { class: 'sheet' }, h('div', { class: 'small muted', style: 'margin-bottom:6px' }, `Неделя · ${streakDays()} ${plural(streakDays(), 'день', 'дня', 'дней')} подряд`), wk,
-      h('div', { class: 'legend small muted', style: 'margin-top:8px' }, h('span', { class: 'kc good' }, ''), 'были занятия', h('span', { class: 'kc', style: 'background:var(--ok);border-color:var(--ok)' }, ''), 'цель выполнена')));
+    const fc = srsForecast(), weak = weakKana();
+    const reviewTile = fc.due ? cta('review', 'Повторение', `${fc.due} ${plural(fc.due, 'знак', 'знака', 'знаков')} на сегодня`, null, startReview, 'review main')
+      : weak.length ? cta('review', 'Повторение', 'слабых знаков', null, () => { const items = weak.map(w => ({ kind: 'kana', kana: w.ch })); startQuiz(items, items.length * 2, { mode: 'type' }); }, 'review')
+        : cta('review', 'Повторение', fc.total ? 'на сегодня выполнено' : 'появится после квизов', null, () => show('practice'), 'review');
+    box.append(h('div', { class: 'qa2' }, reviewTile, cta('quiz', 'Квиз', 'Проверь себя', null, () => show('setup'), 'quiz')),
+      h('div', { class: 'qa3' }, cta('abc', 'Азбука и прописи', null, null, () => show('abc')), cta('listen', 'Аудирование', null, null, () => openListenSetup()), cta('similar', 'Похожие знаки', null, null, () => show('similar'))));
+    box.append(h('h2', { class: 'h2 qa5h' }, 'Быстрый старт'), h('div', { class: 'qa5' },
+      cta('review', 'Повторение', fc.due ? `${fc.due} ${plural(fc.due, 'карточка', 'карточки', 'карточек')}` : 'Пройденное', null, fc.due ? startReview : () => show('practice')),
+      cta('quiz', 'Квиз', 'Проверьте себя', null, () => show('setup')), cta('abc', 'Прописи', 'Пишите кану', null, () => show('abc')),
+      cta('listen', 'Аудирование', 'Тренируйте слух', null, () => openListenSetup()), cta('similar', 'Похожие знаки', 'Находите различия', null, () => show('similar'))));
+    if (!fc.due && fc.total) box.append(h('div', { class: 'sheet srsdone small' }, h('b', {}, 'Повторение на сегодня выполнено'), h('span', { class: 'muted' }, fc.tomorrow ? ` · завтра ${fc.tomorrow} ${plural(fc.tomorrow, 'знак', 'знака', 'знаков')}` : '')));
+    box.append(weekCard());
+    const wod = wordOfDay(); if (wod) box.append(wod);
     el.append(box);
+    renderStreak();
   }
 
   // ---------- Практика ----------
   function renderPractice() {
     const el = $('#screen-practice'); el.replaceChildren();
-    const weak = guest() ? [] : weakKana();
-    el.append(h('h1', { class: 'h1' }, 'Практика'), h('p', { class: 'small muted' }, 'Свободные тренировки — в любом порядке и сколько угодно.'),
+    const weak = guest() ? [] : weakKana(), due = guest() ? 0 : srsForecast().due;
+    el.append(pageHead('Практика'), h('p', { class: 'psub' }, 'Выберите формат занятия'),
       h('div', { class: 'practice' },
-        cta('quiz', 'Квиз', 'Хирагана, катакана или слова: нарисовать знак по звучанию или прочитать', null, () => show('setup')),
-        !guest() && srsForecast().due ? cta('review', 'Повторение', `${srsForecast().due} на сегодня — интервальное повторение пройденного`, null, startReview, 'main') : null,
-        cta('abc', 'Азбука и прописи', 'Таблицы с озвучкой, прописи выбранных знаков с подложкой', null, () => show('abc')),
-        cta('listen', 'Квиз на слух', 'Звучит знак или слово — выберите, как он пишется', null, () => openListenSetup()),
-        cta('similar', 'Похожие знаки', 'シ・ツ・ソ・ン, ぬ・め, ね・れ・わ: выбор из похожих и подсказки, как различать', null, () => show('similar')),
-        cta('builder', 'Конструктор предложений', 'Русская фраза → собрать японскую из блоков: «где туалет?», «счёт, пожалуйста»', null, () => show('builder')),
-        cta('reading', 'Чтение в поездке', 'Вывески, указатели и меню: еда, транспорт, магазины, отель, улица', null, () => { RT = null; show('reading'); }),
-        weak.length ? cta('weak', 'Слабые знаки', 'Квиз по знакам, на которых вы чаще ошибаетесь', weak.map(w => w.ch).slice(0, 10).join(' '), () => { const items = weak.map(w => ({ kind: 'kana', kana: w.ch })); startQuiz(items, items.length * 2, { mode: 'type' }); }) : null));
+        cta('quiz', 'Квиз', 'Хирагана, катакана или слова: нарисовать знак или прочитать', null, () => show('setup')),
+        !guest() ? cta('review', 'Интервальное повторение', due ? `${due} ${plural(due, 'карточка', 'карточки', 'карточек')} на сегодня` : 'На сегодня всё повторено', null, due ? startReview : () => startReview(), due ? 'main' : '') : null,
+        cta('abc', 'Азбука и прописи', 'Читайте и пишите кану', null, () => show('abc')),
+        cta('listen', 'Аудирование', 'Распознавайте звуки', null, () => openListenSetup()),
+        cta('similar', 'Похожие знаки', 'Научитесь видеть различия', null, () => show('similar')),
+        cta('builder', 'Конструктор предложений', 'Собирайте фразы из блоков', null, () => show('builder')),
+        cta('reading', 'Чтение в поездке', 'Вывески, указатели и меню', null, () => { RT = null; show('reading'); }),
+        weak.length ? cta('weak', 'Слабые знаки', 'Повторите сложные символы', weak.map(w => w.ch).slice(0, 10).join(' '), () => { const items = weak.map(w => ({ kind: 'kana', kana: w.ch })); startQuiz(items, items.length * 2, { mode: 'type' }); }) : null));
   }
 
   function openListenSetup() { S.mode = 'listen'; save(); show('setup'); }
@@ -1735,42 +1790,100 @@
           : 'Раз в день в выбранное время, если цель дня ещё не выполнена.';
     const can = pushPossible();
     if (can && !PS.checked) pushRefresh().then(() => { if (current === 'settings') renderSettings(); });
-    const row = h('div', { class: 'set switch' }, h('div', {}, h('div', { class: 'lbl' }, 'Напоминания о занятиях'), h('div', { class: 'd' }, why)),
+    const row = h('div', { class: 'set scard switch' }, h('span', { class: 'tilei' }, I('clock')), h('div', {}, h('div', { class: 'lbl' }, PS.on ? `Напоминание в ${PS.time}` : 'Напоминания о занятиях'), h('div', { class: 'd' }, why)),
       toggle('set-notify', PS.on, v => v ? pushEnable() : pushDisable(), !can || PS.busy));
     const out = [row];
     if (can && PS.on) {
       const t = h('input', { type: 'time', id: 'remind-time', value: PS.time, step: 900, 'aria-label': 'Время напоминания' });
       t.addEventListener('change', () => { if (/^\d\d:\d\d$/.test(t.value)) pushTime(t.value); });
-      out.push(h('div', { class: 'set remind' }, h('label', { class: 'lbl', for: 'remind-time' }, 'Время напоминания'), h('div', { class: 'remind-row' }, t,
+      out.push(h('div', { class: 'set scard remind' }, h('label', { class: 'lbl', for: 'remind-time' }, 'Время напоминания'), h('div', { class: 'remind-row' }, t,
         h('button', { class: 'btn ghost', type: 'button', id: 'btn-push-test', onclick: pushTest }, 'Проверить'))));
     }
     if (PS.msg) out.push(h('div', { class: 'small muted', id: 'push-msg', role: 'status' }, PS.msg));
     return out;
   }
+  const VOICE_NAME = { m: 'Мужской', f: 'Женский' }, LEN_NAME = ['Строго', 'Обычно', 'Мягко'], SYS_NAME = { ru: 'Кириллица', lat: 'Латиница' };
   function renderSettings() {
     const el = $('#settings'); el.replaceChildren();
     const g = S.goal || def.goal;
     const setGoal = (k, v) => { S.goal = Object.assign({}, g, { [k]: v }); save(); renderSettings(); renderStreak(); };
     const add = (...xs) => el.append(...xs.flat().filter(x => x != null && x !== false));   // DOM append печатает null как текст
+    const grp = (lbl, ctrl, d) => h('div', { class: 'set sgrp' }, h('div', { class: 'lbl' }, lbl), ctrl, d ? h('div', { class: 'd' }, d) : null);
+    const card = (icon, lbl, ctrl, d) => h('div', { class: 'set scard' }, h('div', { class: 'row', style: 'gap:14px;flex-wrap:nowrap' }, h('span', { class: 'tilei' }, I(icon)), h('div', {}, h('div', { class: 'lbl' }, lbl), d ? h('div', { class: 'd' }, d) : null)), ctrl);
     add(
-      guest() ? null : h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Цель: минут в день'), segm('Минут в день', GOAL_MIN.map(v => [v, String(v)]), g.min, v => setGoal('min', v)),
-        h('div', { class: 'd' }, 'Считается время в уроках, квизах и прописях.')),
-      guest() ? null : h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Цель: карточек и прописей в день'), segm('Карточек в день', GOAL_CARDS.map(v => [v, String(v)]), g.cards, v => setGoal('cards', v)),
-        h('div', { class: 'd' }, 'Каждый ответ в квизе и каждая попытка в прописях. Цель выполнена, когда набраны и минуты, и карточки. Цель сохраняется в аккаунте.')),
-      h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Транскрипция'), segm('Транскрипция', [['ru', 'Кириллица'], ['lat', 'Латиница']], S.sys, v => { S.sys = v; save(); renderSettings(); })),
-      h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Голос озвучки'), segm('Голос', [['m', 'Мужской'], ['f', 'Женский']], S.voice === 'f' ? 'f' : 'm', v => { S.voice = v; save(); renderSettings(); playKana('あ'); }),
-        h('div', { class: 'd' }, 'VOICEVOX:青山龍星 (мужской), VOICEVOX:波音リツ (женский)')),
-      h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Проверка рисунка'), segm('Строгость', [[0, 'Строго'], [1, 'Обычно'], [2, 'Мягко']], S.len, v => { S.len = v; save(); renderSettings(); })),
-      h('div', { class: 'set switch' }, h('div', {}, h('div', { class: 'lbl' }, 'Вибрация'), h('div', { class: 'd' }, 'Тактильный отклик')),
+      guest() ? null : grp('Ежедневная цель', segm('Минут в день', GOAL_MIN.map(v => [v, v + ' мин']), g.min, v => setGoal('min', v)), 'Считается время в уроках, квизах и прописях.'),
+      guest() ? null : grp('Карточек и прописей в день', segm('Карточек в день', GOAL_CARDS.map(v => [v, String(v)]), g.cards, v => setGoal('cards', v)),
+        'Каждый ответ в квизе и каждая попытка в прописях. Цель выполнена, когда набраны и минуты, и карточки.'),
+      card('help', 'Транскрипция', segm('Транскрипция', [['ru', 'Кириллица'], ['lat', 'Латиница']], S.sys, v => { S.sys = v; save(); renderSettings(); })),
+      card('sound', 'Голос озвучки', segm('Голос', [['m', 'Мужской'], ['f', 'Женский']], S.voice === 'f' ? 'f' : 'm', v => { S.voice = v; save(); renderSettings(); playKana('あ'); }), 'VOICEVOX:青山龍星 и VOICEVOX:波音リツ'),
+      card('pen', 'Проверка письма', segm('Строгость', [[0, 'Строго'], [1, 'Обычно'], [2, 'Мягко']], S.len, v => { S.len = v; save(); renderSettings(); })),
+      h('div', { class: 'set scard switch' }, h('span', { class: 'tilei' }, I('wave')), h('div', {}, h('div', { class: 'lbl' }, 'Вибрация'), h('div', { class: 'd' }, 'Тактильный отклик')),
         toggle('set-vibrate', S.vibrate && canBuzz(), v => { S.vibrate = v; save(); buzz(true); }, !canBuzz())),
       ...remindRow());
   }
-  // «Я»: только о пользователе — фото, имя, аккаунт и прогресс. Настройки — отдельный экран (шестерёнка в шапке).
+  // уровень: 10 очков за верный ответ и 100 за пройденный урок
+  const levelOf = xp => Math.floor(Math.sqrt(xp / 150)) + 1, levelXp = n => 150 * (n - 1) * (n - 1);
+  function myXp() { return answers.filter(a => a.r === 'ok').length * 10 + LESSONS.filter(isDone).length * 100; }
+  window.KanaLevel = () => {
+    if (guest()) return null;
+    const xp = myXp(), lv = levelOf(xp), lo = levelXp(lv), hi = levelXp(lv + 1);
+    return h('div', {}, h('div', { class: 'lvl' }, `Уровень ${lv} · ${xp.toLocaleString('ru-RU')} XP`), h('div', { class: 'bar' }, h('i', { style: `width:${(xp - lo) / (hi - lo) * 100}%` })));
+  };
+  // «Профиль»: фото, имя, уровень, цель, сводка, друзья, настройки, аккаунт
   function renderMe() {
     if (window.KanaSync) window.KanaSync.renderAccount($('#account-box'));
-    const g = guest(), st = $('#stats');
-    st.hidden = g; st.previousElementSibling.hidden = g;
-    if (!g) renderProgress();
+    const ex = $('#me-extra'); ex.replaceChildren();
+    if (guest()) return;
+    const total = answers.length, ok = answers.filter(a => a.r === 'ok').length;
+    const week = answers.filter(a => a.ts >= Date.now() - 7 * 864e5).length;
+    const tile = (l, v) => h('button', { class: 'tile', type: 'button', onclick: () => show('progress') }, h('div', { class: 'l' }, l), h('div', { class: 'v' }, v));
+    const inc = FR.data ? FR.data.incoming.length : 0;
+    const prow = (icon, lbl, val, onclick, id) => h('button', { class: 'prow', type: 'button', onclick, id }, I(icon), h('span', {}, lbl), h('span', { class: 'val' }, val, I('chev')));
+    ex.append(goalCard('me-goal'),
+      h('div', { class: 'me-tiles' }, tile('Всего ответов', total.toLocaleString('ru-RU')), tile('Верных ответов', total ? Math.round(ok / total * 100) + '%' : '—'), tile('За неделю', String(week)), tile('Дней подряд', String(streakDays()))),
+      h('div', { class: 'me-links' },
+        cta('progress', 'Мой прогресс', `${LESSONS.filter(isDone).length} ${plural(LESSONS.filter(isDone).length, 'урок пройден', 'урока пройдено', 'уроков пройдено')} · знаки и активность`, null, () => show('progress')),
+        (() => { const c = cta('friends', 'Друзья', friendsLine(), null, () => show('friends'), inc ? 'main' : ''); c.id = 'me-friends'; return c; })()),
+      h('div', { class: 'sheet me-set' }, h('div', { class: 'h3' }, 'Настройки'),
+        prow('help', 'Транскрипция каны', SYS_NAME[S.sys], openSettings),
+        prow('sound', 'Голос озвучки', VOICE_NAME[S.voice === 'f' ? 'f' : 'm'], openSettings),
+        prow('pen', 'Проверка письма', LEN_NAME[S.len] || 'Обычно', openSettings),
+        prow('clock', 'Напоминания', PS.on ? PS.time : 'выкл.', openSettings)));
+  }
+  // «Мой прогресс»: общий процент, активность, время, знаки
+  function renderProgressScreen() {
+    const top = $('#progress-top'); top.replaceChildren();
+    const st = $('#stats');
+    if (guest()) { top.append(guestCard('Прогресс сохраняется с аккаунтом.')); st.hidden = true; st.previousElementSibling.hidden = true; return; }
+    st.hidden = false; st.previousElementSibling.hidden = false;
+    const done = LESSONS.filter(isDone).length, pct = Math.round(done / LESSONS.length * 100);
+    const C = 2 * Math.PI * 86;
+    const ring = h('div', { class: 'ring', role: 'img', 'aria-label': `Общий прогресс ${pct}%` });
+    ring.innerHTML = `<svg viewBox="0 0 200 200"><circle class="tr" cx="100" cy="100" r="86"/><circle class="fg" cx="100" cy="100" r="86" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct / 100)}"/></svg>`;
+    ring.append(h('div', { class: 'c' }, h('b', {}, pct + '%'), h('span', {}, 'Общий прогресс')));
+    const per = ['week', 'month', 'all'].includes(S.progPer) ? S.progPer : 'week';
+    const bars = h('div', { class: 'bars' + (per === 'month' ? ' dense' : '') });
+    const cols = [];
+    if (per === 'all') {
+      const byM = {};
+      for (const id in activity) { const a = activity[id], [y, m] = a.d.split('-'); const k = y + '-' + m; byM[k] = (byM[k] || 0) + (a.s || 0); }
+      for (let i = 11; i >= 0; i--) { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); const k = d.getFullYear() + '-' + (d.getMonth() + 1); cols.push([d.toLocaleString('ru-RU', { month: 'short' }).replace('.', ''), Math.floor((byM[k] || 0) / 60)]); }
+    } else {
+      const nd = per === 'week' ? 7 : 30;
+      for (let i = nd - 1; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); cols.push([per === 'week' ? WEEKDAYS[d.getDay()] : (i % 5 === 0 ? String(d.getDate()) : ''), dayTotals(dayKey(d.getTime())).min]); }
+    }
+    const max = Math.max(1, ...cols.map(c => c[1]));
+    for (const [lbl, v] of cols) bars.append(h('div', { title: `${v} мин` }, h('i', { class: v ? '' : 'zero', style: `height:${Math.max(4, v / max * 100)}%` }), h('span', {}, lbl)));
+    let secs = 0; for (const id in activity) secs += activity[id].s || 0;
+    const hrs = Math.floor(secs / 3600), mins = Math.floor(secs % 3600 / 60);
+    const learned = Object.values(kanaStats()).filter(x => x.length >= 2 && x.reduce((a, b) => a + b, 0) / x.length >= 0.85).length;
+    top.append(segm('Период', [['week', 'Неделя'], ['month', 'Месяц'], ['all', 'Всё время']], per, v => { S.progPer = v; save(); renderProgressScreen(); }), ring,
+      h('h2', { class: 'h2' }, per === 'week' ? 'Активность за неделю' : per === 'month' ? 'Активность за месяц' : 'Активность по месяцам'), h('div', { class: 'sheet' }, bars),
+      h('div', { class: 'sheet', style: 'margin-top:12px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center' }, h('span', { class: 'tilei' }, I('clock')),
+        h('div', {}, h('b', { style: 'font-size:18px' }, hrs ? `${hrs} ч ${mins} мин` : `${mins} мин`), h('div', { class: 'small muted' }, 'Время обучения'))),
+      h('p', { class: 'small muted', style: 'margin:14px 0 0' }, `${done} ${plural(done, 'урок пройден', 'урока пройдено', 'уроков пройдено')} · ${learned} ${plural(learned, 'знак держится', 'знака держатся', 'знаков держатся')}`));
+    top.firstChild.classList.add('tabs');
+    renderProgress();
   }
 
   // ---------- без аккаунта ----------
@@ -1781,16 +1894,20 @@
         h('button', { class: 'btn ghost', type: 'button', onclick: () => show('login') }, 'Войти')));
   }
   function renderGuestHome(el) {
+    const hero = heroBlock('Без аккаунта можно тренироваться, но прогресс не сохраняется.');
+    const cont = (h('div', { class: 'sheet cont' }, h('div', { class: 'lab' }, 'Уроки, цель и прогресс'),
+      h('div', { class: 'ln' }, h('b', {}, 'С аккаунтом — уроки хираганы и катаканы, повторение, напоминания и друзья')),
+      h('div', { class: 'row' }, h('button', { class: 'btn primary', type: 'button', style: 'flex:1', onclick: () => show('register') }, 'Создать аккаунт'),
+        h('button', { class: 'btn ghost', type: 'button', style: 'flex:1', onclick: () => show('login') }, 'Войти'))));
     el.append(h('div', { class: 'home' },
-      h('div', { class: 'hello' }, h('h1', { class: 'h1' }, greet())),
-      guestCard('Без аккаунта можно тренироваться в квизах, азбуке и прописях, но прогресс не сохраняется. С аккаунтом — уроки хираганы и катаканы, цель дня, интервальное повторение, напоминания и друзья, на всех ваших устройствах.'),
-      h('div', { class: 'quick' },
-        cta('quiz', 'Квиз', 'Свободная тренировка', null, () => show('setup'), 'alt'),
-        cta('abc', 'Азбука и прописи', 'Озвучка и письмо', null, () => show('abc'), 'alt'),
-        cta('listen', 'Квиз на слух', 'Узнать знак по звучанию', null, () => openListenSetup(), 'alt'),
-        cta('similar', 'Похожие знаки', 'シ・ツ, ぬ・め и другие', null, () => show('similar'), 'alt'),
-        cta('builder', 'Конструктор предложений', 'Собрать фразу из блоков', null, () => show('builder'), 'alt'),
-        cta('reading', 'Чтение в поездке', 'Вывески и меню', null, () => { RT = null; show('reading'); }, 'alt'))));
+      h('div', { class: 'hello-d' }, h('h1', {}, greet()), h('p', {}, 'Без аккаунта можно тренироваться в квизах, азбуке и прописях, но прогресс не сохраняется.')),
+      hero, cont,
+      h('div', { class: 'qa2' }, cta('quiz', 'Квиз', 'Проверь себя', null, () => show('setup'), 'quiz'), cta('builder', 'Конструктор', 'Фразы из блоков', null, () => show('builder'), 'review')),
+      h('div', { class: 'qa3' }, cta('abc', 'Азбука и прописи', null, null, () => show('abc')), cta('listen', 'Аудирование', null, null, () => openListenSetup()), cta('similar', 'Похожие знаки', null, null, () => show('similar'))),
+      h('h2', { class: 'h2' }, 'Быстрый старт'),
+      h('div', { class: 'qa5' }, cta('quiz', 'Квиз', 'Проверьте себя', null, () => show('setup')), cta('abc', 'Прописи', 'Пишите кану', null, () => show('abc')),
+        cta('listen', 'Аудирование', 'Тренируйте слух', null, () => openListenSetup()), cta('similar', 'Похожие знаки', 'Находите различия', null, () => show('similar')), cta('reading', 'Чтение', 'Вывески и меню', null, () => { RT = null; show('reading'); })),
+      wordOfDay()));
   }
 
   // ---------- друзья ----------
@@ -1805,7 +1922,8 @@
     // обновляем только список — поле поиска и кнопки не перерисовываются, введённое и нажатия не теряются
     if (current === 'friends') { if ($('#fr-list')) renderFriendsList(); else renderFriends(); }
   }
-  function setDot() { const n = FR.data ? FR.data.incoming.length : 0; $('#friends-dot').hidden = !n; $('#tab-friends').title = n ? `Заявки в друзья: ${n}` : ''; }
+  function setDot() { const n = FR.data ? FR.data.incoming.length : 0; $('#friends-dot').hidden = !n; $('#me-dot').hidden = !n; $('#tab-friends').title = n ? `Заявки в друзья: ${n}` : ''; const mf = $('#me-friends'); if (mf) { mf.querySelector('.d').textContent = friendsLine(); mf.classList.toggle('main', !!n); } }
+  function friendsLine() { const n = FR.data ? FR.data.friends.length : null, inc = FR.data ? FR.data.incoming.length : 0; return inc ? `Заявки в друзья: ${inc}` : n != null ? (n ? `${n} ${plural(n, 'друг', 'друга', 'друзей')}` : 'Пригласите друга') : 'Практикуйтесь вместе'; }
   async function friendAct(path, userId) {
     const r = await api('/friends/' + path, { userId });
     if (r.status === 200) { FR.data = r.data; FR.found = null; FR.msg = { request: 'Заявка отправлена', accept: 'Теперь вы друзья', decline: 'Заявка отклонена', remove: 'Удалено из друзей', cancel: 'Заявка отменена' }[path] || ''; setDot(); }
@@ -1818,8 +1936,8 @@
     const url = location.origin + '/#invite=' + r.data.token;
     FR.invite = url;
     const me = acct();
-    const text = `${me.displayName || me.username} зовёт вас учить японскую азбуку вместе в Кана-тетради`;
-    if (navigator.share) { try { await navigator.share({ title: 'Кана-тетрадь', text, url }); FR.msg = 'Приглашение отправлено'; } catch (e) { } }
+    const text = `${me.displayName || me.username} зовёт вас учить японскую азбуку вместе в KANA`;
+    if (navigator.share) { try { await navigator.share({ title: 'KANA', text, url }); FR.msg = 'Приглашение отправлено'; } catch (e) { } }
     else { try { await navigator.clipboard.writeText(url); FR.msg = 'Ссылка скопирована — отправьте её другу'; } catch (e) { FR.msg = 'Скопируйте ссылку и отправьте её другу'; } }
     renderFriends();
   }
@@ -1840,42 +1958,46 @@
   function friendCard(f) {
     const s = f.stats, today = `${s.todayMin}/${s.goalMin} мин`;
     const goalDone = s.todayMin >= s.goalMin && s.todayCards >= s.goalCards;
-    return h('div', { class: 'fcard' },
-      h('div', { class: 'top' }, h('div', { class: 'pl' }, avatarEl(f.name, f.avatar), h('div', {}, h('div', { class: 'nm' }, f.name), h('div', { class: 'lg' }, '@' + f.username))),
-        s.streak ? h('span', { class: 'streak', title: 'дней подряд' }, '🔥 ' + s.streak + ' ' + plural(s.streak, 'день', 'дня', 'дней')) : h('span', { class: 'small muted' }, 'серии пока нет')),
-      h('div', { class: 'fstats' },
-        statBox(goalDone ? '○ цель' : today, `сегодня, ${s.todayCards} карт.`),
-        statBox(`${s.lessonsH} · ${s.lessonsK}`, 'уроков хираганы · катаканы'),
-        statBox(s.weekAnswers ? `${s.weekAnswers}` : '—', s.weekAccuracy != null ? `ответов за неделю, ${s.weekAccuracy}% верно` : 'ответов за неделю')),
-      h('div', {}, h('button', { class: 'link', type: 'button', onclick: e => {
-        if (e.currentTarget.dataset.confirm) return friendAct('remove', f.id);
-        e.currentTarget.dataset.confirm = '1'; e.currentTarget.textContent = 'Точно удалить из друзей?'; } }, 'Удалить из друзей')));
+    const sum = [s.streak ? `${s.streak} ${plural(s.streak, 'день', 'дня', 'дней')} подряд` : 'серии пока нет', `Уровень ${levelOf(s.xp || 0)}`].join(' · ');
+    return h('details', { class: 'fcard' },
+      h('summary', {}, avatarEl(f.name, f.avatar), h('div', {}, h('div', { class: 'nm' }, f.name), h('div', { class: 'lg' }, sum)), h('span', { class: 'chev' }, I('chev'))),
+      h('div', { class: 'more' },
+        h('div', { class: 'small muted' }, '@' + f.username),
+        h('div', { class: 'fstats' },
+          statBox(goalDone ? 'цель ✓' : today, `сегодня, ${s.todayCards} карт.`),
+          statBox(`${s.lessonsH} · ${s.lessonsK}`, 'уроков хираганы · катаканы'),
+          statBox(s.weekAnswers ? `${s.weekAnswers}` : '—', s.weekAccuracy != null ? `ответов за неделю, ${s.weekAccuracy}% верно` : 'ответов за неделю')),
+        h('div', {}, h('button', { class: 'link danger', type: 'button', onclick: e => {
+          if (e.currentTarget.dataset.confirm) return friendAct('remove', f.id);
+          e.currentTarget.dataset.confirm = '1'; e.currentTarget.textContent = 'Точно удалить из друзей?'; } }, 'Удалить из друзей'))));
   }
   // фото профиля или первая буква имени на цветном круге
-  const AVA_COLORS = ['#2f4f86', '#3f7a4a', '#9a6a12', '#c23b2a', '#5b4a8b', '#1f6f78', '#8a4f2a'];
+  const AVA_COLORS = ['#0B2D49', '#008A77', '#895C12', '#B23847', '#5B4A9B', '#1F6F78', '#C2475A'];
   function avatarEl(name, url, cls) {
     const n = (name || '?').trim(), el = h('span', { class: 'ava' + (cls ? ' ' + cls : ''), 'aria-hidden': 'true' });
     el.style.background = AVA_COLORS[[...n].reduce((a, c) => a + c.codePointAt(0), 0) % AVA_COLORS.length];
     if (url) { const img = h('img', { src: url, alt: '', loading: 'lazy' }); img.onerror = () => { img.remove(); el.textContent = [...n][0].toUpperCase(); }; el.append(img); }
+    else if (cls === 'big') { el.classList.add('def'); el.style.background = ''; }   // своё фото не загружено — картинка с тории
     else el.textContent = [...n][0].toUpperCase();
     return el;
   }
   window.KanaAvatar = avatarEl;
   function renderFriends() {
     const el = $('#screen-friends'); el.replaceChildren();
-    el.append(h('h1', { class: 'h1' }, 'Друзья'));
+    el.append(pageHead('Друзья', 'me'), h('p', { class: 'psub' }, 'Практикуйтесь вместе'));
     if (!acct()) { el.append(guestCard('Друзья доступны с аккаунтом.')); return; }
+    el.append(h('div', { class: 'banner', style: 'background-image:url(img/pagoda-s.webp)' }));
     if (FR.pendingInvite) {
       const inf = FR.inviteInfo;
       if (!inf) checkInvite();
-      else if (inf.error) el.append(h('div', { class: 'sheet' }, h('p', {}, inf.error), h('button', { class: 'link', type: 'button', onclick: dropInvite }, 'Понятно')));
-      else if (inf.state === 'new') el.append(h('div', { class: 'sheet invite-card', id: 'invite-card' }, h('p', {}, h('b', {}, inf.from.name), ` (@${inf.from.username}) приглашает вас в друзья.`),
+      else if (inf.error) el.append(h('div', { class: 'sheet' }, h('p', { style: 'margin-top:0' }, inf.error), h('button', { class: 'link', type: 'button', onclick: dropInvite }, 'Понятно')));
+      else if (inf.state === 'new') el.append(h('div', { class: 'sheet invite-card', id: 'invite-card' }, h('p', { style: 'margin-top:0' }, h('b', {}, inf.from.name), ` (@${inf.from.username}) приглашает вас в друзья.`),
         h('div', { class: 'row' }, h('button', { class: 'btn primary', type: 'button', id: 'btn-invite-accept', onclick: acceptInvite }, 'Принять'), h('button', { class: 'btn ghost', type: 'button', onclick: dropInvite }, 'Не сейчас'))));
       else { FR.msg = inf.state === 'me' ? 'Это ваше собственное приглашение — отправьте его другу.' : `${inf.from.name} уже у вас в друзьях.`; FR.pendingInvite = null; store.set('invite', null); }
     }
     if (FR.msg) el.append(h('div', { class: 'okmsg', role: 'status', id: 'friends-msg' }, FR.msg));
     // пригласить и найти
-    const q = h('input', { id: 'friend-q', placeholder: 'Логин друга, например pavel_k', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Логин друга', value: FR.q || '' });
+    const q = h('input', { id: 'friend-q', placeholder: 'Логин друга', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Логин друга', value: FR.q || '', type: 'search' });
     q.addEventListener('input', () => { FR.q = q.value; });   // список подгружается позже — введённое не теряется
     const hadFocus = document.activeElement && document.activeElement.id === 'friend-q';
     const search = async () => {
@@ -1884,15 +2006,15 @@
       FR.found = r.status === 200 ? r.data : { error: r.data.error || 'Никого не нашли' }; FR.msg = ''; renderFriends();
     };
     q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); search(); } });
-    const add = h('div', { class: 'sheet', style: 'display:grid;gap:10px' },
-      h('b', {}, 'Добавить друга'),
-      h('div', { class: 'row' }, iconBtn('btn primary', 'next', 'Пригласить ссылкой', makeInvite, 'Создать одноразовую ссылку-приглашение на 7 дней')),
+    const inv = iconBtn('btn primary wide', 'next', 'Пригласить по ссылке', makeInvite, 'Создать одноразовую ссылку-приглашение на 7 дней');
+    inv.lastChild.replaceWith(I('friends'));
+    const add = h('div', { class: 'stack' }, inv,
       FR.invite ? h('div', { class: 'small muted', style: 'overflow-wrap:anywhere' }, 'Ссылка: ', h('span', { id: 'invite-url' }, FR.invite), ' — действует 7 дней, один раз.') : null,
-      h('div', { class: 'fsearch' }, q, h('button', { class: 'btn ghost', type: 'button', id: 'btn-friend-search', onclick: search }, 'Найти')),
+      h('div', { class: 'fsearch' }, h('label', { class: 'search' }, I('search'), q), h('button', { class: 'btn ghost', type: 'button', id: 'btn-friend-search', onclick: search }, 'Найти')),
       h('div', { class: 'small muted' }, 'Поиск — по точному логину.'));
     if (FR.found) {
       const f = FR.found;
-      add.append(f.error ? h('div', { class: 'err' }, f.error) : h('div', { class: 'freq', id: 'found' }, h('span', {}, h('b', {}, f.user.name), ' @' + f.user.username),
+      add.append(f.error ? h('div', { class: 'err' }, f.error) : h('div', { class: 'sheet freq', id: 'found', style: 'padding:14px 16px' }, h('span', { style: 'display:flex;gap:12px;align-items:center' }, avatarEl(f.user.name, f.user.avatar), h('span', {}, h('b', {}, f.user.name), ' @' + f.user.username)),
         f.state === 'none' ? h('button', { class: 'btn primary', type: 'button', onclick: () => friendAct('request', f.user.id) }, 'Добавить в друзья')
           : f.state === 'incoming' ? h('button', { class: 'btn primary', type: 'button', onclick: () => friendAct('accept', f.user.id) }, 'Принять заявку')
             : h('span', { class: 'small muted' }, { me: 'это вы', friend: 'уже в друзьях', requested: 'заявка отправлена' }[f.state])));
@@ -1907,22 +2029,23 @@
     el.replaceChildren();
     const d = FR.data;
     if (!d) { if (!FR.loading) loadFriends(); el.append(h('p', { class: 'muted small' }, 'Загружаю…')); return; }
-    if (d.incoming.length) el.append(h('div', { class: 'sheet', id: 'incoming' }, h('b', {}, 'Хотят добавить вас в друзья'),
-      ...d.incoming.map(p => h('div', { class: 'freq' }, h('span', { class: 'pl', style: 'display:flex;gap:10px;align-items:center' }, avatarEl(p.name, p.avatar), h('span', {}, h('b', {}, p.name), ' @' + p.username)),
+    const person = p => h('span', { style: 'display:flex;gap:12px;align-items:center' }, avatarEl(p.name, p.avatar), h('span', {}, h('b', {}, p.name), h('span', { class: 'small muted' }, ' @' + p.username)));
+    el.append(h('h2', { class: 'h2' }, d.friends.length ? `Ваши друзья · ${d.friends.length}` : 'Ваши друзья'));
+    if (!d.friends.length) el.append(h('div', { class: 'sheet empty' }, h('b', {}, 'Пока никого'), h('p', {}, 'Пригласите друга ссылкой — заниматься вместе веселее, а серию дней подряд будет жалко прерывать.')));
+    el.append(h('div', { class: 'friends' }, ...d.friends.map(friendCard)));
+    if (d.incoming.length) el.append(h('h2', { class: 'h2' }, `Приглашения · ${d.incoming.length}`), h('div', { class: 'sheet', id: 'incoming' },
+      ...d.incoming.map(p => h('div', { class: 'freq' }, person(p),
         h('span', { class: 'row' }, h('button', { class: 'btn primary', type: 'button', onclick: () => friendAct('accept', p.id) }, 'Принять'),
           h('button', { class: 'btn ghost', type: 'button', onclick: () => friendAct('decline', p.id) }, 'Отклонить'))))));
-    if (d.outgoing.length) el.append(h('div', { class: 'sheet' }, h('b', {}, 'Ждут ответа'),
-      ...d.outgoing.map(p => h('div', { class: 'freq' }, h('span', {}, h('b', {}, p.name), ' @' + p.username),
+    if (d.outgoing.length) el.append(h('h2', { class: 'h2' }, 'Ждут ответа'), h('div', { class: 'sheet' },
+      ...d.outgoing.map(p => h('div', { class: 'freq' }, person(p),
         h('button', { class: 'link', type: 'button', onclick: () => friendAct('cancel', p.id) }, 'Отменить')))));
-    el.append(h('h2', { class: 'h2' }, d.friends.length ? `Друзья · ${d.friends.length}` : 'Друзья'));
-    if (!d.friends.length) el.append(h('p', { class: 'muted' }, 'Пока никого. Пригласите друга ссылкой — заниматься вместе веселее, а серию дней подряд будет жалко прерывать.'));
-    el.append(...d.friends.map(friendCard));
   }
   function updateTabs() {
     const ok = hasFriends();
     $('#tab-friends').hidden = !ok;
     if (ok && !FR.data && !FR.loading) loadFriends();
-    if (!ok) { FR.data = null; $('#friends-dot').hidden = true; }
+    if (!ok) { FR.data = null; $('#friends-dot').hidden = true; $('#me-dot').hidden = true; }
   }
 
   // ---------- первый запуск ----------
@@ -1930,34 +2053,31 @@
     const el = $('#screen-onboard'); el.replaceChildren();
     if (guest()) {
       // первый запуск: войти, создать аккаунт или заниматься без него
-      el.append(h('div', { class: 'onboard' },
-        h('div', { class: 'hero', 'aria-hidden': 'true' }, 'かな'),
-        h('h1', { class: 'h1' }, 'Добро пожаловать в Кана-тетрадь'),
-        h('p', {}, 'Хирагана и катакана по урокам, квизы, прописи, первые слова и фразы для поездки в Японию.'),
-        h('div', { class: 'sheet', style: 'display:grid;gap:10px' },
-          h('b', {}, 'С аккаунтом'),
-          h('div', { class: 'small' }, 'Уроки с прогрессом, цель дня, интервальное повторение, напоминания и друзья — на всех ваших устройствах. Войти можно через Telegram или по логину и паролю.'),
-          h('div', { class: 'row' },
+      el.append(h('div', { class: 'welcome' },
+        h('h1', { class: 'wt' }, 'Добро пожаловать'),
+        h('div', { class: 'pic', role: 'img', 'aria-label': 'Фудзи и сакура' }),
+        h('div', { class: 'body' },
+          h('div', { class: 'logo' }, 'KANA'),
+          h('p', { class: 'tag' }, 'Японский ближе, чем кажется'),
+          h('p', { class: 'sub2' }, 'Кана, слова и практика каждый день'),
+          h('div', { class: 'btns' },
             h('button', { class: 'btn primary', type: 'button', id: 'btn-welcome-register', onclick: () => { S.welcomed = true; save(); show('register'); } }, 'Создать аккаунт'),
-            h('button', { class: 'btn ghost', type: 'button', id: 'btn-welcome-login', onclick: () => { S.welcomed = true; save(); show('login'); } }, 'Войти'))),
-        h('div', { class: 'sheet', style: 'display:grid;gap:10px' },
-          h('b', {}, 'Без аккаунта'),
-          h('div', { class: 'small' }, 'Квизы, азбука с озвучкой, прописи, словарь и тренировки. Прогресс не сохраняется.'),
-          h('div', { class: 'row' }, h('button', { class: 'btn ghost', type: 'button', id: 'btn-guest', onclick: () => { S.welcomed = true; save(); show('home'); } }, 'Продолжить без аккаунта')))));
+            h('button', { class: 'btn ghost', type: 'button', id: 'btn-welcome-login', onclick: () => { S.welcomed = true; save(); show('login'); } }, 'Войти')),
+          h('button', { class: 'link', type: 'button', id: 'btn-guest', onclick: () => { S.welcomed = true; save(); show('home'); } }, 'Продолжить без аккаунта'),
+          h('p', { class: 'small muted', style: 'max-width:34ch;margin:4px 0 0' }, 'Без аккаунта прогресс не сохраняется. С аккаунтом — уроки, цель дня, повторение, напоминания и друзья на всех устройствах.'))));
       return;
     }
     const g = Object.assign({}, def.goal, S.goal);
     const draw = () => {
       el.replaceChildren(h('div', { class: 'onboard' },
-        h('div', { class: 'hero', 'aria-hidden': 'true' }, 'かな'),
-        h('h1', { class: 'h1' }, 'Добро пожаловать в Кана-тетрадь'),
-        h('p', {}, 'Аккаунт готов. Осталась небольшая настройка — её всегда можно поменять в разделе «Я».'),
-        h('div', { class: 'sheet' },
-          h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Сколько минут в день вы готовы заниматься?'), segm('Минут в день', GOAL_MIN.map(v => [v, v + ' мин']), g.min, v => { g.min = v; draw(); })),
-          h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Сколько карточек и прописей в день?'), segm('Карточек в день', GOAL_CARDS.map(v => [v, String(v)]), g.cards, v => { g.cards = v; draw(); }),
-            h('div', { class: 'd' }, 'Для начала хватит 50: это примерно один урок и короткий квиз.')),
-          h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Как показывать чтение?'), segm('Транскрипция', [['ru', 'Кириллицей: си, ти, цу'], ['lat', 'Латиницей: shi, chi, tsu']], S.sys, v => { S.sys = v; draw(); }))),
-        h('div', { class: 'start' }, iconBtn('btn primary', 'next', 'Начать', () => { S.goal = g; S.onboarded = true; S.welcomed = true; save(); show('home'); }))));
+        h('div', { class: 'ico-top' }, I('user')),
+        h('h1', { class: 'h1' }, firstName() ? `${firstName()}, начнём?` : 'Начнём знакомство?'),
+        h('p', {}, 'Аккаунт готов. Осталась небольшая настройка — её всегда можно поменять в профиле.'),
+        h('div', { class: 'set sgrp' }, h('div', { class: 'lbl' }, 'Сколько минут в день вы готовы заниматься?'), segm('Минут в день', GOAL_MIN.map(v => [v, v + ' мин']), g.min, v => { g.min = v; draw(); })),
+        h('div', { class: 'set sgrp' }, h('div', { class: 'lbl' }, 'Сколько карточек и прописей в день?'), segm('Карточек в день', GOAL_CARDS.map(v => [v, String(v)]), g.cards, v => { g.cards = v; draw(); }),
+          h('div', { class: 'd' }, 'Для начала хватит 50: это примерно один урок и короткий квиз.')),
+        h('div', { class: 'set sgrp' }, h('div', { class: 'lbl' }, 'Как показывать чтение?'), segm('Транскрипция', [['ru', 'Кириллицей: си, ти'], ['lat', 'Латиницей: shi, chi']], S.sys, v => { S.sys = v; draw(); })),
+        h('div', { class: 'start' }, iconBtn('btn primary wide', 'next', 'Начать обучение', () => { S.goal = g; S.onboarded = true; S.welcomed = true; save(); show('home'); }))));
     };
     draw();
   }
@@ -1994,6 +2114,7 @@
       const out = [];
       for (const w of userWords) out.push({ c: 'words', id: wid(w), data: { kana: w.kana, mean: w.mean, topic: w.topic, read: w.read, kanji: w.kanji } });
       for (const id of deleted) out.push({ c: 'hidden', id, data: {} });
+      for (const id of favs) out.push({ c: 'favs', id, data: {} });
       for (const ch in samples) for (const s of samples[ch]) out.push({ c: 'samples', id: sampleId(ch, s), data: { ch, s } });
       out.push({ c: 'settings', id: 'main', data: Object.assign({}, S) });
       for (const a of answers) { const { id, ...rest } = a; out.push({ c: 'answers', id, data: rest }); }
@@ -2004,6 +2125,7 @@
     apply(c, id, data) {
       if (c === 'words') { userWords = userWords.filter(w => wid(w) !== id); if (data) userWords.push({ kana: data.kana, mean: data.mean, topic: data.topic, read: data.read, kanji: data.kanji }); }
       else if (c === 'hidden') { if (data) deleted.add(id); else deleted.delete(id); }
+      else if (c === 'favs') { if (data) favs.add(id); else favs.delete(id); }
       else if (c === 'samples') {
         const ch = data ? data.ch : id.split(':')[0];
         const list = (samples[ch] || []).filter(s => sampleId(ch, s) !== id);
@@ -2024,20 +2146,21 @@
       applying = true;
       answers.sort((a, b) => a.ts - b.ts);
       store.set('words', userWords); store.set('deleted', [...deleted]); store.set('samples', samples); store.set('settings', S); store.set('answers', answers);
-      store.set('lessons', lessonsDone); store.set('activity', activity);
+      store.set('lessons', lessonsDone); store.set('activity', activity); store.set('favs', [...favs]);
       applying = false;
       loadSamples();
       ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, similar: renderSimilar, reading: renderReading, builder: renderBuilder })[current]?.();
       renderStreak();
     },
     resetLocal() {
-      userWords = []; deleted = new Set(); samples = {}; answers = []; lessonsDone = {}; activity = {};
+      userWords = []; deleted = new Set(); favs = new Set(); samples = {}; answers = []; lessonsDone = {}; activity = {};
       for (const k in S) delete S[k]; Object.assign(S, JSON.parse(JSON.stringify(def)), { welcomed: true });
       FR.data = null; FR.found = null; FR.invite = null; FR.msg = '';
       this.commit();
     },
     rerender() { updateTabs(); if (current === 'me') renderMe(); if (current === 'friends') renderFriends(); },
     open(name) { show(name); },
+    back() { show(beforeAuth && !['login', 'register'].includes(beforeAuth) ? beforeAuth : 'me'); },
     // после входа: новый аккаунт — настройка цели; есть приглашение — к друзьям
     afterLogin() { show(!S.onboarded ? 'onboard' : FR.pendingInvite ? 'friends' : 'me'); autoPush(); },
   };

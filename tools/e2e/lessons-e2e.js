@@ -42,7 +42,7 @@ async function draw(page, ch) {
   await page.waitForSelector('#screen-home:not([hidden])');
   const goal = await page.evaluate(() => __kana.S.goal);
   check(goal.min === 45 && goal.cards === 100, 'цель дня сохранена: 45 минут и 100 карточек');
-  check((await page.textContent('#screen-home')).includes('Начать: урок 1'), 'на «Сегодня» рекомендован урок 1');
+  check((await page.textContent('#screen-home')).includes('Урок 1.'), 'на «Сегодня» рекомендован урок 1');
   await page.screenshot({ path: SHOTS + '/s2-home.png', fullPage: true });
 
   // уроки
@@ -98,7 +98,7 @@ async function draw(page, ch) {
   check((await page.textContent('#screen-lesson h1')).includes('ка'), 'открылся урок 2');
   await page.click('#tab-home');
   const home = await page.textContent('#screen-home');
-  check(home.includes('урок 2'), 'на «Сегодня» теперь рекомендован урок 2');
+  check(home.includes('Урок 2.'), 'на «Сегодня» теперь рекомендован урок 2');
   const cards = await page.evaluate(() => __kana.dayTotals(__kana.todayKey()).cards);
   check(cards >= 25 + n, `карточки за день посчитаны: ${cards}`);
 
@@ -123,7 +123,7 @@ async function draw(page, ch) {
   check(JSON.stringify(vib) === JSON.stringify([30, [30, 90, 30]]), 'вибрация: верно — 1 импульс, ошибка — 2, выключенная молчит');
 
   // раздел «Я»
-  await page.click('#btn-settings');
+  await page.click('#tab-me'); await page.click('#btn-settings');
   check(await page.isVisible('#screen-settings') && (await page.textContent('#settings')).includes('Вибрация'), 'настройки — отдельный экран, в них есть вибрация');
   await page.screenshot({ path: SHOTS + '/s7-me.png', fullPage: true });
 

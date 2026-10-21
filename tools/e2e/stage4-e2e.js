@@ -99,7 +99,7 @@ async function build(page, wrong) {
   const subRes = [];
   pp.on('response', async r => { if (r.url().includes('/api/push/subscribe')) subRes.push(r.status() + ' ' + (await r.text().catch(() => '')).slice(0, 200) + ' req=' + (r.request().postData() || '').slice(0, 300)); });
   await pp.goto(BASE + '/'); await ready(pp);
-  await pp.click('#btn-settings');
+  await pp.click('#tab-me'); await pp.click('#btn-settings');
   check(await pp.locator('#set-notify').count() === 0, 'без входа пункта «Напоминания о занятиях» нет');
   await pp.click('#tab-me');
   await pp.click('#btn-to-register');
@@ -112,7 +112,7 @@ async function build(page, wrong) {
   let pr = await pp.evaluate(() => fetch('/api/push/prefs').then(r => r.json()));
   check(pr.devices === 1 && pr.enabled === false, 'после регистрации устройство подписано на уведомления, напоминания выключены: ' + JSON.stringify(pr) + ' ответы: ' + JSON.stringify(subRes));
   await pp.click('#screen-onboard .btn.primary');
-  await pp.click('#btn-settings');
+  await pp.click('#tab-me'); await pp.click('#btn-settings');
   await pp.waitForFunction(() => document.querySelector('#set-notify') && !document.querySelector('#set-notify').disabled);
   check(!(await pp.isChecked('#set-notify')), 'переключатель напоминаний выключен');
   await pp.click('#settings .tgl:has(#set-notify)');
@@ -140,7 +140,7 @@ async function build(page, wrong) {
   await pp.click('#account-box >> text=Выйти'); await pp.click('#account-box .btn.primary:has-text("Выйти")');
   await pp.waitForSelector('#btn-to-login');
   check(calls.includes('unsubscribe'), 'при выходе подписка снята');
-  await pp.click('#btn-settings');
+  await pp.click('#tab-me'); await pp.click('#btn-settings');
   check(await pp.locator('#set-notify').count() === 0, 'после выхода пункта напоминаний нет');
 
   await browser.close();
