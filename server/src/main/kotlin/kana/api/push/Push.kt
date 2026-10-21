@@ -58,22 +58,23 @@ data class Message(val title: String, val body: String, val tag: String = "remin
 /** Ключи VAPID: создаются при первом запуске и хранятся в базе — подписки браузеров привязаны к открытому ключу. */
 @Component
 class VapidKeys(jdbc: JdbcTemplate) {
-    val privateKey: PrivateKey
-    val publicRaw: ByteArray
+    private val pair: Pair<PrivateKey, ByteArray> = load(jdbc)
+    val privateKey: PrivateKey = pair.first
+    val publicRaw: ByteArray = pair.second
 
-    init {
+    private fun load(jdbc: JdbcTemplate): Pair<PrivateKey, ByteArray> {
         val stored = jdbc.queryForList("select v from kv where k = 'vapid'", String::class.java).firstOrNull()
-        val pair: Pair<PrivateKey, ByteArray> = if (stored != null) {
+        if (stored != null) {
             val (priv, pub) = stored.split('.')
-            WebPush.privateFromPkcs8(WebPush.unb64(priv)) to WebPush.unb64(pub)
-        } else {
-            val kp = WebPush.newKeyPair()
-            val pub = WebPush.raw(kp.public as ECPublicKey)
-            jdbc.update("insert into kv (k, v) values ('vapid', ?) on conflict (k) do nothing", WebPush.b64(WebPush.pkcs8(kp.private)) + "." + WebPush.b64(pub))
-            kp.private to pub
+            return WebPush.privateFromPkcs8(WebPush.unb64(priv)) to WebPush.unb64(pub)
         }
-        privateKey = pair.first; publicRaw = pair.second
+        val kp = WebPush.newKeyPair()
+        val pub = WebPush.raw(kp.public as ECPublicKey)
+        jdbc.update("insert into kv (k, v) values ('vapid', ?) on conflict (k) do nothing", WebPush.b64(WebPush.pkcs8(kp.private)) + "." + WebPush.b64(pub))
+        // если два экземпляра стартовали одновременно — берём тот ключ, что попал в базу
+        return load2(jdbc) ?: (kp.private to pub)
     }
+    private fun load2(jdbc: JdbcTemplate) = jdbc.queryForList("select v from kv where k = 'vapid'", String::class.java).firstOrNull()?.split('.')?.let { (a, b) -> WebPush.privateFromPkcs8(WebPush.unb64(a)) to WebPush.unb64(b) }
     val publicB64: String get() = WebPush.b64(publicRaw)
 }
 
