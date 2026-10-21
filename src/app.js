@@ -977,9 +977,34 @@
     el.title = `${n} ${plural(n, 'день', 'дня', 'дней')} подряд с занятиями`;
   }
   const plural = (n, a, b, c) => { const m = n % 10, mm = n % 100; return m === 1 && mm !== 11 ? a : m >= 2 && m <= 4 && (mm < 12 || mm > 14) ? b : c; };
+  // Отклик: верно — один импульс, ошибка — два.
+  // Android и др.: Vibration API. iPhone: Safari его не поддерживает, но с iOS 18 переключатель
+  // <input type="checkbox" switch> даёт системный тактильный щелчок — нажимаем невидимый переключатель.
+  const iosHaptics = (() => {
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!isIOS || navigator.vibrate) return null;
+    const probe = document.createElement('input');
+    if (!('switch' in probe)) return null;                // iOS старше 18
+    let label = null;
+    return () => {
+      if (!label) {
+        label = document.createElement('label');
+        label.setAttribute('aria-hidden', 'true');
+        label.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
+        const inp = document.createElement('input');
+        inp.type = 'checkbox'; inp.setAttribute('switch', ''); inp.tabIndex = -1;
+        label.append(inp); document.body.append(label);
+      }
+      label.click();
+    };
+  })();
+  const canBuzz = () => !!navigator.vibrate || !!iosHaptics;
   function buzz(ok) {
-    if (!S.vibrate || !navigator.vibrate) return;
-    try { navigator.vibrate(ok ? 18 : [40, 50, 40]); } catch (e) { }
+    if (!S.vibrate) return;
+    try {
+      if (navigator.vibrate) { navigator.vibrate(ok ? 30 : [30, 90, 30]); return; }
+      if (iosHaptics) { iosHaptics(); if (!ok) setTimeout(iosHaptics, 140); }
+    } catch (e) { }
   }
 
   // ---------- уроки: прогресс ----------
@@ -1234,8 +1259,11 @@
       h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Голос озвучки'), segm('Голос', [['m', 'Мужской'], ['f', 'Женский']], S.voice === 'f' ? 'f' : 'm', v => { S.voice = v; save(); renderSettings(); playKana('あ'); }),
         h('div', { class: 'd' }, 'VOICEVOX:青山龍星 (мужской), VOICEVOX:波音リツ (женский)')),
       h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Проверка рисунка'), segm('Строгость', [[0, 'Строго'], [1, 'Обычно'], [2, 'Мягко']], S.len, v => { S.len = v; save(); renderSettings(); })),
-      h('div', { class: 'set switch' }, h('div', {}, h('div', { class: 'lbl' }, 'Вибрация'), h('div', { class: 'd' }, navigator.vibrate ? 'Короткий отклик на верный и неверный ответ' : 'Этот браузер не поддерживает вибрацию (например, Safari на iPhone)')),
-        toggle('set-vibrate', S.vibrate && !!navigator.vibrate, v => { S.vibrate = v; save(); buzz(true); }, !navigator.vibrate)),
+      h('div', { class: 'set switch' }, h('div', {}, h('div', { class: 'lbl' }, 'Вибрация'), h('div', { class: 'd' },
+          navigator.vibrate ? 'Верный ответ — один импульс, ошибка — два'
+            : iosHaptics ? 'Системный тактильный отклик iPhone: верно — один щелчок, ошибка — два. Нужны включённые «Тактильные сигналы системы» в настройках звуков'
+              : 'Это устройство не даёт сайтам вибрировать (на iPhone отклик доступен с iOS 18)')),
+        toggle('set-vibrate', S.vibrate && canBuzz(), v => { S.vibrate = v; save(); buzz(true); }, !canBuzz())),
       h('div', { class: 'set switch' }, h('div', {}, h('div', { class: 'lbl' }, 'Напоминания о занятиях'), h('div', { class: 'd' }, 'Появятся в одном из следующих обновлений')),
         toggle('set-notify', false, () => { }, true)));
   }
@@ -1341,6 +1369,6 @@
     rerender() { if (current === 'me') renderMe(); },
   };
 
-  window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next, show, openLesson, get lessonsDone() { return lessonsDone; }, dayTotals, todayKey };
+  window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next, show, openLesson, get lessonsDone() { return lessonsDone; }, dayTotals, todayKey, buzz };
   show(S.onboarded ? 'home' : 'onboard');
 })();

@@ -91,6 +91,7 @@ jobs:
             node tools/e2e/$t-e2e.js http://localhost:8790 > $t.log 2>&1 || { fail=1; grep -E "FAIL|Error|ошибка|    at " $t.log | head -15 | sed "s/^/::error title=$t-e2e::/"; }
             cat $t.log
           done
+          node tools/e2e/haptics-ios.js http://localhost:8790/ || { fail=1; echo '::error title=haptics-ios::iPhone haptics check failed'; }
           [ $fail = 0 ] || { tail -30 api.log; exit 1; }
 
       - uses: docker/setup-buildx-action@v3

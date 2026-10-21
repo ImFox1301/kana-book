@@ -110,6 +110,12 @@ async function draw(page, ch) {
     check(head === '%PDF-' && fs.statSync(file).size > 5000, `${label}: ${dl.suggestedFilename()} (${Math.round(fs.statSync(file).size / 1024)} КБ)`);
   }
 
+  // вибрация: верно — один импульс, ошибка — два; выключается в настройках
+  await page.evaluate(() => { window.__vib = []; navigator.vibrate = p => { window.__vib.push(p); return true; }; });
+  await page.evaluate(() => { __kana.S.vibrate = true; __kana.buzz(true); __kana.buzz(false); __kana.S.vibrate = false; __kana.buzz(true); __kana.S.vibrate = true; });
+  const vib = await page.evaluate(() => window.__vib);
+  check(JSON.stringify(vib) === JSON.stringify([30, [30, 90, 30]]), 'вибрация: верно — 1 импульс, ошибка — 2, выключенная молчит');
+
   // раздел «Я»
   await page.click('#tab-me');
   check((await page.textContent('#settings')).includes('Вибрация'), 'в настройках есть вибрация');
