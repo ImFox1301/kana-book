@@ -96,6 +96,8 @@ async function build(page, wrong) {
   pp.on('pageerror', e => { console.log('ошибка страницы: ' + e.message); failed++; });
   const calls = [];
   pp.on('request', r => { if (r.url().includes('/api/push/')) calls.push(r.url().split('/api/push/')[1]); });
+  const subRes = [];
+  pp.on('response', async r => { if (r.url().includes('/api/push/subscribe')) subRes.push(r.status() + ' ' + (await r.text().catch(() => '')).slice(0, 200) + ' req=' + (r.request().postData() || '').slice(0, 300)); });
   await pp.goto(BASE + '/'); await ready(pp);
   await pp.click('#btn-settings');
   check(await pp.locator('#set-notify').count() === 0, 'без входа пункта «Напоминания о занятиях» нет');
@@ -108,7 +110,7 @@ async function build(page, wrong) {
   await pp.waitForFunction(() => window.__pushKey === 65, null, { timeout: 10000 });
   await pp.waitForFunction(() => fetch('/api/push/prefs').then(r => r.json()).then(p => p.devices === 1), null, { timeout: 10000, polling: 300 }).catch(() => { });
   let pr = await pp.evaluate(() => fetch('/api/push/prefs').then(r => r.json()));
-  check(pr.devices === 1 && pr.enabled === false, 'после регистрации устройство подписано на уведомления, напоминания выключены: ' + JSON.stringify(pr));
+  check(pr.devices === 1 && pr.enabled === false, 'после регистрации устройство подписано на уведомления, напоминания выключены: ' + JSON.stringify(pr) + ' ответы: ' + JSON.stringify(subRes));
   await pp.click('#screen-onboard .btn.primary');
   await pp.click('#btn-settings');
   await pp.waitForFunction(() => document.querySelector('#set-notify') && !document.querySelector('#set-notify').disabled);
