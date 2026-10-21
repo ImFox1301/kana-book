@@ -7,7 +7,8 @@ const API = process.env.API_URL;
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.woff2': 'font/woff2' };
 
 // ---- заглушка API ----
-const users = new Map(), sessions = new Map(), items = new Map(); let seq = 0;
+const users = new Map(), sessions = new Map(), items = new Map(), pushSubs = new Map(), pushPrefs = new Map(); let seq = 0;
+const PUSH_KEY = Buffer.concat([Buffer.from([4]), crypto.randomBytes(64)]).toString('base64url');
 const send = (res, status, body, cookie) => { res.writeHead(status, Object.assign({ 'Content-Type': 'application/json' }, cookie ? { 'Set-Cookie': cookie } : {})); res.end(JSON.stringify(body)); };
 function mock(req, res, body) {
   const cookie = (req.headers.cookie || '').split(/;\s*/).find(c => c.startsWith('kana_session='));
@@ -27,7 +28,20 @@ function mock(req, res, body) {
     return send(res, 200, { username: u.name }, newSession(body.username.toLowerCase()));
   }
   if (p === '/api/auth/logout') { if (cookie) sessions.delete(cookie.split('=')[1]); return send(res, 200, { ok: true }, 'kana_session=; Path=/api; Max-Age=0'); }
+  if (p === '/api/push/key') return send(res, 200, { key: PUSH_KEY });
   if (!uid) return send(res, 401, { error: 'Вы не вошли' });
+  if (p.startsWith('/api/push/')) {
+    const prefs = () => { const pr = pushPrefs.get(uid) || { enabled: false, time: '19:00', tz: null }; return Object.assign({}, pr, { devices: [...pushSubs.values()].filter(s => s.uid === uid).length }); };
+    if (p === '/api/push/subscribe') {
+      if (!/^https:\/\/fcm\.googleapis\.com\//.test(body.endpoint || '') || !body.keys || !body.keys.p256dh) return send(res, 400, { error: 'Некорректная подписка' });
+      pushSubs.set(body.endpoint, { uid, endpoint: body.endpoint });
+      pushPrefs.set(uid, { enabled: true, time: body.time || '19:00', tz: body.tz });
+      return send(res, 200, prefs());
+    }
+    if (p === '/api/push/unsubscribe') { pushSubs.delete(body.endpoint); return send(res, 200, prefs()); }
+    if (p === '/api/push/prefs') { if (req.method === 'POST') pushPrefs.set(uid, Object.assign(prefs(), Object.fromEntries(Object.entries(body).filter(([, v]) => v != null)))); return send(res, 200, prefs()); }
+    if (p === '/api/push/test') return send(res, 200, { sent: prefs().devices });
+  }
   if (p === '/api/auth/me') return send(res, 200, { username: users.get(uid).name });
   if (p === '/api/sync') {
     for (const ch of body.changes || []) {

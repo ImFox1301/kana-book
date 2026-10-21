@@ -9,6 +9,26 @@ self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' })))));
 });
 
+// напоминания: сервер присылает { title, body, tag, url }
+self.addEventListener('push', event => {
+  let m = {};
+  try { m = event.data ? event.data.json() : {}; } catch (e) { m = { body: event.data && event.data.text() }; }
+  event.waitUntil(self.registration.showNotification(m.title || 'Кана-тетрадь', {
+    body: m.body || 'Пора позаниматься', tag: m.tag || 'reminder', renotify: false,
+    icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', lang: 'ru', data: { url: m.url || '/' },
+  }));
+});
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin).href;
+  event.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const w = wins.find(c => c.url.startsWith(self.location.origin));
+    if (w) { await w.focus(); return; }
+    await self.clients.openWindow(url);
+  })());
+});
+
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     for (const key of await caches.keys()) if ((key.startsWith('kana-') && key !== CACHE) || (key.startsWith('tts-') && key !== TTS_CACHE)) await caches.delete(key);

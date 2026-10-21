@@ -25,7 +25,7 @@ FONTS = """<style>
 page = (src / "app.html").read_text(encoding="utf-8")
 # в собранной версии шрифты свои, без обращения к Google
 page = "\n".join(l for l in page.splitlines() if "fonts.googleapis.com" not in l)
-for key, name in [("REC", "recognizer.js"), ("KANA", "kana.js"), ("LESSONS", "lessons.js"), ("WORDS", "words.js"), ("READING", "reading.js"), ("PDF", "pdf.js"), ("APP", "app.js")]:
+for key, name in [("REC", "recognizer.js"), ("KANA", "kana.js"), ("LESSONS", "lessons.js"), ("WORDS", "words.js"), ("READING", "reading.js"), ("SENTENCES", "sentences.js"), ("PDF", "pdf.js"), ("APP", "app.js")]:
     page = page.replace(f"/*{key}*/", (src / name).read_text(encoding="utf-8"))
 # флаг включает установку, офлайн и аккаунт; sync.js и pwa.js подключаются только в собранной версии
 word_audio = sorted({p.stem for p in (assets / "audio" / "words" / "m").glob("*.mp3")})

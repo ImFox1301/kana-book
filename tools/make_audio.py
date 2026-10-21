@@ -89,6 +89,16 @@ reading = _json.loads(subprocess.run(["node", "-e", "console.log(JSON.stringify(
 for sign, kana, *_ in reading:
     if kana not in words: words.append(kana)
     if sign != kana and kana not in WORD_TEXT: WORD_TEXT[kana] = sign
+# фразы конструктора: [по-русски, блоки через «|», запись с иероглифами, …]
+sentences = _json.loads(subprocess.run(["node", "-e", "console.log(JSON.stringify(require('./src/sentences.js').BUILDER.flatMap(l => l.items)))"],
+                                       cwd=root, capture_output=True, text=True, check=True).stdout)
+SPEAK = {}   # как фраза произносится: частицы は, へ, を звучат «ва», «э», «о»
+SAY_PARTICLE = {"は": "わ", "へ": "え", "を": "お"}
+for ru, parts, kanji, *_ in sentences:
+    kana = parts.replace("|", "")
+    if kana not in words: words.append(kana)
+    if kanji and kana not in WORD_TEXT: WORD_TEXT[kana] = kanji
+    SPEAK[kana] = "".join(SAY_PARTICLE.get(t, t) for t in parts.split("|"))
 ONLY_MISSING = "--missing" in sys.argv
 
 def moras(aq):
@@ -105,7 +115,35 @@ def natural_vowels(aq):
             m.vowel_length = min(m.vowel_length, 0.24 if i == len(ms) - 1 else 0.13)
     return aq
 
+VOWEL = {}
+for row, v in [("アカサタナハマヤラワガザダバパァャヮ", "ア"), ("イキシチニヒミリギジヂビピィ", "イ"), ("ウクスツヌフムユルグズヅブプゥュヴ", "ウ"),
+               ("エケセテネヘメレゲゼデベペェ", "エ"), ("オコソトノホモヨロヲゴゾドボポォョ", "オ")]:
+    for c in row: VOWEL[c] = v
+
+def norm(t):
+    # долгота на письме и в произношении: ー, おう → оо, えい → ээ
+    out = []
+    for c in t:
+        prev = VOWEL.get(out[-1]) if out else None
+        if c == "ー" and prev: c = prev
+        elif c == "ウ" and prev == "オ": c = "オ"
+        elif c == "イ" and prev == "エ": c = "エ"
+        out.append(c)
+    return "".join(out)
+
+def sentence_query(kana, style):
+    # фраза: берём тот разбор (с иероглифами или каной), чьё чтение совпало с ожидаемым по блокам
+    expected = norm(to_kata(SPEAK[kana]))
+    cands = [("иероглифы", WORD_TEXT.get(kana)), ("кана", SPEAK[kana])]
+    for name, text in cands:
+        if not text: continue
+        aq = syn.create_audio_query(text, style)
+        if norm("".join(m.text for ap in aq.accent_phrases for m in ap.moras)) == expected: return aq
+    print(f"  {kana}: ни один разбор не совпал с {expected}", file=sys.stderr)
+    return syn.create_audio_query(SPEAK[kana], style)
+
 def word_query(kana, style):
+    if kana in SPEAK: return sentence_query(kana, style)
     plain = syn.create_audio_query(kana, style)
     text = WORD_TEXT.get(kana)
     if text:

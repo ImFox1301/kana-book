@@ -75,7 +75,12 @@ jobs:
         working-directory: server
         env:
           DB_URL: jdbc:postgresql://localhost:5432/kana
-        run: gradle test bootJar --no-daemon
+        run: |
+          gradle test bootJar --no-daemon > gradle.log 2>&1 || {
+            # ошибки компиляции и упавшие тесты — в аннотации запуска
+            grep -E "^e: |FAILED|Exception|expected:|AssertionFailed" gradle.log | head -20 | sed "s/^/::error title=gradle::/"
+            for f in build/test-results/test/*.xml; do grep -A3 "<failure" "$f" | head -8 | tr '\n' ' ' | sed "s/^/::error title=$(basename $f)::/"; echo; done
+            tail -40 gradle.log; exit 1; }
 
       - name: End-to-end checks (sync on real API + PostgreSQL, Azbuka)
         env:
@@ -89,7 +94,7 @@ jobs:
           npm i --no-save playwright@1.56.0 > /dev/null
           npx playwright install --with-deps chromium > /dev/null
           fail=0
-          for t in sync abc lessons srs kata; do
+          for t in sync abc lessons srs kata stage4; do
             # провалы — в аннотации запуска, чтобы их было видно без скачивания логов
             node tools/e2e/$t-e2e.js http://localhost:8790 > $t.log 2>&1 || { fail=1; grep -E "FAIL|Error|ошибка|    at " $t.log | head -15 | sed "s/^/::error title=$t-e2e::/"; }
             cat $t.log

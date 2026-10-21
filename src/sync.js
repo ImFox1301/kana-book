@@ -109,6 +109,7 @@ window.KanaSync = (function () {
   }
   async function logout() {
     await syncNow();
+    if (window.KanaPush) await window.KanaPush.forget();   // напоминания этого устройства привязаны к аккаунту
     await api('/auth/logout', {});
     account = null; cursor = 0; snap = {}; lastSync = 0; status = ''; saveState();
     window.KanaApp.resetLocal();
@@ -184,5 +185,5 @@ window.KanaSync = (function () {
     if (account) setTimeout(syncNow, 800);
   }
 
-  return { touch, syncNow, renderAccount, get account() { return account; } };
+  return { touch, syncNow, renderAccount, api, get account() { return account; } };
 })();

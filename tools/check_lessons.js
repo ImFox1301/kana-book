@@ -29,6 +29,14 @@ for (const l of LESSONS) {
   for (const k of lessonWritable(l)) if (!KVG[k]) fail(`${l.id}: нет штрихов KanjiVG для ${k}`);
   if (!kana.length && !(l.points || []).length) fail(`${l.id}: урок без знаков и без пояснений`);
 }
+// фразы конструктора: только кана, всё транскрибируется, лишние блоки — не из фразы
+const { BUILDER } = require('../src/sentences.js');
+for (const lv of BUILDER) for (const [ru, parts, kanji, alts] of lv.items) {
+  const p = parts.split('|');
+  for (const t of p) { if (!/^[\u3041-\u30ff]+$/.test(t)) fail(`${lv.id}: блок не каной: ${t}`); if (/[\u3040-\u30ff]/.test(transcribe(t).lat)) fail(`${lv.id}: не транскрибируется ${t}`); }
+  for (const a of (alts || '').split('/').filter(Boolean)) if (a.split('|').sort().join() !== p.slice().sort().join()) fail(`${lv.id}: другой порядок из других блоков: ${a}`);
+  if (!kanji) fail(`${lv.id}: нет записи для озвучки: ${ru}`);
+}
 const ids = LESSONS.map(l => l.id);
 if (new Set(ids).size !== ids.length) fail('повторяются id уроков');
 console.log(bad ? `\nОшибок: ${bad}` : `Уроки в порядке: ${LESSONS.length}`);

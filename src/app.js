@@ -175,7 +175,7 @@
   let Q = null;
   function startQuiz(items, count, opts = {}) {
     if (!opts.keepFlow && FLOW && FLOW.step !== 'quiz') FLOW = null;
-    Q = { deck: buildDeck(items, count), i: 0, results: [], mode: opts.mode || S.mode, sys: S.sys, len: S.len, pool: items, review: !!opts.review, back: opts.back || 'setup', again: opts.again || null, topic: opts.topic || null };
+    Q = { deck: buildDeck(items, count), i: 0, results: [], mode: opts.mode || S.mode, sys: S.sys, len: S.len, pool: items, review: !!opts.review, back: opts.back || 'setup', again: opts.again || null, track: opts.track || null };
     show('quiz'); renderCard();
   }
   $('#btn-start').onclick = () => {
@@ -289,6 +289,7 @@
     const isWord = it.kind === 'word';
     const mode = it.mode || Q.mode;
     if (mode === 'listen' || mode === 'sim' || mode === 'mean') return renderChoice(card, it, mode, msg);
+    if (mode === 'build') return renderBuild(card, it, msg);
     if (mode === 'draw') {
       const units = [...it.kana];
       const slotStrokes = units.map(() => []);
@@ -376,6 +377,60 @@
     const sk = soundKey(k), near = all.filter(c => { const o = soundKey(c); return o.slice(-1) === sk.slice(-1) || o[0] === sk[0]; });
     return shuffle([k, ...pickDistinct(k, sim.concat(pool, near, all), 3)]);
   }
+  // ---------- конструктор предложений ----------
+  const partRead = (t, i) => PARTICLE_READ[t] ? PARTICLE_READ[t][i] : displayReading(t, i ? 'ru' : 'lat');
+  function sentItem(lv, [ru, parts, kanji, alts, note]) {
+    const p = parts.split('|');
+    const lat = p.map(t => partRead(t, 0)).join(' '), rus = p.map(t => partRead(t, 1)).join(' ');
+    return { kind: 'sent', word: true, kana: p.join(''), parts: p, alts: (alts || '').split('/').filter(Boolean).map(a => a.split('|')), note: note || null, extra: lv.extra, level: lv.id,
+      w: { kana: p.join(''), mean: ru, kanji, read: lat + '|' + rus } };
+  }
+  const levelItems = lv => lv.items.map(x => sentItem(lv, x));
+  const sentIndex = () => { const m = new Map(); for (const lv of BUILDER) for (const it of levelItems(lv)) m.set(it.kana, it); return m; };
+  function renderBuild(card, it, msg) {
+    const extra = shuffle(it.extra.filter(t => !it.parts.includes(t))).slice(0, 2);
+    const bank = shuffle(it.parts.concat(extra).map((t, i) => ({ t, i })));
+    const sel = [];
+    const tray = h('div', { class: 'btray', 'aria-label': 'Собранная фраза' }), pool = h('div', { class: 'bbank', 'aria-label': 'Блоки' });
+    const draw = () => {
+      tray.replaceChildren(...(sel.length ? sel.map((b, j) => h('button', { type: 'button', class: 'btok', 'data-t': b.t, title: 'Убрать', onclick: () => { sel.splice(j, 1); draw(); } }, b.t)) : [h('span', { class: 'muted small' }, 'Нажимайте на блоки по порядку')]));
+      pool.replaceChildren(...bank.map(b => h('button', { type: 'button', class: 'btok', 'data-t': b.t, disabled: sel.includes(b), onclick: () => { sel.push(b); msg.textContent = ''; draw(); } }, b.t)));
+    };
+    draw();
+    card.append(h('div', { class: 'prompt' }, h('span', { class: 'lab' }, 'Соберите по-японски'), h('span', { class: 'ru-sent' }, it.w.mean)),
+      tray, pool, h('div', { class: 'padtools' }, iconBtn('iconbtn', 'undo', 'Убрать последний', () => { sel.pop(); draw(); }), iconBtn('iconbtn', 'clear', 'Сначала', () => { sel.length = 0; draw(); })), msg);
+    const submit = () => {
+      if (!sel.length) { msg.textContent = 'Соберите фразу из блоков или нажмите «Пропустить».'; return; }
+      const got = sel.map(b => b.t), key = got.join('|');
+      const ok = [it.parts].concat(it.alts).some(a => a.join('|') === key);
+      finish({ it, status: ok ? 'ok' : 'bad', built: got });
+    };
+    card.append(actions(submit));
+  }
+  function startBuilder(lv) {
+    const items = lv ? levelItems(lv) : shuffle(BUILDER.flatMap(levelItems)).slice(0, 10);
+    FLOW = null;
+    startQuiz(items, items.length, { mode: 'build', back: 'builder', track: lv ? { id: 'b-' + lv.id, title: lv.title } : null, again: () => startBuilder(lv) });
+  }
+  function renderBuilder() {
+    const el = $('#screen-builder'); el.replaceChildren();
+    el.append(h('div', { class: 'backbar' }, h('button', { class: 'link back', type: 'button', onclick: () => show('practice') }, '← Практика')),
+      h('h1', { class: 'h1' }, 'Конструктор предложений'),
+      h('p', { class: 'small muted' }, 'Русская фраза — соберите её по-японски из блоков. Среди блоков есть лишние частицы. После ответа — чтение, озвучка и пояснение. Уровни идут от простого к сложному, у каждого — одна новая конструкция.'));
+    const list = h('div', { class: 'lessons' });
+    BUILDER.forEach((lv, i) => {
+      const best = (lessonsDone['b-' + lv.id] || {}).quiz, done = best >= PASS * 100;
+      const more = h('div', { class: 'blevel-intro', hidden: true }, h('p', {}, lv.intro), iconBtn('btn primary', 'next', `Начать · ${lv.items.length} фраз`, () => startBuilder(lv)));
+      list.append(h('div', { class: 'blevel' },
+        h('button', { type: 'button', class: 'lrow' + (done ? ' done' : ''), 'aria-expanded': 'false', onclick: e => { const b = e.currentTarget; more.hidden = !more.hidden; b.setAttribute('aria-expanded', String(!more.hidden)); } },
+          h('span', { class: 'n' }, done ? '✓' : String(i + 1)),
+          h('span', {}, h('div', { class: 't' }, lv.title), h('div', { class: 'k' }, lv.pattern)),
+          best ? h('span', { class: 'badge ' + (done ? 'ok' : 'soon') }, best + '%') : h('span', { class: 'badge soon' }, lv.items.length + ' фраз')),
+        more));
+    });
+    el.append(list, h('div', { class: 'actions', style: 'justify-content:flex-start' }, iconBtn('btn ghost', 'next', 'Все уровни вперемешку · 10', () => startBuilder(null))));
+  }
+
   // ---------- чтение в поездке ----------
   const readingItem = (t, [sign, kana, mean, read]) => ({ kind: 'word', kana, w: { kana, mean, read, sign, kanji: hasKanji(sign) ? sign : undefined, topic: t.title, rtopic: t.id } });
   const readingItems = t => t.items.map(x => readingItem(t, x));
@@ -406,7 +461,7 @@
     const items = t ? readingItems(t) : shuffle(READING.flatMap(readingItems)).slice(0, 20);
     const list = mode === 'type' ? items.filter(x => !hasKanji(x.w.sign)) : items;
     FLOW = null;
-    startQuiz(list, list.length, { mode, back: 'reading', topic: t ? t.id : null, again: () => startReading(t, mode) });
+    startQuiz(list, list.length, { mode, back: 'reading', track: t ? { id: 'r-' + t.id, title: t.title } : null, again: () => startReading(t, mode) });
   }
   function renderReading() {
     const el = $('#screen-reading'); el.replaceChildren();
@@ -469,7 +524,7 @@
   function finish(res) {
     Q.results[Q.i] = res;
     const mode = res.mode = res.mode || res.it.mode || Q.mode;
-    const a = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), ts: Date.now(), k: res.it.kana, w: res.it.kind === 'word' ? 1 : 0, m: mode, r: res.status };
+    const a = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), ts: Date.now(), k: res.it.kana, w: res.it.kind === 'word' || res.it.kind === 'sent' ? 1 : 0, m: mode, r: res.status };
     // с чем перепутан знак: выбранный вариант или то, как распознан рисунок
     const x = res.chosen || (res.per && res.per.length === 1 && !res.per[0].ok ? res.per[0].best : null);
     if (res.status === 'bad' && x && x !== res.it.kana) a.x = x;
@@ -490,7 +545,16 @@
       h('div', { class: 'vtitle' }, status === 'ok' ? (res.taught ? 'Засчитано' : 'Верно') : status === 'bad' ? 'Неверно' : 'Пропущено'));
     const mode = res.mode || Q.mode;
     const reading = h('div', { class: 'vreading' }, h('div', { class: 'correct-reading' }, readingOf(it, Q.sys)), h('div', { class: 'small muted' }, readingOf(it, otherSys(Q.sys))), sayButton(it, 'Прослушать'));
-    if (mode === 'listen' || mode === 'sim' || mode === 'mean') {
+    if (mode === 'build') {
+      if (res.built && res.built.length) {
+        const good = it.parts;
+        v.append(h('div', { class: 'bline mine' }, ...res.built.map((t, i) => h('span', { class: 'btok' + (status === 'ok' ? ' ok' : t === good[i] ? '' : ' bad') }, t))), h('div', { class: 'small muted' }, 'Ваш вариант'));
+      }
+      v.append(h('div', { class: 'bline' }, ...it.parts.map(t => h('span', { class: 'btok' + (status === 'ok' ? ' ok' : '') }, t))), reading,
+        h('div', { class: 'meaning' }, it.w.mean));
+      if (it.alts.length) v.append(h('div', { class: 'small muted' }, 'Тоже верно: ' + it.alts.map(a => a.join('')).join('; ')));
+      if (it.note) v.append(h('div', { class: 'note' }, it.note));
+    } else if (mode === 'listen' || mode === 'sim' || mode === 'mean') {
       v.append(it.w && it.w.sign && it.w.sign !== it.kana ? signplate(it.w.sign) : h('div', { class: 'kana' + (isWord ? ' word' : ''), style: 'font-family:var(--kana);font-size:' + (isWord ? '44px' : '64px') + ';line-height:1.1' }, it.kana));
       if (it.w && it.w.sign && it.w.sign !== it.kana) v.append(h('div', { class: 'kana-in', style: 'font-size:26px' }, it.kana));
       v.append(reading);
@@ -589,15 +653,15 @@
       return show('result');
     }
     const back = Q.back, again = Q.again;
-    if (Q.topic && rs.length === Q.deck.length) {
-      const pct = Math.round(ok / Q.deck.length * 100), id = 'r-' + Q.topic;
+    if (Q.track && rs.length === Q.deck.length) {
+      const pct = Math.round(ok / Q.deck.length * 100), id = Q.track.id;
       lessonsDone[id] = { quiz: Math.max(pct, (lessonsDone[id] || {}).quiz || 0) }; saveLessons();
-      el.prepend(h('div', { class: 'result-banner ' + (pct >= PASS * 100 ? 'ok' : 'bad') }, `${READING.find(t => t.id === Q.topic).title}: ${pct}%`));
+      el.prepend(h('div', { class: 'result-banner ' + (pct >= PASS * 100 ? 'ok' : 'bad') }, `${Q.track.title}: ${pct}%`));
     }
     el.append(h('div', { class: 'actions', style: 'justify-content:center' },
       missedItems.length ? iconBtn('btn primary', 'undo', `Повторить ошибки (${missedItems.length})`, () => startQuiz(missedItems, missedItems.length * 2, { mode: Q.mode, back })) : null,
       again ? iconBtn('btn ghost', 'next', 'Ещё раз', again) : null,
-      h('button', { class: 'btn ghost', type: 'button', onclick: () => { Q = null; show(back); } }, back === 'setup' ? 'Новый квиз' : back === 'similar' ? 'К выбору групп' : 'Готово')));
+      h('button', { class: 'btn ghost', type: 'button', onclick: () => { Q = null; show(back); } }, back === 'setup' ? 'Новый квиз' : back === 'similar' ? 'К выбору групп' : back === 'builder' ? 'К уровням' : 'Готово')));
     show('result');
   }
 
@@ -901,8 +965,8 @@
 
   // ---------- переключение экранов ----------
   let current = 'home';
-  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me', 'similar', 'reading'];
-  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice', reading: 'practice' };
+  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me', 'similar', 'reading', 'builder'];
+  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice', reading: 'practice', builder: 'practice' };
   const tabOf = name => (FLOW && ['quiz', 'result', 'write'].includes(name)) ? 'lessons' : TAB_OF[name];
   const lastOf = { home: 'home', lessons: 'lessons', practice: 'practice', dict: 'dict', me: 'me' };
   function show(name) {
@@ -913,7 +977,7 @@
     document.querySelectorAll('.backbar[data-for]').forEach(b => { b.hidden = b.dataset.for !== name; });
     $('#bnav').hidden = name === 'onboard';
     document.querySelectorAll('#bnav button').forEach(x => { if (x.dataset.tab === tab) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current'); });
-    ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, onboard: renderOnboard, similar: renderSimilar, reading: renderReading })[name]?.();
+    ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, onboard: renderOnboard, similar: renderSimilar, reading: renderReading, builder: renderBuilder })[name]?.();
     renderStreak();
     window.scrollTo(0, 0);
   }
@@ -1244,10 +1308,11 @@
   }
   const hasAudio = () => !!window.KANA_PWA;
   function reviewItems() {
-    const due = srsDue(), words = wordIndex(), out = [];
+    const due = srsDue(), words = wordIndex(), sents = sentIndex(), out = [];
     for (const s of due) {
       if (out.length >= REVIEW_MAX) break;
       let it;
+      if (s.w && sents.has(s.k)) { it = Object.assign({}, sents.get(s.k), { mode: 'build' }); out.push(it); continue; }
       if (s.w) { const w = words.get(s.k); if (!w) continue; it = { kind: 'word', kana: s.k, w }; }
       else it = { kind: 'kana', kana: s.k };
       const canDraw = !s.w && [...s.k].every(c => KVG[bigOf(c)]);
@@ -1456,6 +1521,7 @@
     review: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="13" height="14" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v12"/><path d="M7 14l2 2 4-4"/></svg>',
     listen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>',
     reading: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="11" rx="2"/><path d="M12 15v6M8 21h8M7 9h10"/></svg>',
+    builder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="4" width="7" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/></svg>',
     similar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9c2-2 4-2 6 0s4 2 6 0 3-1.5 4-1"/><path d="M4 15c2-2 4-2 6 0s4 2 6 0 3-1.5 4-1"/></svg>',
     weak: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4"/></svg>',
     quiz: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>',
@@ -1521,6 +1587,7 @@
         cta('abc', 'Азбука и прописи', 'Таблицы с озвучкой, прописи выбранных знаков с подложкой', null, () => show('abc')),
         cta('listen', 'Квиз на слух', 'Звучит знак или слово — выберите, как он пишется', null, () => openListenSetup()),
         cta('similar', 'Похожие знаки', 'シ・ツ・ソ・ン, ぬ・め, ね・れ・わ: выбор из похожих и подсказки, как различать', null, () => show('similar')),
+        cta('builder', 'Конструктор предложений', 'Русская фраза → собрать японскую из блоков: «где туалет?», «счёт, пожалуйста»', null, () => show('builder')),
         cta('reading', 'Чтение в поездке', 'Вывески, указатели и меню: еда, транспорт, магазины, отель, улица', null, () => { RT = null; show('reading'); }),
         weak.length ? cta('weak', 'Слабые знаки', 'Квиз по знакам, на которых вы чаще ошибаетесь', weak.map(w => w.ch).slice(0, 10).join(' '), () => { const items = weak.map(w => ({ kind: 'kana', kana: w.ch })); startQuiz(items, items.length * 2, { mode: 'type' }); }) : null));
   }
@@ -1538,6 +1605,81 @@
       ...options.map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(cur === v), onclick: () => onpick(v) }, t)));
   }
   const GOAL_MIN = [10, 20, 30, 45, 60], GOAL_CARDS = [20, 50, 100, 150];
+
+  // ---------- напоминания (Web Push) ----------
+  // Подписка — на это устройство, время и часовой пояс — в аккаунте. Сервер присылает напоминание
+  // в выбранное время, только если цель дня ещё не выполнена (по синхронизированной активности).
+  const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const PS = { on: false, time: store.get('remind-time', '19:00'), busy: false, msg: '', checked: false };
+  const api = (path, body) => window.KanaSync && window.KanaSync.api ? window.KanaSync.api(path, body) : Promise.resolve({ status: 0, data: {} });
+  async function pushSub() {
+    try { const reg = await navigator.serviceWorker.getRegistration(); return reg ? await reg.pushManager.getSubscription() : null; } catch (e) { return null; }
+  }
+  async function pushRefresh() {
+    if (!pushSupported() || !window.KanaSync || !window.KanaSync.account) { PS.on = false; PS.checked = true; return; }
+    const sub = await pushSub();
+    PS.on = !!sub && Notification.permission === 'granted';
+    if (PS.on) { const r = await api('/push/prefs'); if (r.status === 200 && r.data.time) { PS.time = r.data.time; store.set('remind-time', PS.time); } }
+    PS.checked = true;
+  }
+  const b64ToU8 = s => { const b = atob((s + '==='.slice((s.length + 3) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+  const tz = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return null; } };
+  async function pushEnable() {
+    PS.busy = true; PS.msg = ''; renderSettings();
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') throw new Error(perm === 'denied' ? 'Уведомления запрещены для этого сайта — разрешите их в настройках браузера' : 'Разрешение на уведомления не получено');
+      const key = await api('/push/key');
+      if (key.status !== 200 || !key.data.key) throw new Error('Сервер напоминаний недоступен');
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(key.data.key) });
+      const j = sub.toJSON();
+      const r = await api('/push/subscribe', { endpoint: j.endpoint, keys: j.keys, time: PS.time, tz: tz() });
+      if (r.status !== 200) throw new Error(r.data.error || 'Не получилось включить напоминания');
+      PS.on = true; PS.msg = `Включено: напомним в ${PS.time}, если цель дня ещё не выполнена.`;
+    } catch (e) { PS.on = false; PS.msg = e.message || 'Не получилось включить напоминания'; }
+    PS.busy = false; renderSettings();
+  }
+  async function pushDisable(silent) {
+    const sub = await pushSub();
+    if (sub) { await api('/push/unsubscribe', { endpoint: sub.endpoint }); try { await sub.unsubscribe(); } catch (e) { } }
+    PS.on = false; if (!silent) { PS.msg = 'Напоминания на этом устройстве выключены.'; renderSettings(); }
+  }
+  async function pushTime(v) {
+    PS.time = v; store.set('remind-time', v);
+    if (PS.on) { const r = await api('/push/prefs', { time: v, tz: tz() }); PS.msg = r.status === 200 ? `Напомним в ${v}.` : (r.data.error || 'Не получилось сохранить время'); renderSettings(); }
+  }
+  async function pushTest() {
+    PS.msg = 'Отправляю…'; renderSettings();
+    const r = await api('/push/test', {});
+    PS.msg = r.status === 200 ? (r.data.sent ? 'Отправлено — уведомление должно появиться через несколько секунд.' : 'Не дошло: подписка устарела. Выключите и снова включите напоминания.') : (r.data.error || 'Не получилось отправить');
+    renderSettings();
+  }
+  window.KanaPush = { forget: () => pushDisable(true), refresh: () => pushRefresh().then(() => { if (current === 'me') renderSettings(); }) };
+  function remindRow() {
+    const logged = !!(window.KanaSync && window.KanaSync.account);
+    const why = !logged ? 'Войдите в аккаунт: напоминание приходит, только если цель дня ещё не выполнена, а для этого серверу нужен ваш прогресс.'
+      : !pushSupported() ? (isIOSDevice && !standalone() ? 'На iPhone и iPad напоминания работают в установленном приложении (iOS 16.4 и новее): Safari → «Поделиться» → «На экран Домой».' : 'Этот браузер не поддерживает уведомления.')
+        : isIOSDevice && !standalone() ? 'На iPhone и iPad напоминания работают в установленном приложении: Safari → «Поделиться» → «На экран Домой».'
+          : 'Раз в день в выбранное время, если цель дня ещё не выполнена.';
+    const can = logged && pushSupported() && !(isIOSDevice && !standalone());
+    if (!logged) { PS.checked = false; PS.on = false; }
+    if (can && !PS.checked) pushRefresh().then(() => { if (current === 'me') renderSettings(); });
+    const row = h('div', { class: 'set switch' }, h('div', {}, h('div', { class: 'lbl' }, 'Напоминания о занятиях'), h('div', { class: 'd' }, why)),
+      toggle('set-notify', PS.on, v => v ? pushEnable() : pushDisable(), !can || PS.busy));
+    const out = [row];
+    if (can && PS.on) {
+      const t = h('input', { type: 'time', id: 'remind-time', value: PS.time, step: 900, 'aria-label': 'Время напоминания' });
+      t.addEventListener('change', () => { if (/^\d\d:\d\d$/.test(t.value)) pushTime(t.value); });
+      out.push(h('div', { class: 'set remind' }, h('label', { class: 'lbl', for: 'remind-time' }, 'Время напоминания'), h('div', { class: 'remind-row' }, t,
+        h('button', { class: 'btn ghost', type: 'button', id: 'btn-push-test', onclick: pushTest }, 'Проверить'))));
+    }
+    if (PS.msg) out.push(h('div', { class: 'small muted', id: 'push-msg', role: 'status' }, PS.msg));
+    return out;
+  }
   function renderSettings() {
     const el = $('#settings'); el.replaceChildren();
     const g = S.goal || def.goal;
@@ -1553,8 +1695,7 @@
       h('div', { class: 'set' }, h('div', { class: 'lbl' }, 'Проверка рисунка'), segm('Строгость', [[0, 'Строго'], [1, 'Обычно'], [2, 'Мягко']], S.len, v => { S.len = v; save(); renderSettings(); })),
       h('div', { class: 'set switch' }, h('div', {}, h('div', { class: 'lbl' }, 'Вибрация'), h('div', { class: 'd' }, 'Тактильный отклик')),
         toggle('set-vibrate', S.vibrate && canBuzz(), v => { S.vibrate = v; save(); buzz(true); }, !canBuzz())),
-      h('div', { class: 'set switch' }, h('div', {}, h('div', { class: 'lbl' }, 'Напоминания о занятиях'), h('div', { class: 'd' }, 'Появятся в одном из следующих обновлений')),
-        toggle('set-notify', false, () => { }, true)));
+      ...remindRow());
   }
   function renderMe() {
     if (window.KanaSync) window.KanaSync.renderAccount($('#account-box'));
@@ -1647,7 +1788,7 @@
       store.set('lessons', lessonsDone); store.set('activity', activity);
       applying = false;
       loadSamples();
-      ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, similar: renderSimilar, reading: renderReading })[current]?.();
+      ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, similar: renderSimilar, reading: renderReading, builder: renderBuilder })[current]?.();
       renderStreak();
     },
     resetLocal() {
@@ -1658,6 +1799,6 @@
     rerender() { if (current === 'me') renderMe(); },
   };
 
-  window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next, show, openLesson, get lessonsDone() { return lessonsDone; }, dayTotals, todayKey, buzz, srsState, srsDue, srsForecast, startReview, startSim, confusions, startReading };
+  window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next, show, openLesson, get lessonsDone() { return lessonsDone; }, dayTotals, todayKey, buzz, srsState, srsDue, srsForecast, startReview, startSim, confusions, startReading, startBuilder };
   show(S.onboarded ? 'home' : 'onboard');
 })();
