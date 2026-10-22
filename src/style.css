@@ -890,3 +890,69 @@ body.no-side { padding-bottom: 0 }
   .welcome .fld input { min-height: 46px } .welcome .authform .btn { min-height: 46px }
   .welcome .tground { width: 44px; height: 44px }
 }
+
+/* ---- диалог (UI-кит: «Удалить слово?») ---- */
+dialog.dlg { border: 0; padding: 0; background: none; max-width: min(440px, calc(100vw - 32px)); width: 100%; color: var(--ink); overflow: visible }
+dialog.dlg.wide { max-width: min(560px, calc(100vw - 32px)) }
+dialog.dlg::backdrop { background: rgba(11, 23, 36, .42); backdrop-filter: blur(2px) }
+dialog.dlg[open] { animation: pop .18s ease-out }
+@keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.98) } to { opacity: 1; transform: none } }
+.dlg-in { background: var(--surface); border-radius: var(--r-card); box-shadow: var(--shadow-lg); padding: 22px 22px 20px; display: grid; gap: 14px; max-height: calc(100dvh - 48px); overflow-y: auto }
+.dlg-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px }
+.dlg-head h2 { margin: 4px 0 0; font-size: 22px; font-weight: 800; line-height: 1.25 }
+.dlg-x { margin: -6px -8px 0 0 }
+.dlg-text { margin: 0; color: var(--muted); line-height: 1.5 }
+.dlg-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px }
+.dlg-acts .btn { width: 100% }
+.dlg .fld { margin-top: 2px }
+.dlg .form { margin: 0 }
+.btn.danger:disabled { background: var(--error-soft); color: var(--error); opacity: .55 }
+
+/* ---- всплывающее меню ---- */
+.ctxmenu { position: fixed; z-index: 60; min-width: 220px; background: var(--surface); border-radius: 16px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); padding: 6px; display: grid; animation: drop .14s ease-out }
+.ctxmenu button { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 0 14px; border: 0; border-radius: 10px; background: none; color: var(--ink); font: 600 15.5px var(--ui); text-align: left; cursor: pointer; white-space: nowrap }
+.ctxmenu button:hover, .ctxmenu button:focus-visible { background: var(--tile); outline: none }
+.ctxmenu button .i { width: 22px; height: 22px }
+.ctxmenu button.danger { color: var(--error) }
+
+/* ---- уведомление внизу (snackbar) ---- */
+.toast { position: fixed; left: 50%; bottom: calc(var(--nav-real, 80px) + 14px); transform: translate(-50%, 20px); z-index: 70; display: flex; align-items: center; gap: 12px; max-width: min(520px, calc(100vw - 32px)); width: max-content;
+  background: var(--sidebar); color: #fff; border-radius: 16px; padding: 14px 18px; box-shadow: var(--shadow-lg); font-weight: 600; font-size: 15px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s }
+.toast.on { opacity: 1; transform: translate(-50%, 0) }
+.toast .i { width: 22px; height: 22px; color: #6FE0CB; flex: none }
+@media (min-width: 960px) { .toast { bottom: 24px; left: calc(50% + 124px) } }
+
+/* ---- профиль: имя с карандашом, аккаунт ---- */
+.who-row { display: flex; align-items: center; gap: 4px; min-width: 0 }
+.who-row .who { overflow-wrap: anywhere }
+.who-row .icbtn { width: 38px; height: 38px; color: var(--muted) }
+.who-row .icbtn .i { width: 20px; height: 20px }
+.name-edit { display: flex; gap: 8px; align-items: center }
+.name-edit input { flex: 1 1 auto; min-width: 0; min-height: 46px !important; font-size: 18px !important; font-weight: 700 !important }
+.name-edit .icbtn { width: 46px; height: 46px; flex: none }
+.name-edit .icbtn.ok { color: var(--accent) }
+.ava-btn::after { display: none }
+.sync-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap }
+.tg-ok { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px; border-radius: 16px; background: var(--accent-soft) }
+.tg-ok .tg-ic { width: 44px; height: 44px; border-radius: 50%; background: #2A9FD8; color: #fff; display: grid; place-items: center }
+.tg-ok .tg-ic svg { width: 22px; height: 22px; margin-left: -2px }
+.tg-ok b { font-size: 15.5px }
+.tg-check { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center }
+.tg-check .i { width: 18px; height: 18px; stroke-width: 2.4 }
+.tglink { border-top: 0; padding-top: 0; justify-items: stretch }
+.tglink .tgbox { justify-items: stretch }
+.tglink .btn.tg { width: 100%; min-height: 48px }
+
+/* ---- настройки: опасные действия ---- */
+.danger-grp { margin-top: 10px }
+.danger-row { width: 100%; text-align: left; font: inherit; color: var(--ink); cursor: pointer; border: 1px solid var(--error-soft) !important }
+.danger-row .tilei { background: var(--error-soft); color: var(--error) }
+.danger-row .lbl { color: var(--error) }
+.danger-row:hover { border-color: var(--error) !important }
+
+/* ---- форма входа в профиле — по центру ---- */
+.account-guest { width: 100%; max-width: 480px; margin: 0 auto; align-self: center; grid-column: 1 / -1; justify-self: center }
+.filebtn { cursor: pointer } .filebtn input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none }
+.dlg .dict-tools { justify-content: space-between }
+.name-edit .icbtn { width: 42px; height: 42px }
+@media (min-width: 960px) { #screen-me .profile, #screen-me .ask-name, #screen-me .logout-box { grid-column: 1 / -1 } #screen-me .logout-box { max-width: 480px } }

@@ -28,6 +28,7 @@ class AuthController(
     private val sessions: SessionService,
     private val limiter: RateLimiter,
     private val props: KanaProps,
+    private val tg: kana.api.tg.TgService,
 ) {
     private val encoder = BCryptPasswordEncoder(10)
     // для выравнивания времени ответа, когда логина не существует
@@ -48,7 +49,7 @@ class AuthController(
     }
 
     @PostMapping("/login")
-    fun login(@RequestBody body: Credentials, req: HttpServletRequest): ResponseEntity<Me> {
+    fun login(@RequestBody body: Credentials, req: HttpServletRequest): ResponseEntity<Any> {
         val username = body.username.trim()
         val userKey = "fail:${username.lowercase()}"
         if (!limiter.tryAcquire("login:${req.remoteAddr}", props.loginPerMinute, 60_000) ||
@@ -61,7 +62,12 @@ class AuthController(
             throw ApiException(HttpStatus.UNAUTHORIZED, "Неверный логин или пароль")
         }
         limiter.reset(userKey)
-        return withSession(HttpStatus.OK, user.id, user.me())
+        // привязан Telegram — вход нужно подтвердить в боте; сессию выдаст /api/tg/status после подтверждения
+        if (user.tgId != null) tg.startConfirm(user.id, user.tgId, user.displayName ?: user.username)?.let {
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(mapOf("confirm" to "telegram", "nonce" to it.nonce, "secret" to it.secret, "link" to it.link))
+        }
+        @Suppress("UNCHECKED_CAST")
+        return withSession(HttpStatus.OK, user.id, user.me()) as ResponseEntity<Any>
     }
 
     @PostMapping("/logout")

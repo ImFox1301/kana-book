@@ -29,6 +29,65 @@
   const ICON = { next: svgOf('arrow'), skip: svgOf('skip'), undo: svgOf('undo'), clear: svgOf('trash'), play: svgOf('play'), slot: svgOf('chev') };
   // стрелка «дальше» — справа от подписи, остальные иконки — слева
   const iconBtn = (cls, icon, label, onclick, title) => { const b = h('button', { class: cls, type: 'button', onclick, title: title || label }); b.innerHTML = ICON[icon]; if (icon === 'next') b.prepend(label); else b.append(label); return b; };
+  // ---------- диалоги, всплывающие меню, уведомления внизу экрана (по UI-киту) ----------
+  // dialog: заголовок, текст, поля; кнопка подтверждения может ждать wait секунд и/или условия ready()
+  function dialog({ title, text, body, confirm = 'Готово', cancel = 'Отмена', danger = false, wait = 0, ready = () => true, onConfirm }) {
+    const d = h('dialog', { class: 'dlg', 'aria-labelledby': 'dlg-t' });
+    const err = h('div', { class: 'err', role: 'alert', hidden: true });
+    const ok = h('button', { class: 'btn ' + (danger ? 'danger' : 'primary'), type: 'submit' }, confirm);
+    let left = wait, busy = false, timer = null;
+    const update = () => {
+      ok.disabled = busy || left > 0 || !ready();
+      ok.textContent = busy ? 'Подождите…' : left > 0 ? `${confirm} · ${left}` : confirm;
+    };
+    const close = () => { clearInterval(timer); d.close(); };
+    const x = h('button', { class: 'icbtn dlg-x', type: 'button', 'aria-label': 'Закрыть', onclick: close }, I('close'));
+    const form = h('form', { method: 'dialog', class: 'dlg-in', oninput: update, onsubmit: async e => {
+      e.preventDefault(); if (ok.disabled) return;
+      busy = true; update(); err.hidden = true;
+      const res = onConfirm ? await onConfirm() : null;
+      busy = false;
+      if (typeof res === 'string' && res) { err.textContent = res; err.hidden = false; update(); return; }
+      close();
+    } },
+      h('div', { class: 'dlg-head' }, h('h2', { id: 'dlg-t' }, title), x),
+      text ? h('p', { class: 'dlg-text' }, text) : null, body || null, err,
+      h('div', { class: 'dlg-acts' }, h('button', { class: 'btn ghost', type: 'button', onclick: close }, cancel), ok));
+    d.append(form);
+    d.addEventListener('close', () => { clearInterval(timer); d.remove(); });
+    d.addEventListener('click', e => { if (e.target === d) close(); });   // нажатие мимо окна
+    document.body.append(d); d.showModal(); update();
+    if (left > 0) timer = setInterval(() => { left--; update(); if (left <= 0) clearInterval(timer); }, 1000);
+    const f = d.querySelector('input'); if (f) setTimeout(() => f.focus(), 30);
+    return d;
+  }
+  // всплывающее меню у кнопки: [{ icon, label, danger, id, onclick }]
+  let openMenu = null;
+  function menu(anchor, items) {
+    if (openMenu) { const was = openMenu.anchor; openMenu.close(); if (was === anchor) return; }
+    const m = h('div', { class: 'ctxmenu', role: 'menu' }, ...items.filter(Boolean).map(it => h('button', { type: 'button', role: 'menuitem', class: it.danger ? 'danger' : '', id: it.id || null,
+      onclick: () => { close(); it.onclick(); } }, I(it.icon), it.label)));
+    document.body.append(m);
+    const r = anchor.getBoundingClientRect(), w = m.offsetWidth;
+    m.style.top = Math.min(innerHeight - m.offsetHeight - 8, r.bottom + 6) + 'px';
+    m.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 > innerWidth / 2 ? r.right - w : r.left)) + 'px';
+    anchor.setAttribute('aria-expanded', 'true');
+    const off = e => { if (!m.contains(e.target) && !anchor.contains(e.target)) close(); };
+    const key = e => { if (e.key === 'Escape') { close(); anchor.focus(); } };
+    function close() { m.remove(); anchor.setAttribute('aria-expanded', 'false'); document.removeEventListener('pointerdown', off, true); document.removeEventListener('keydown', key); window.removeEventListener('scroll', close, true); openMenu = null; }
+    setTimeout(() => { document.addEventListener('pointerdown', off, true); document.addEventListener('keydown', key); window.addEventListener('scroll', close, true); }, 0);
+    openMenu = { anchor, close };
+    const first = m.querySelector('button'); if (first) first.focus({ preventScroll: true });
+  }
+  // короткое сообщение внизу экрана
+  let toastTimer = null;
+  function toast(msg, icon = 'check') {
+    let t = document.querySelector('.toast');
+    if (!t) { t = h('div', { class: 'toast', role: 'status' }); document.body.append(t); }
+    t.replaceChildren(I(icon), h('span', {}, msg)); t.classList.add('on');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 3500);
+  }
+  window.KanaUI = { dialog, menu, toast, I };
   // заголовок экрана: стрелка назад, название, кнопки справа
   const pageHead = (title, back, right, cls) => h('div', { class: 'phead' + (cls ? ' ' + cls : '') },
     back ? h('button', { class: 'icbtn back', type: 'button', 'aria-label': 'Назад', onclick: typeof back === 'function' ? back : () => show(back) }, I('back')) : null,
@@ -1105,7 +1164,7 @@
     const g = guest();
     $('#dict-guest').hidden = true;   // без аккаунта — просто стартовый словарь, без окна входа
     $('#dict-panels').hidden = g;
-    $('#dict-menu-btn').hidden = g; if (g) $('#dict-menu').hidden = true;
+    $('#dict-menu-btn').hidden = g;
     const view = (g ? ['all', 'topics'] : ['all', 'fav', 'topics']).includes(S.dictView) ? S.dictView : 'all';
     $('#dict-tabs').replaceChildren(...[['all', 'Все'], g ? null : ['fav', 'Избранное'], ['topics', 'Темы']].filter(Boolean).map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(view === v), onclick: () => { S.dictView = v; save(); renderDict(); } }, t)));
     const q = ($('#dict-q').value || '').trim().toLowerCase();
@@ -1133,7 +1192,11 @@
   }
   $('#dict-q').addEventListener('input', renderDict);
   // меню «…»: импорт и резервная копия
-  $('#dict-menu-btn').onclick = () => { const m = $('#dict-menu'), open = m.hidden; m.hidden = !open; $('#dict-menu-btn').setAttribute('aria-expanded', String(open)); };
+  $('#dict-menu-btn').onclick = () => menu($('#dict-menu-btn'), [
+    { icon: 'upload', label: 'Импорт словаря', id: 'menu-import', onclick: () => $('#import-panel').showModal() },
+    { icon: 'download', label: 'Резервная копия', id: 'menu-backup', onclick: () => $('#backup-panel').showModal() }]);
+  document.querySelectorAll('dialog.dlg .dlg-x').forEach(b => b.onclick = () => b.closest('dialog').close());
+  document.querySelectorAll('dialog.dlg.static').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
   // лента тем: колесо мыши листает вбок
   $('#dict-topics').addEventListener('wheel', e => { const el = e.currentTarget; if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) { el.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
   const KANA_RE = /^[ぁ-ゖァ-ーー]+$/;
@@ -1885,7 +1948,26 @@
       card('pen', 'Проверка письма', segm('Строгость', [[0, 'Строго'], [1, 'Обычно'], [2, 'Мягко']], S.len, v => { S.len = v; save(); renderSettings(); })),
       h('div', { class: 'set scard switch' }, h('span', { class: 'tilei' }, I('wave')), h('div', {}, h('div', { class: 'lbl' }, 'Вибрация'), h('div', { class: 'd' }, 'Тактильный отклик')),
         toggle('set-vibrate', S.vibrate && canBuzz(), v => { S.vibrate = v; save(); buzz(true); }, !canBuzz())),
-      ...remindRow());
+      ...remindRow(),
+      accountDanger());
+  }
+  // опасные действия с аккаунтом — в самом низу настроек, с подтверждением
+  function accountDanger() {
+    const a = acct(); if (!a || !window.KanaSync) return null;
+    const row = (id, icon, lbl, d, onclick) => h('button', { class: 'set scard switch danger-row', type: 'button', id, onclick }, h('span', { class: 'tilei' }, I(icon)), h('div', {}, h('div', { class: 'lbl' }, lbl), h('div', { class: 'd' }, d)), h('span', { class: 'chev' }, I('chev')));
+    const unlink = () => dialog({ title: 'Отвязать Telegram?', text: 'Входить через Telegram больше не получится — только по логину и паролю. Привязать снова можно в профиле.',
+      confirm: 'Отвязать', danger: true, wait: 5, onConfirm: () => window.KanaSync.unlinkTg() });
+    const del = () => {
+      const pass = h('input', { type: 'password', id: 'del-pass', autocomplete: 'current-password', 'aria-describedby': 'del-hint' });
+      const need = a.hasPassword !== false;
+      dialog({ title: 'Удалить аккаунт?', text: 'Аккаунт, прогресс, слова, друзья и настройки будут удалены без возможности восстановления.',
+        body: need ? h('label', { class: 'fld', for: 'del-pass' }, h('span', { class: 'lbl' }, 'Пароль'), pass, h('span', { class: 'st', id: 'del-hint' }, 'Введите пароль, чтобы подтвердить удаление')) : null,
+        confirm: 'Удалить', danger: true, wait: 20, ready: () => !need || pass.value.length > 0,
+        onConfirm: () => window.KanaSync.deleteAccount(need ? pass.value : '') });
+    };
+    return h('div', { class: 'sgrp danger-grp' }, h('div', { class: 'lbl' }, 'Аккаунт'),
+      a.linked && a.hasPassword ? row('btn-unlink-tg', 'close', 'Отвязать Telegram', a.telegram ? '@' + a.telegram : 'Телефон привязан через Telegram', unlink) : null,
+      row('btn-delete-account', 'trash', 'Удалить аккаунт', 'Безвозвратно, вместе со всеми данными', del));
   }
   // уровень: 10 очков за верный ответ и 100 за пройденный урок
   const levelOf = xp => Math.floor(Math.sqrt(xp / 150)) + 1, levelXp = n => 150 * (n - 1) * (n - 1);
@@ -2223,7 +2305,7 @@
       FR.data = null; FR.found = null; FR.invite = null; FR.msg = '';
       this.commit();
     },
-    rerender() { updateTabs(); if (current === 'me') renderMe(); if (current === 'friends') renderFriends(); },
+    rerender() { updateTabs(); if (current === 'me') renderMe(); if (current === 'friends') renderFriends(); if (current === 'settings') renderSettings(); },
     open(name) { show(name); },
     back() { show(beforeAuth && !['login', 'register'].includes(beforeAuth) ? beforeAuth : 'me'); },
     // после входа: новый аккаунт — настройка цели; есть приглашение — к друзьям

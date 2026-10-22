@@ -101,6 +101,13 @@ window.KanaSync = (function () {
     ui.busy = true; ui.error = ''; rerender();
     const r = await api('/auth/' + kind, kind === 'register' ? { username, password, displayName } : { username, password });
     ui.busy = false;
+    // к аккаунту привязан Telegram — вход по паролю подтверждается в боте
+    if (r.status === 202 && r.data.confirm === 'telegram') {
+      stopTg();
+      tg = { kind: 'login', nonce: r.data.nonce, secret: r.data.secret, link: r.data.link, state: 'confirm', at: Date.now(),
+        msg: 'Подтвердите вход: бот KANA прислал сообщение в Telegram — нажмите в нём «Войти». Если сообщения нет, откройте бота кнопкой ниже.' };
+      tgSave(); tg.timer = setInterval(tgPoll, 2000); rerender(); return;
+    }
     if (r.status !== 200 && r.status !== 201) { ui.error = r.data.error || 'Не получилось, попробуйте ещё раз'; rerender(); return; }
     if (!r.data.username) { ui.error = 'Сервер аккаунтов пока недоступен. Занимайтесь без входа — данные сохраняются на устройстве.'; rerender(); return; }
     signedIn(r.data);
@@ -176,7 +183,7 @@ window.KanaSync = (function () {
     if (r.status !== 200) { if (r.status === 404) { stopTg(); rerender(); } return; }
     const st = r.data.status;
     if (st === 'ok') { clearInterval(cur.timer); tg = null; ss.set(null); signedIn(r.data); return; }
-    if (st === 'linked') { clearInterval(cur.timer); tg = null; ss.set(null); await refreshMe(); ui.notice = 'Telegram привязан — теперь можно входить через него.'; rerender(); if (window.KanaApp) window.KanaApp.rerender(); return; }
+    if (st === 'linked') { clearInterval(cur.timer); tg = null; ss.set(null); await refreshMe(); rerender(); note('Telegram привязан — теперь можно входить в один шаг'); if (window.KanaApp) window.KanaApp.rerender(); return; }
     if (st === 'new') return;
     cur.state = st; cur.msg = r.data.message || null;
     if (['denied', 'expired', 'used', 'error'].includes(st)) { clearInterval(cur.timer); cur.timer = null; cur.link = null; ss.set(null); }
@@ -210,11 +217,14 @@ window.KanaSync = (function () {
       done ? h('button', { class: 'link', type: 'button', onclick: () => { stopTg(); tgPrepare(kind); } }, 'Попробовать ещё раз') : null,
       tg && tg.kind === kind && tg.state && tg.state !== 'ready' ? h('div', { class: 'st', role: 'status', id: 'tg-status' }, tg.msg || TG_TEXT[tg.state] || '') : null);
   }
+  // возвращают текст ошибки или null — их вызывают диалоги подтверждения
   async function unlinkTg() {
     const r = await api('/auth/unlink-telegram', {});
-    if (r.status !== 200) { ui.error = r.data.error || 'Не получилось отвязать'; rerender(); return; }
+    if (r.status !== 200) return r.data.error || 'Не получилось отвязать';
     account = Object.assign(account, fromMe(r.data)); saveState(); rerender(); if (window.KanaApp) window.KanaApp.rerender();
+    note('Telegram отвязан'); return null;
   }
+  const note = msg => { if (window.KanaUI) window.KanaUI.toast(msg); };
   // фото: уменьшаем на устройстве до 256×256 (обрезка по центру), JPEG ~20–40 КБ
   async function uploadAvatar(file) {
     ui.error = ''; ui.notice = 'Загружаю фото…'; rerender();
@@ -226,14 +236,14 @@ window.KanaSync = (function () {
       URL.revokeObjectURL(img.src);
       const r = await api('/auth/avatar', { data: c.toDataURL('image/jpeg', 0.85) });
       if (r.status !== 200) throw new Error(r.data.error || 'Не получилось загрузить фото');
-      account = Object.assign(account, fromMe(r.data)); saveState(); ui.notice = '';
+      account = Object.assign(account, fromMe(r.data)); saveState(); ui.notice = ''; note('Фото обновлено');
     } catch (e) { ui.notice = ''; ui.error = e.message; }
     rerender();
   }
   async function deleteAvatar() {
     const r = await api('/auth/avatar/delete', {});
-    if (r.status === 200) { account = Object.assign(account, fromMe(r.data)); saveState(); }
-    rerender();
+    if (r.status !== 200) return r.data.error || 'Не получилось убрать фото';
+    account = Object.assign(account, fromMe(r.data)); saveState(); rerender(); note('Фото убрано'); return null;
   }
   async function setName(name) {
     ui.busy = true; ui.error = ''; rerender();
@@ -255,17 +265,16 @@ window.KanaSync = (function () {
     if (window.KanaPush) await window.KanaPush.forget();   // напоминания этого устройства привязаны к аккаунту
     await api('/auth/logout', {});
     account = null; cursor = 0; snap = {}; lastSync = 0; status = ''; saveState();
-    ui.confirm = null; ui.error = ''; ui.linking = false; ui.notice = ''; stopTg();
+    ui.error = ''; ui.notice = ''; stopTg();
     window.KanaApp.resetLocal();   // перерисует «Я» уже без аккаунта
   }
   async function deleteAccount(password) {
-    ui.busy = true; ui.error = ''; rerender();
     const r = await api('/auth/delete', { password });
-    ui.busy = false;
-    if (r.status !== 200) { ui.error = r.data.error || 'Не получилось удалить аккаунт'; rerender(); return; }
-    account = null; cursor = 0; snap = {}; lastSync = 0; saveState();
-    window.KanaApp.resetLocal();
-    ui.confirm = null; rerender();
+    if (r.status !== 200) return r.data.error || 'Не получилось удалить аккаунт';
+    if (window.KanaPush) await window.KanaPush.forget().catch(() => { });
+    account = null; cursor = 0; snap = {}; lastSync = 0; saveState(); stopTg();
+    window.KanaApp.resetLocal(); window.KanaApp.open('me'); note('Аккаунт удалён');
+    return null;
   }
 
   // ---------- интерфейс ----------
@@ -291,57 +300,53 @@ window.KanaSync = (function () {
       renderAuthPage(form, 'login', { embedded: true, regId: 'btn-to-register' });
       return;
     }
+    const UI = window.KanaUI;
+    const icon = n => UI ? UI.I(n) : h('span');
     const nameForm = () => {
       const inp = h('input', { id: 'acc-name-edit', maxlength: 40, autocomplete: 'nickname', value: account.displayName || '', placeholder: 'Например, Павел', 'aria-label': 'Как к вам обращаться' });
-      setTimeout(() => inp.focus(), 30);
-      return h('form', { onsubmit: e => { e.preventDefault(); setName(inp.value); } }, inp,
-        h('button', { class: 'btn primary', type: 'submit', disabled: ui.busy }, 'Сохранить'),
-        account.displayName ? h('button', { class: 'link', type: 'button', onclick: () => { ui.editName = false; ui.error = ''; rerender(); } }, 'Отмена') : null);
+      setTimeout(() => { inp.focus(); inp.select(); }, 30);
+      inp.addEventListener('keydown', e => { if (e.key === 'Escape' && account.displayName) { ui.editName = false; rerender(); } });
+      return h('form', { class: 'name-edit', onsubmit: e => { e.preventDefault(); setName(inp.value); } }, inp,
+        h('button', { class: 'icbtn boxed ok', type: 'submit', disabled: ui.busy, 'aria-label': 'Сохранить имя', title: 'Сохранить' }, icon('check')),
+        account.displayName ? h('button', { class: 'icbtn boxed', type: 'button', 'aria-label': 'Отмена', title: 'Отмена', onclick: () => { ui.editName = false; ui.error = ''; rerender(); } }, icon('close')) : null);
     };
     if (!account.displayName) {
       el.append(h('div', { class: 'ask-name' }, h('b', {}, 'Как к вам обращаться?'), h('div', { class: 'st' }, 'Это имя увидят друзья.'), nameForm()));
     }
-    const fileIn = h('input', { type: 'file', accept: 'image/*', id: 'avatar-file', hidden: true, onchange: () => { if (fileIn.files[0]) uploadAvatar(fileIn.files[0]); } });
+    const fileIn = h('input', { type: 'file', accept: 'image/*', id: 'avatar-file', hidden: true, onchange: () => { if (fileIn.files[0]) uploadAvatar(fileIn.files[0]); fileIn.value = ''; } });
     const ava = (window.KanaAvatar ? window.KanaAvatar(account.displayName || account.username, account.avatar, 'big') : h('span'));
+    // фото: меню — загрузить или убрать (с подтверждением)
+    const avaBtn = h('button', { type: 'button', class: 'ava-btn', id: 'btn-avatar', 'aria-haspopup': 'menu', 'aria-label': 'Фото профиля', title: 'Фото профиля',
+      onclick: () => UI.menu(avaBtn, [
+        { icon: 'upload', label: account.avatar ? 'Сменить фото' : 'Загрузить фото', id: 'menu-avatar-up', onclick: () => fileIn.click() },
+        account.avatar ? { icon: 'trash', label: 'Убрать фото', danger: true, id: 'menu-avatar-del', onclick: () => UI.dialog({ title: 'Убрать фото?', text: 'Вместо фото будет картинка KANA. Новое фото можно загрузить в любой момент.', confirm: 'Убрать', danger: true, onConfirm: deleteAvatar }) } : null]) }, ava);
+    const editing = ui.editName && account.displayName;
     el.append(h('div', { class: 'profile' },
-      h('div', { class: 'ava-edit' }, h('button', { type: 'button', class: 'ava-btn', id: 'btn-avatar', title: account.avatar ? 'Сменить фото' : 'Добавить фото', 'aria-label': account.avatar ? 'Сменить фото' : 'Добавить фото', onclick: () => fileIn.click() }, ava), fileIn),
-      h('div', {}, h('div', { class: 'who' }, account.displayName || account.username),
+      h('div', { class: 'ava-edit' }, avaBtn, fileIn),
+      h('div', {}, editing ? nameForm() : h('div', { class: 'who-row' }, h('div', { class: 'who' }, account.displayName || account.username),
+          account.displayName ? h('button', { class: 'icbtn', type: 'button', id: 'btn-edit-name', 'aria-label': 'Изменить имя', title: 'Изменить имя', onclick: () => { ui.editName = true; rerender(); } }, icon('pen')) : null),
         account.displayName ? h('div', { class: 'login' }, '@' + account.username) : null,
         window.KanaLevel ? window.KanaLevel() : null)));
     const card = h('div', { class: 'sheet acc-card' }, h('div', { class: 'h3' }, 'Аккаунт'),
-      h('div', { class: 'st' }, status || ('Синхронизировано: ' + fmtTime(lastSync))),
-      h('div', { class: 'row' },
-        h('button', { class: 'btn ghost', type: 'button', disabled: running, onclick: () => syncNow() }, 'Синхронизировать')),
-      h('div', { class: 'row' },
-        account.displayName && !ui.editName ? h('button', { class: 'link', type: 'button', id: 'btn-edit-name', onclick: () => { ui.editName = true; rerender(); } }, 'Изменить имя') : null,
-        account.avatar ? h('button', { class: 'link', type: 'button', id: 'btn-avatar-del', onclick: deleteAvatar }, 'Убрать фото') : h('button', { class: 'link', type: 'button', onclick: () => fileIn.click() }, 'Добавить фото')));
+      h('div', { class: 'sync-row' }, h('span', { class: 'st' }, status || ('Синхронизировано: ' + fmtTime(lastSync))),
+        h('button', { class: 'btn ghost sm', type: 'button', disabled: running, onclick: () => syncNow() }, running ? 'Синхронизация…' : 'Синхронизировать')));
     el.append(card);
-    if (ui.editName && account.displayName) card.append(nameForm());
-    if (ui.notice) card.append(h('div', { class: 'okmsg', role: 'status' }, ui.notice));
+    if (ui.notice) card.append(h('div', { class: 'st', role: 'status' }, ui.notice));
     if (account.linked) {
-      card.append(h('div', { class: 'row tgline' }, h('span', { class: 'st' }, 'Телефон привязан через Telegram' + (account.telegram ? ' (@' + account.telegram + ')' : '')),
-        account.hasPassword ? h('button', { class: 'link', type: 'button', onclick: unlinkTg }, 'отвязать') : null));
+      const t = h('div', { class: 'tg-ok' }, h('span', { class: 'tg-ic' }), h('div', {}, h('b', {}, 'Телефон привязан через Telegram'),
+        h('div', { class: 'st' }, (account.telegram ? '@' + account.telegram + ' · ' : '') + 'вход в один шаг, без пароля')), h('span', { class: 'tg-check' }, icon('check')));
+      t.querySelector('.tg-ic').innerHTML = TG_ICON;
+      card.append(t);
     } else if (tgEnabled !== false) {
-      card.append(h('div', { class: 'tglink' }, h('div', { class: 'st' }, 'Привяжите Telegram — сможете входить в один шаг, без пароля. Номер другим пользователям не показывается.'),
-        ui.linking ? tgBlock('link') : h('button', { class: 'btn ghost', type: 'button', id: 'btn-link-start', onclick: () => { ui.linking = true; rerender(); } }, 'Привязать телефон')));
+      card.append(h('div', { class: 'tglink' }, tgBlock('link'),
+        h('div', { class: 'st' }, 'Сможете входить в один шаг, без пароля. Номер другим пользователям не показывается.')));
     }
     if (!tgChecked) tgConfig().then(() => rerender());
-    // выход — отдельно, в самом низу профиля
-    el.append(h('div', { class: 'logout-box' }, ui.confirm === 'logout'
-      ? h('div', { class: 'sheet stack' }, h('span', { class: 'st' }, 'Прогресс сохранён в аккаунте. С этого устройства он будет удалён, пока вы снова не войдёте.'),
-        h('div', { class: 'row' }, h('button', { class: 'btn primary red', type: 'button', onclick: logout }, 'Выйти'),
-          h('button', { class: 'btn ghost', type: 'button', onclick: () => { ui.confirm = null; rerender(); } }, 'Отмена')))
-      : h('button', { class: 'btn logout wide', type: 'button', id: 'btn-logout', onclick: () => { ui.confirm = 'logout'; ui.error = ''; rerender(); } }, 'Выйти из аккаунта')));
-    if (ui.confirm === 'delete') {
-      const pass = h('input', { type: 'password', autocomplete: 'current-password', placeholder: 'Пароль для подтверждения', 'aria-label': 'Пароль' });
-      card.append(h('form', { class: 'stack', onsubmit: e => { e.preventDefault(); deleteAccount(pass.value); } },
-        h('span', { class: 'st' }, 'Аккаунт и всё, что в нём сохранено, будут удалены без возможности восстановления.'), pass,
-        h('div', { class: 'row' }, h('button', { class: 'btn danger', type: 'submit', disabled: ui.busy }, 'Удалить навсегда'),
-          h('button', { class: 'link', type: 'button', onclick: () => { ui.confirm = null; ui.error = ''; rerender(); } }, 'Отмена'))));
-    } else {
-      card.append(h('div', { class: 'row' }, h('button', { class: 'link danger', type: 'button', onclick: () => { ui.confirm = 'delete'; rerender(); } }, 'Удалить аккаунт')));
-    }
     if (ui.error) card.append(h('div', { class: 'err', role: 'alert' }, ui.error));
+    // выход — отдельно, в самом низу профиля, с подтверждением
+    el.append(h('div', { class: 'logout-box' }, h('button', { class: 'btn logout wide', type: 'button', id: 'btn-logout', onclick: () => UI.dialog({
+      title: 'Выйти из аккаунта?', text: 'Прогресс сохранён в аккаунте. С этого устройства он будет удалён, пока вы снова не войдёте.', confirm: 'Выйти', danger: true,
+      onConfirm: async () => { await logout(); return null; } }) }, 'Выйти из аккаунта')));
   }
 
   // ---------- отдельные экраны входа и регистрации ----------
@@ -405,5 +410,5 @@ window.KanaSync = (function () {
     if (account) setTimeout(() => { syncNow(); refreshMe(); }, 800);
   }
 
-  return { touch, syncNow, renderAccount, renderAuthPage, api, refreshMe, get account() { return account; } };
+  return { touch, syncNow, renderAccount, renderAuthPage, api, refreshMe, unlinkTg, deleteAccount, get account() { return account; } };
 })();

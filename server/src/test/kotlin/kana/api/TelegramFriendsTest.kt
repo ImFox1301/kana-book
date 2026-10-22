@@ -89,6 +89,29 @@ class TelegramFriendsTest(@Autowired val mvc: MockMvc, @Autowired val om: Object
     private fun username(id: Long) = jdbc.queryForObject("select username from users where id = ?", String::class.java, id)!!
 
     @Test
+    fun `вход по паролю в аккаунт с Telegram подтверждается в боте`() {
+        val (_, id) = register("Вера")
+        linkDirect(id); val tgId = 900_000_000L + id
+        val r = res(json(post("/api/auth/login"), mapOf("username" to username(id), "password" to "secret-pass")))
+        assertEquals(202, r.status, "без подтверждения сессии нет")
+        assertEquals(null, r.getCookie("kana_session"))
+        val b = om.readTree(r.contentAsString)
+        assertEquals("telegram", b["confirm"].asText())
+        assertTrue(lastTo(tgId)["text"].asText().contains("по паролю"), "бот спрашивает подтверждение")
+        val n = b["nonce"].asText() to b["secret"].asText()
+        assertEquals("confirm", om.readTree(status(n).contentAsString)["status"].asText())
+        callback(tgId, "ok:" + n.first)
+        val ok = status(n)
+        assertEquals("ok", om.readTree(ok.contentAsString)["status"].asText())
+        assertTrue(ok.getCookie("kana_session") != null, "после подтверждения — сессия")
+        // «Это не я» — вход отклонён
+        val r2 = om.readTree(res(json(post("/api/auth/login"), mapOf("username" to username(id), "password" to "secret-pass"))).contentAsString)
+        val n2 = r2["nonce"].asText() to r2["secret"].asText()
+        callback(tgId, "no:" + n2.first)
+        assertEquals("denied", om.readTree(status(n2).contentAsString)["status"].asText())
+    }
+
+    @Test
     fun `вход через Telegram — новый пользователь делится номером`() {
         val tgId = 7_000_000_000L + (System.nanoTime() % 1_000_000)
         val n = startLogin()

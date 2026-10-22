@@ -141,7 +141,7 @@ async function build(page, wrong) {
   // выход из аккаунта снимает подписку этого устройства
   calls.length = 0;
   await pp.click('#tab-me');
-  await pp.click('#account-box >> text=Выйти'); await pp.click('#account-box .btn.primary:has-text("Выйти")');
+  await pp.click('#account-box >> text=Выйти'); await pp.click('dialog.dlg .btn:has-text("Выйти")');
   await pp.waitForSelector('#me-login');
   check(calls.includes('unsubscribe'), 'при выходе подписка снята');
   await pp.click('#tab-me'); await pp.click('#btn-settings');

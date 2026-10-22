@@ -103,7 +103,7 @@ async function answerCards(page, n) {
   // Выход: данные остаются в аккаунте, устройство очищается
   await A.page.click('#tab-me');
   await A.page.click('#account-box >> text=Выйти');
-  await A.page.click('#account-box .btn.primary:has-text("Выйти")');
+  await A.page.click('dialog.dlg .btn:has-text("Выйти")');
   await A.page.waitForSelector('#me-login');
   check((await words(A.page)).length === 0 && await answers(A.page) === 0, 'A: после выхода устройство очищено');
   await synced(B.page);

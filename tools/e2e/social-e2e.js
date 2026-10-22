@@ -98,7 +98,6 @@ async function openBot(page, sel) {
   const maria = await signup(B.page, { name: 'Мария', user: 'maria_' + sfx });
   check(await B.page.evaluate(() => !document.querySelector('#tab-friends').hidden), 'Мария: «Друзья» доступны и без привязки телефона');
   await B.page.click('#tab-me');
-  await B.page.click('#btn-link-start');
   nonce = await openBot(B.page, '#btn-tg-link');
   await start(tgIds.maria, nonce, 'Маша');
   await contact(tgIds.maria, tgIds.maria, 'Маша');
@@ -136,7 +135,9 @@ async function openBot(page, sel) {
   const png = require('path').resolve(__dirname, '../../assets/icons/kana-icon-192.png');
   await C.page.setInputFiles('#avatar-file', png);
   await C.page.waitForSelector('#btn-avatar img');
-  check(await C.page.isVisible('#btn-avatar-del'), 'Олег: фото профиля загружено');
+  await C.page.click('#btn-avatar');
+  check(await C.page.isVisible('#menu-avatar-del'), 'Олег: фото профиля загружено, в меню фото есть «Убрать фото»');
+  await C.page.keyboard.press('Escape');
   await C.page.screenshot({ path: SHOTS + '/me-avatar.png', fullPage: true });
   await C.page.click('#tab-me'); await C.page.click('#me-friends');
   await C.page.fill('#friend-q', 'ivan_' + sfx.slice(0, 2));
@@ -166,7 +167,7 @@ async function openBot(page, sel) {
 
   // --- повторный вход через Telegram: без номера, кнопкой «Войти» ---
   await A.page.click('#tab-me');
-  await A.page.click('#account-box >> text=Выйти'); await A.page.click('#account-box .btn.primary:has-text("Выйти")');
+  await A.page.click('#account-box >> text=Выйти'); await A.page.click('dialog.dlg .btn:has-text("Выйти")');
   await A.page.waitForSelector('#me-login #btn-tg-login');
   nonce = await openBot(A.page, '#btn-tg-login');
   await start(tgIds.ivan, nonce, 'Иван', 'ivan_' + sfx);

@@ -88,6 +88,18 @@ class TgService(private val jdbc: JdbcTemplate, private val api: TgApi, private 
         return StartResponse(nonce, secret, "https://t.me/${api.botName()}?start=$nonce")
     }
 
+    /**
+     * Вход по паролю в аккаунт с привязанным Telegram: подтверждение в боте (второй фактор).
+     * Попытка сразу в состоянии «confirm» — бот присылает кнопки «Войти» / «Это не я»; ссылка — запасной путь, если сообщение не дошло.
+     */
+    fun startConfirm(userId: Long, tgId: Long, name: String): StartResponse? {
+        if (!props.enabled) return null
+        val nonce = token(18); val secret = token(24)
+        jdbc.update("insert into tg_logins (nonce, secret_hash, kind, user_id, tg_id, status) values (?, ?, 'login', ?, ?, 'confirm')", nonce, sha(secret), userId, tgId)
+        api.send(tgId, "Вход в KANA по паролю как «$name».\nЕсли это вы — нажмите «Войти». Если нет — «Это не я» и смените пароль.", confirmMarkup(nonce))
+        return StartResponse(nonce, secret, "https://t.me/${api.botName()}?start=$nonce")
+    }
+
     data class Row(val nonce: String, val kind: String, val userId: Long?, val tgId: Long?, val status: String, val message: String?, val resultUserId: Long?, val fresh: Boolean)
     private fun row(where: String, vararg args: Any): Row? = jdbc.query(
         "select nonce, kind, user_id, tg_id, status, message, result_user_id, created_at > now() - make_interval(mins => ${props.ttlMinutes.toInt()}) as fresh from tg_logins where $where",
