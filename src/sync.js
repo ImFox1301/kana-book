@@ -154,11 +154,16 @@ window.KanaSync = (function () {
     tg = { kind, nonce: r.data.nonce, secret: r.data.secret, link: r.data.link, state: 'ready', at: Date.now() };
     rerender();
   }
-  let tgWin = null;
-  const closeTgWin = () => { if (!tgWin) return; const w = tgWin; tgWin = null; setTimeout(() => { try { w.close(); } catch (e) { } }, 300); };
-  // вернулись из Telegram — убрать оставшуюся вкладку (about:blank или t.me)
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') closeTgWin(); });
-  window.addEventListener('focus', closeTgWin);
+  let tgWin = null, tgLeft = false;
+  // вернулись из Telegram — убрать оставшуюся вкладку (about:blank или t.me).
+  // Только если приложение действительно уходило в фон: иначе вкладка не успела бы передать ссылку в Telegram.
+  document.addEventListener('visibilitychange', () => {
+    if (!tgWin) return;
+    if (document.visibilityState === 'hidden') { tgLeft = true; return; }
+    if (!tgLeft) return;
+    const w = tgWin; tgWin = null; tgLeft = false;
+    setTimeout(() => { try { if (!w.closed) w.close(); } catch (e) { } }, 300);
+  });
   function stopTg() { if (tg && tg.timer) clearInterval(tg.timer); tg = null; ss.set(null); }
   function tgOpened() {
     if (!tg || !tg.nonce) return;
@@ -203,7 +208,7 @@ window.KanaSync = (function () {
         // окно открываем сразу (иначе браузер заблокирует его как всплывающее) и запоминаем:
         // Telegram откроется своим приложением, а пустую вкладку закроем, когда человек вернётся
         const w = window.open(ready ? tg.link : 'about:blank', '_blank');
-        tgWin = w;
+        tgWin = w; tgLeft = false;
         if (!ready) {
           if (!tg || tg.kind !== kind || !tg.link) { stopTg(); await tgPrepare(kind); }
           if (!(tg && tg.link)) { if (w) w.close(); tgWin = null; return; }
