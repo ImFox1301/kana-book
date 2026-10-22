@@ -2129,7 +2129,9 @@
       if (!got.length) return;
       store.set('ach', earned);
       if (!quiet) toast(got.length === 1 ? `Новое достижение: ${got[0].t}` : `Новые достижения: ${got.map(a => a.t).join(', ')}`, 'trophy');
-      if (current === 'me') renderMe(); else if (current === 'achievements') renderAchievements();
+      // в профиле — только счётчик, чтобы не сбить ввод (например, правку имени)
+      const d = $('#me-ach .d'); if (d) d.textContent = `${ACH_ALL.filter(a => earned[a.id]).length} из ${ACH_ALL.length}`;
+      if (current === 'achievements') renderAchievements();
     }, quiet ? 50 : 400);
   }
   function renderAchievements() {
