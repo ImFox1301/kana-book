@@ -48,14 +48,16 @@ async function openBot(page, sel) {
   await G.page.screenshot({ path: SHOTS + '/welcome.png', fullPage: true });
   await G.page.click('#btn-guest');
   const home = await G.page.textContent('#screen-home');
-  check(home.includes('Создать аккаунт') && !home.includes('Занятия'), 'гость: на «Сегодня» — приглашение войти, без цели дня');
+  check(!home.includes('Создать аккаунт') && !home.includes('Занятия'), 'гость: на «Сегодня» без окна входа и без цели дня');
   check(await G.page.locator('#screen-home .cta').count() >= 5, 'гость: тренировки доступны');
   await G.page.click('#tab-lessons');
-  check((await G.page.textContent('#screen-lessons')).includes('доступны с аккаунтом') && await G.page.locator('#screen-lessons .lrow').count() === 5, 'гость: уроки закрыты, чтение в поездке открыто');
+  check(await G.page.locator('#screen-lessons .lrow.locked').count() === 18, 'гость: уроки закрыты замком');
+  await G.page.click('#lesson-tabs button:has-text("Чтение")');
+  check(await G.page.locator('#screen-lessons .lrow:not(.locked)').count() === 5, 'гость: чтение надписей открыто');
   await G.page.click('#tab-me'); await G.page.click('#btn-settings');
   check(!(await G.page.textContent('#settings')).includes('Цель') && !(await G.page.textContent('#settings')).includes('Напоминания'), 'гость: в настройках нет цели и напоминаний');
   await G.page.click('#tab-dict');
-  check(await G.page.isVisible('#dict-guest') && await G.page.isHidden('#add-panel') && await G.page.isHidden('#import-panel') && await G.page.isHidden('#backup-panel'), 'гость: добавление, импорт и копия слов — только с аккаунтом');
+  check(!(await G.page.textContent('#dict-tabs')).includes('Избранное') && await G.page.isHidden('#dict-guest') && await G.page.isHidden('#add-panel') && await G.page.isHidden('#import-panel') && await G.page.isHidden('#backup-panel'), 'гость: добавление, импорт и копия слов — только с аккаунтом');
   check(await G.page.locator('#wlist .del').count() === 0, 'гость: удалять слова нельзя');
   await G.page.click('#tab-me');
   check(await G.page.isHidden('#stats'), 'гость: в «Я» нет прогресса');
@@ -165,8 +167,7 @@ async function openBot(page, sel) {
   // --- повторный вход через Telegram: без номера, кнопкой «Войти» ---
   await A.page.click('#tab-me');
   await A.page.click('#account-box >> text=Выйти'); await A.page.click('#account-box .btn.primary:has-text("Выйти")');
-  await A.page.waitForSelector('#btn-to-login');
-  await A.page.click('#btn-to-login');
+  await A.page.waitForSelector('#me-login #btn-tg-login');
   nonce = await openBot(A.page, '#btn-tg-login');
   await start(tgIds.ivan, nonce, 'Иван', 'ivan_' + sfx);
   await A.page.waitForFunction(() => (document.querySelector('#tg-status') || {}).textContent?.includes('Подтвердите'));

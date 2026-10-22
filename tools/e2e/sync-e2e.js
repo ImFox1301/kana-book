@@ -45,7 +45,7 @@ async function answerCards(page, n) {
   check(await answers(A.page) === 0 && await A.page.evaluate(() => !localStorage.getItem('kana-tetrad:answers') || localStorage.getItem('kana-tetrad:answers') === '[]'), 'A: ответы гостя не хранятся');
   await A.page.click('#tab-me');
   check(await A.page.isHidden('#stats'), 'A: у гостя нет раздела прогресса');
-  check(await A.page.isVisible('#btn-to-login') && await A.page.isVisible('#btn-to-register'), 'A: в «Я» — кнопки «Войти» и «Создать аккаунт»');
+  check(await A.page.isVisible('#me-login #acc-user') && await A.page.isVisible('#btn-to-register'), 'A: в профиле — форма входа и «Создать»');
   await A.page.click('#btn-to-register');
   check(await A.page.isVisible('#screen-register') && await A.page.isVisible('#acc-name'), 'A: регистрация — отдельный экран с полем «Как к вам обращаться»');
   await A.page.screenshot({ path: (process.env.SHOTS || '/tmp') + '/register.png', fullPage: true });
@@ -75,10 +75,9 @@ async function answerCards(page, n) {
   const B = await device(browser, 'B');
   check((await words(B.page)).length === 0, 'B: до входа своих слов нет');
   await B.page.click('#tab-me');
-  await B.page.click('#btn-to-login');
-  check(await B.page.isVisible('#screen-login') && !(await B.page.isVisible('#acc-name')), 'B: вход — отдельный экран, без поля имени');
+  check(await B.page.isVisible('#me-login') && !(await B.page.isVisible('#acc-name')), 'B: в профиле форма входа, без поля имени');
   await B.page.fill('#acc-user', user); await B.page.fill('#acc-pass', pass);
-  await B.page.click('#screen-login button[type=submit]');
+  await B.page.click('#me-login button[type=submit]');
   await B.page.waitForSelector('#account-box .who');
   check((await B.page.textContent('#account-box .who')) === 'Паша', 'B: имя пришло с аккаунтом');
   await synced(B.page);
@@ -105,17 +104,16 @@ async function answerCards(page, n) {
   await A.page.click('#tab-me');
   await A.page.click('#account-box >> text=Выйти');
   await A.page.click('#account-box .btn.primary:has-text("Выйти")');
-  await A.page.waitForSelector('#btn-to-login');
+  await A.page.waitForSelector('#me-login');
   check((await words(A.page)).length === 0 && await answers(A.page) === 0, 'A: после выхода устройство очищено');
   await synced(B.page);
   check((await words(B.page)).includes('いぬ') && await answers(B.page) === 3, 'B: в аккаунте всё на месте');
 
   // Неверный пароль
-  await A.page.click('#btn-to-login');
   await A.page.fill('#acc-user', user); await A.page.fill('#acc-pass', 'wrong-pass-1');
-  await A.page.click('#screen-login button[type=submit]');
-  await A.page.waitForSelector('#screen-login .err');
-  check((await A.page.textContent('#screen-login .err')).includes('Неверный'), 'A: неверный пароль — понятная ошибка');
+  await A.page.click('#me-login button[type=submit]');
+  await A.page.waitForSelector('#me-login .err:not([hidden])');
+  check((await A.page.textContent('#me-login .err')).includes('Неверный'), 'A: неверный пароль — понятная ошибка');
   await A.page.screenshot({ path: (process.env.SHOTS || '/tmp') + '/login-error.png', fullPage: true });
 
   await B.page.screenshot({ path: process.env.SHOT || '/tmp/kana-e2e.png', fullPage: true });

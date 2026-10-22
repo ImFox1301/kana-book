@@ -1,4 +1,4 @@
-// Сквозная проверка этапа 3: уроки катаканы и «Чтение в поездке».
+// Сквозная проверка этапа 3: уроки катаканы и «Чтение надписей».
 // Запуск: node tools/e2e/serve.js & node tools/e2e/kata-e2e.js http://localhost:8790
 const { chromium } = require('playwright');
 const { ready, practiceHub } = require('./common.js');
@@ -39,7 +39,7 @@ async function finishQuiz(page, wrongKanji) {
   await page.click('#tab-lessons');
   const txt = await page.textContent('#screen-lessons');
   check(txt.includes('Базовый курс · 18 уроков') && txt.includes('0 из 18 пройдено') && (await page.textContent('#lesson-tabs')).includes('Катакана'), 'в «Уроках» курсы по 18 уроков, переключатель азбук');
-  check((await page.textContent('#lesson-tabs')).includes('Чтение'), 'в «Уроках» есть раздел «Чтение в поездке»');
+  check((await page.textContent('#lesson-tabs')).includes('Чтение'), 'в «Уроках» есть раздел «Чтение надписей»');
   await page.screenshot({ path: SHOTS + '/kata-lessons.png', fullPage: true });
   await page.click('#lesson-tabs button:has-text("Катакана")');
   check((await page.textContent('#screen-lessons')).includes('Катакана') && await page.locator('#screen-lessons .lrow').count() === 18, 'катакана: 18 уроков');
@@ -78,9 +78,9 @@ async function finishQuiz(page, wrongKanji) {
   check(pdf && pdf.name === 'Катакана, урок 18 — конспект.pdf', 'имя файла: ' + (pdf && pdf.name));
   check(pdf && pdf.size > 20000, 'PDF собран: ' + (pdf && pdf.size));
 
-  // --- чтение в поездке ---
+  // --- чтение надписей ---
   await practiceHub(page);
-  await page.click('#screen-practice .cta:has-text("Чтение в поездке")');
+  await page.click('#screen-practice .cta:has-text("Чтение надписей")');
   await page.waitForSelector('#screen-reading .lrow');
   check(await page.locator('#screen-reading .lrow').count() === 5, '5 тем');
   await page.screenshot({ path: SHOTS + '/reading.png', fullPage: true });
@@ -109,7 +109,7 @@ async function finishQuiz(page, wrongKanji) {
   await page.click('#btn-quit');
   // прочитать надписи каной
   await practiceHub(page);
-  await page.click('#screen-practice .cta:has-text("Чтение в поездке")');
+  await page.click('#screen-practice .cta:has-text("Чтение надписей")');
   await page.click('#screen-reading .lrow:has-text("Еда")');
   await page.click('#screen-reading .btn:has-text("Прочитать")');
   await page.waitForSelector('#card #answer');

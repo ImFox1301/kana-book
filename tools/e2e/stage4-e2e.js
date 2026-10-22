@@ -142,7 +142,7 @@ async function build(page, wrong) {
   calls.length = 0;
   await pp.click('#tab-me');
   await pp.click('#account-box >> text=Выйти'); await pp.click('#account-box .btn.primary:has-text("Выйти")');
-  await pp.waitForSelector('#btn-to-login');
+  await pp.waitForSelector('#me-login');
   check(calls.includes('unsubscribe'), 'при выходе подписка снята');
   await pp.click('#tab-me'); await pp.click('#btn-settings');
   check(await pp.locator('#set-notify').count() === 0, 'после выхода пункта напоминаний нет');

@@ -468,7 +468,7 @@
     el.append(list, h('div', { class: 'actions' }, iconBtn('btn ghost wide', 'next', 'Все уровни вперемешку · 10', () => startBuilder(null))));
   }
 
-  // ---------- чтение в поездке ----------
+  // ---------- чтение надписей ----------
   const readingItem = (t, [sign, kana, mean, read]) => ({ kind: 'word', kana, w: { kana, mean, read, sign, kanji: hasKanji(sign) ? sign : undefined, topic: t.title, rtopic: t.id } });
   const readingItems = t => t.items.map(x => readingItem(t, x));
   const meaningOf = k => { const w = wordIndex().get(k); return w ? w.mean : k; };
@@ -503,7 +503,7 @@
   function renderReading() {
     const el = $('#screen-reading'); el.replaceChildren();
     if (!RT) {
-      el.append(pageHead('Чтение в поездке', 'practice'),
+      el.append(pageHead('Чтение надписей', 'practice'),
         h('p', { class: 'psub' }, 'Короткие надписи для реальной жизни'), h('div', { class: 'banner', style: 'background-image:url(img/tokyo-s.webp)' }),
         h('p', { class: 'small muted', style: 'margin:0' }, 'Вывески, указатели и меню по темам. Надписи каной тренируются и на чтение, надписи иероглифами достаточно узнавать в лицо — чтение показывается после ответа. Шрифт — как на настоящих табличках, а не рукописный.'),
         readingList(),
@@ -512,7 +512,7 @@
     }
     const t = RT, items = readingItems(t), kanaOnly = items.filter(x => !hasKanji(x.w.sign));
     el.append(pageHead(t.title, () => { RT = null; renderReading(); window.scrollTo(0, 0); }),
-      h('div', { class: 'crumb' }, 'Чтение в поездке' + ((lessonsDone['r-' + t.id] || {}).quiz ? ` · лучший результат ${lessonsDone['r-' + t.id].quiz}%` : '')),
+      h('div', { class: 'crumb' }, 'Чтение надписей' + ((lessonsDone['r-' + t.id] || {}).quiz ? ` · лучший результат ${lessonsDone['r-' + t.id].quiz}%` : '')),
       h('div', { class: 'banner', style: 'background-image:url(img/pagoda-s.webp)' }),
       h('p', { class: 'lintro-text' }, t.intro),
       h('div', { class: 'actions col' },
@@ -1018,6 +1018,8 @@
   const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice', reading: 'practice', builder: 'practice', login: 'me', register: 'me', friends: 'friends', settings: 'me', progress: 'me' };
   const tabOf = name => (FLOW && ['quiz', 'result', 'write'].includes(name)) ? 'lessons' : TAB_OF[name];
   const lastOf = { home: 'home', lessons: 'lessons', practice: 'practice', dict: 'dict', me: 'me', friends: 'friends' };
+  // настоящая высота нижней панели (с safe area и крупным шрифтом) — чтобы плашка обновления и панель прописей не прятались под ней
+  if (window.ResizeObserver) new ResizeObserver(([e]) => document.documentElement.style.setProperty('--nav-real', Math.ceil(e.target.getBoundingClientRect().height) + 'px')).observe($('#bnav'));
   let beforeAuth = null;
   function show(name) {
     if (!['login', 'register'].includes(current) && ['login', 'register'].includes(name)) beforeAuth = current;
@@ -1084,11 +1086,11 @@
   function renderDict() {
     // свои слова, импорт и копия — только с аккаунтом (слова синхронизируются)
     const g = guest();
-    $('#dict-guest').hidden = !g;
+    $('#dict-guest').hidden = true;   // без аккаунта — просто стартовый словарь, без окна входа
     $('#dict-panels').hidden = g;
     $('#dict-menu-btn').hidden = g; if (g) $('#dict-menu').hidden = true;
-    const view = ['all', 'fav', 'topics'].includes(S.dictView) ? S.dictView : 'all';
-    $('#dict-tabs').replaceChildren(...[['all', 'Все'], ['fav', 'Избранное'], ['topics', 'Темы']].map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(view === v), onclick: () => { S.dictView = v; save(); renderDict(); } }, t)));
+    const view = (g ? ['all', 'topics'] : ['all', 'fav', 'topics']).includes(S.dictView) ? S.dictView : 'all';
+    $('#dict-tabs').replaceChildren(...[['all', 'Все'], g ? null : ['fav', 'Избранное'], ['topics', 'Темы']].filter(Boolean).map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(view === v), onclick: () => { S.dictView = v; save(); renderDict(); } }, t)));
     const q = ($('#dict-q').value || '').trim().toLowerCase();
     const ws = allWords();
     $('#topics').replaceChildren(...topicsOf(ws).map(t => h('option', { value: t })));
@@ -1382,7 +1384,7 @@
     const m = new Map();
     for (const l of LESSONS) for (const [kana, mean, kanji, read] of l.words) m.set(kana, { kana, mean, kanji, read, topic: 'Урок' });
     for (const w of allWords()) m.set(w.kana, w);
-    // надпись из «Чтения в поездке» важнее: у неё есть вид таблички (駅, 出口), повторение показывает именно её
+    // надпись из «Чтения надписей» важнее: у неё есть вид таблички (駅, 出口), повторение показывает именно её
     for (const t of READING) for (const it of readingItems(t)) m.set(it.kana, it.w);
     return m;
   }
@@ -1462,7 +1464,7 @@
   }
 
   // ---------- экран «Уроки» ----------
-  const COURSE = { h: { name: 'Хирагана', pic: 'fuji' }, k: { name: 'Катакана', pic: 'torii' }, r: { name: 'Чтение в поездке', pic: 'tokyo' } };
+  const COURSE = { h: { name: 'Хирагана', pic: 'fuji' }, k: { name: 'Катакана', pic: 'torii' }, r: { name: 'Чтение надписей', pic: 'tokyo' } };
   function renderLessons() {
     const el = $('#screen-lessons'); el.replaceChildren();
     const rec = guest() ? null : recommended();
@@ -1471,15 +1473,19 @@
     el.lastChild.classList.add('tabs'); el.lastChild.id = 'lesson-tabs';
     const pic = n => h('div', { class: 'pic', style: `background-image:url(img/${n}-s.webp)` });
     if (tab === 'r') {
-      el.append(h('div', { class: 'sheet course' }, pic('tokyo'), h('div', { class: 'body' }, h('h2', {}, 'Чтение в поездке'), h('div', { class: 'meta' }, `Вывески, указатели и меню · ${READING.length} тем`))),
+      el.append(h('div', { class: 'sheet course' }, pic('tokyo'), h('div', { class: 'body' }, h('h2', {}, 'Чтение надписей'), h('div', { class: 'meta' }, `${READING.length} ${plural(READING.length, 'тема', 'темы', 'тем')}`))),
         h('h2', { class: 'h2' }, 'Темы'), readingList());
       return;
     }
     if (guest()) {
+      // уроки с прогрессом — с аккаунтом: список виден, нажатие ведёт ко входу
+      const ls = LESSONS.filter(l => l.script === tab);
       el.append(h('div', { class: 'sheet course' }, pic(COURSE[tab].pic), h('div', { class: 'body' }, h('h2', {}, COURSE[tab].name),
-        h('div', { class: 'meta' }, 'Уроки по порядку, с прогрессом'))),
-        guestCard('Уроки хираганы и катаканы ведут вас по порядку и запоминают, что пройдено, — поэтому они доступны с аккаунтом. Без него можно тренироваться в «Практике».'),
-        h('h2', { class: 'h2' }, 'Чтение в поездке'), h('p', { class: 'psub' }, 'Вывески, указатели и меню по темам.'), readingList());
+        h('div', { class: 'meta' }, `Базовый курс · ${ls.length} ${plural(ls.length, 'урок', 'урока', 'уроков')}`))),
+        h('h2', { class: 'h2' }, 'Уроки'),
+        h('div', { class: 'lessons' }, ...ls.map(l => h('button', { type: 'button', class: 'lrow locked', title: 'Уроки сохраняют прогресс — войдите в профиль', onclick: () => show('login') },
+          h('span', { class: 'n' }, I('book')), h('span', {}, h('div', { class: 't' }, `${lessonNo(l)}. ${l.title}`), h('div', { class: 'k' }, lessonPreview(l))),
+          h('span', { class: 'end muted' }, I('lock'))))));
       return;
     }
     const ls = LESSONS.filter(l => l.script === tab), done = ls.filter(isDone).length;
@@ -1630,7 +1636,7 @@
     const box = h('div', { class: 'sheet cont' });
     if (!rec) {
       box.append(h('div', { class: 'lab' }, 'Все уроки пройдены'), h('div', { class: 'ln' }, h('b', {}, 'Хирагана и катакана выучены — дальше чтение вывесок и меню')),
-        iconBtn('btn primary wide', 'next', 'Чтение в поездке', () => { RT = null; show('reading'); }));
+        iconBtn('btn primary wide', 'next', 'Чтение надписей', () => { RT = null; show('reading'); }));
       return box;
     }
     const st = lessonSteps(rec), started = st.done > 0 || (lessonState(rec).quiz || 0) > 0, kanas = lessonKana(rec);
@@ -1713,7 +1719,7 @@
         cta('listen', 'Аудирование', 'Распознавайте звуки', null, () => openListenSetup()),
         cta('similar', 'Похожие знаки', 'Научитесь видеть различия', null, () => show('similar')),
         cta('builder', 'Конструктор предложений', 'Собирайте фразы из блоков', null, () => show('builder')),
-        cta('reading', 'Чтение в поездке', 'Вывески, указатели и меню', null, () => { RT = null; show('reading'); }),
+        cta('reading', 'Чтение надписей', 'Вывески, указатели и меню', null, () => { RT = null; show('reading'); }),
         weak.length ? cta('weak', 'Слабые знаки', 'Повторите сложные символы', weak.map(w => w.ch).slice(0, 10).join(' '), () => { const items = weak.map(w => ({ kind: 'kana', kana: w.ch })); startQuiz(items, items.length * 2, { mode: 'type' }); }) : null));
   }
 
@@ -1856,7 +1862,7 @@
       guest() ? null : grp('Ежедневная цель', segm('Минут в день', GOAL_MIN.map(v => [v, v + ' мин']), g.min, v => setGoal('min', v)), 'Считается время в уроках, квизах и прописях.'),
       guest() ? null : grp('Карточек и прописей в день', segm('Карточек в день', GOAL_CARDS.map(v => [v, String(v)]), g.cards, v => setGoal('cards', v)),
         'Каждый ответ в квизе и каждая попытка в прописях. Цель выполнена, когда набраны и минуты, и карточки.'),
-      card('moon', 'Тема', segm('Тема', [['system', 'Системная'], ['light', 'Светлая'], ['dark', 'Тёмная']], ['light', 'dark'].includes(S.theme) ? S.theme : 'system', v => { S.theme = v; save(); applyTheme(true); renderSettings(); }), 'Системная — как на устройстве. ' + (acct() ? 'Выбор запоминается в аккаунте' : 'Выбор запоминается на этом устройстве')),
+      card('moon', 'Тема', segm('Тема', [['system', 'Системная'], ['light', 'Светлая'], ['dark', 'Тёмная']], ['light', 'dark'].includes(S.theme) ? S.theme : 'system', v => { S.theme = v; if (guest()) store.set('theme-chosen', true); save(); applyTheme(true); renderSettings(); }), 'Системная — как на устройстве. ' + (acct() ? 'Выбор запоминается в аккаунте' : 'Выбор запоминается на этом устройстве')),
       card('help', 'Транскрипция', segm('Транскрипция', [['ru', 'Кириллица'], ['lat', 'Латиница']], S.sys, v => { S.sys = v; save(); renderSettings(); })),
       card('sound', 'Голос озвучки', segm('Голос', [['m', 'Мужской'], ['f', 'Женский']], S.voice === 'f' ? 'f' : 'm', v => { S.voice = v; save(); sampleVoice(); renderSettings(); }), voiceSample ? `Прозвучало: ${voiceSample.kana} — ${voiceSample.mean}` : 'VOICEVOX:青山龍星 и VOICEVOX:波音リツ'),
       card('pen', 'Проверка письма', segm('Строгость', [[0, 'Строго'], [1, 'Обычно'], [2, 'Мягко']], S.len, v => { S.len = v; save(); renderSettings(); })),
@@ -1937,14 +1943,11 @@
         h('button', { class: 'btn ghost', type: 'button', onclick: () => show('login') }, 'Войти')));
   }
   function renderGuestHome(el) {
-    const hero = heroBlock('Без аккаунта можно тренироваться, но прогресс не сохраняется.');
-    const cont = (h('div', { class: 'sheet cont' }, h('div', { class: 'lab' }, 'Уроки, цель и прогресс'),
-      h('div', { class: 'ln' }, h('b', {}, 'С аккаунтом — уроки хираганы и катаканы, повторение, напоминания и друзья')),
-      h('div', { class: 'row' }, h('button', { class: 'btn primary', type: 'button', style: 'flex:1', onclick: () => show('register') }, 'Создать аккаунт'),
-        h('button', { class: 'btn ghost', type: 'button', style: 'flex:1', onclick: () => show('login') }, 'Войти'))));
+    const hero = heroBlock('Тренируйтесь в квизах, азбуке и прописях — сколько угодно.');
+    hero.classList.add('solo');
     el.append(h('div', { class: 'home' },
-      h('div', { class: 'hello-d' }, h('h1', {}, greet()), h('p', {}, 'Без аккаунта можно тренироваться в квизах, азбуке и прописях, но прогресс не сохраняется.')),
-      hero, cont,
+      h('div', { class: 'hello-d' }, h('h1', {}, greet()), h('p', {}, 'Тренируйтесь в квизах, азбуке и прописях — сколько угодно.')),
+      hero,
       h('div', { class: 'qa2' }, cta('quiz', 'Квиз', 'Проверь себя', null, () => show('setup'), 'quiz'), cta('builder', 'Конструктор', 'Фразы из блоков', null, () => show('builder'), 'review')),
       h('div', { class: 'qa3' }, cta('abc', 'Азбука и прописи', null, null, () => show('abc')), cta('listen', 'Аудирование', null, null, () => openListenSetup()), cta('similar', 'Похожие знаки', null, null, () => show('similar'))),
       h('h2', { class: 'h2' }, 'Быстрый старт'),
@@ -2102,15 +2105,12 @@
       const fill = () => { if (current !== 'onboard' || !guest()) return; if (window.KanaSync) window.KanaSync.renderAuthPage(auth, 'login', { embedded: true }); else setTimeout(fill, 30); };
       setTimeout(fill, 0);
       el.append(h('div', { class: 'welcome' },
-        h('h1', { class: 'wt' }, 'Добро пожаловать'),
-        h('div', { class: 'pic', role: 'img', 'aria-label': 'Фудзи и сакура' }),
+        h('div', { class: 'pic', role: 'img', 'aria-label': 'Фудзи и сакура' }, h('h1', { class: 'wt' }, 'Добро пожаловать')),
         h('div', { class: 'body' },
           h('div', { class: 'logo' }, 'KANA'),
-          h('p', { class: 'tag' }, 'Японский ближе, чем кажется'),
           h('p', { class: 'sub2' }, 'Кана, слова и практика каждый день'),
           auth,
-          h('button', { class: 'link', type: 'button', id: 'btn-guest', onclick: () => { S.welcomed = true; save(); show('home'); } }, 'Продолжить без аккаунта'),
-          h('p', { class: 'small muted', style: 'max-width:34ch;margin:0' }, 'Без аккаунта прогресс не сохраняется. С аккаунтом — уроки, цель дня, повторение, напоминания и друзья на всех устройствах.'))));
+          h('button', { class: 'link', type: 'button', id: 'btn-guest', onclick: () => { S.welcomed = true; save(); show('home'); } }, 'Продолжить без аккаунта'))));
       return;
     }
     const g = Object.assign({}, def.goal, S.goal);
@@ -2155,6 +2155,7 @@
   // ---------- связь с синхронизацией ----------
   const hash36 = str => { let x = 0x811c9dc5; for (let i = 0; i < str.length; i++) { x ^= str.charCodeAt(i); x = Math.imul(x, 0x01000193) >>> 0; } return x.toString(36); };
   const sampleId = (ch, s) => ch + ':' + hash36(JSON.stringify(s));
+  let loginTheme = null;
   window.KanaApp = {
     items() {
       const out = [];
@@ -2178,7 +2179,7 @@
         if (data) list.push(data.s);
         if (list.length) samples[ch] = list; else delete samples[ch];
       }
-      else if (c === 'settings' && data) { for (const k in S) delete S[k]; Object.assign(S, def, data); }
+      else if (c === 'settings' && data) { for (const k in S) delete S[k]; Object.assign(S, def, data, loginTheme ? { theme: loginTheme } : {}); }
       else if (c === 'answers') { answers = answers.filter(a => a.id !== id); if (data) answers.push({ id, ...data }); }
       else if (c === 'lessons') { if (data) lessonsDone[id] = data; else delete lessonsDone[id]; }
       else if (c === 'activity') {
@@ -2200,7 +2201,8 @@
     },
     resetLocal() {
       userWords = []; deleted = new Set(); favs = new Set(); samples = {}; answers = []; lessonsDone = {}; activity = {};
-      for (const k in S) delete S[k]; Object.assign(S, JSON.parse(JSON.stringify(def)), { welcomed: true });
+      const theme = S.theme;   // тема остаётся и после выхода из аккаунта
+      for (const k in S) delete S[k]; Object.assign(S, JSON.parse(JSON.stringify(def)), { welcomed: true, theme });
       FR.data = null; FR.found = null; FR.invite = null; FR.msg = '';
       this.commit();
     },
@@ -2208,7 +2210,10 @@
     open(name) { show(name); },
     back() { show(beforeAuth && !['login', 'register'].includes(beforeAuth) ? beforeAuth : 'me'); },
     // после входа: новый аккаунт — настройка цели; есть приглашение — к друзьям
-    afterLogin() { show(!S.onboarded ? 'onboard' : FR.pendingInvite ? 'friends' : 'me'); autoPush(); },
+    // тема, выбранная до входа, важнее сохранённой в аккаунте
+    beforeLogin() { loginTheme = store.get('theme-chosen', false) ? S.theme : null; },
+    afterLogin() {
+      if (loginTheme) { S.theme = loginTheme; loginTheme = null; store.set('theme-chosen', false); save(); applyTheme(); } show(!S.onboarded ? 'onboard' : FR.pendingInvite ? 'friends' : 'me'); autoPush(); },
   };
 
   window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next, show, openLesson, get lessonsDone() { return lessonsDone; }, dayTotals, todayKey, buzz, srsState, srsDue, srsForecast, startReview, startSim, confusions, startReading, startBuilder };
