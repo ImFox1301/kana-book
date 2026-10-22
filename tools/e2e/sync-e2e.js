@@ -68,7 +68,7 @@ async function answerCards(page, n) {
   await synced(A.page);
   check((await A.page.textContent('#account-box')).includes('Синхронизировано'), 'A: зарегистрирован и синхронизирован');
   await A.page.click('#btn-edit-name'); await A.page.fill('#acc-name-edit', 'Паша'); await A.page.click('#account-box form button[type=submit]');
-  await A.page.waitForFunction(() => document.querySelector('#account-box .who').textContent === 'Паша');
+  await A.page.waitForFunction(() => document.querySelector('#account-box .who')?.textContent === 'Паша');
   check(true, 'A: имя можно изменить');
 
   // Устройство B: входит в тот же аккаунт и получает всё
