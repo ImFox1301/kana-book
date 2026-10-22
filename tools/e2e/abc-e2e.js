@@ -108,6 +108,16 @@ async function draw(page, ch) {
   const w = await page.evaluate(() => __kana.Q.deck[0].kana);
   check(audio.some(([f]) => f === 'words/f/' + w + '.mp3'), 'после ответа слово можно прослушать: ' + w);
   await page.screenshot({ path: SHOTS + '/word-verdict.png', fullPage: true });
+  const deckOk = await page.evaluate(() => {
+    const items = 'あいうえおかきくけこ'.split('').map(k => ({ kind: 'kana', kana: k }));
+    const cnt = d => { const m = {}; d.forEach(x => m[x.kana] = (m[x.kana] || 0) + 1); return Object.values(m); };
+    for (let t = 0; t < 50; t++) {
+      const a = cnt(__kana.buildDeck(items, 20)); if (a.length !== 10 || a.some(n => n !== 2)) return false;
+      const b = cnt(__kana.buildDeck(items, 25)); if (b.length !== 10 || Math.min(...b) !== 2 || Math.max(...b) !== 3) return false;
+    }
+    return true;
+  });
+  check(deckOk, 'квиз ×2: каждый знак ровно дважды; при остатке — не больше чем на раз чаще');
   await browser.close();
   console.log(failed ? `\nПровалено проверок: ${failed}` : '\nВсе проверки пройдены');
   process.exit(failed ? 1 : 0);

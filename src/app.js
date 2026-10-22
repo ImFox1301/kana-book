@@ -318,7 +318,7 @@
     $('#cnt-presets').replaceChildren(...(n ? [[n, 'по разу'], [n * 2, '×2'], [n * 3, '×3']] : []).map(([v, t]) =>
       h('button', { class: 'preset', type: 'button', onclick: () => { S.count = v; save(); renderSetup(); } }, `${t} · ${v}`)));
     const unit = S.script === 'w' ? 'слов' : 'знаков';
-    $('#cnt-hint').textContent = n ? `Выбрано ${unit}: ${n}. Каждый появится хотя бы один раз, остальные карточки — случайные повторы.` : `Ничего не выбрано — отметьте ${S.script === 'w' ? 'хотя бы одну тему' : 'хотя бы один ряд'}.`;
+    $('#cnt-hint').textContent = n ? `Выбрано ${unit}: ${n}. Каждый появится поровну раз; если число не делится — некоторые на один раз больше.` : `Ничего не выбрано — отметьте ${S.script === 'w' ? 'хотя бы одну тему' : 'хотя бы один ряд'}.`;
 
     const md = $('#sel-mode'); md.replaceChildren(
       opt(md, 'draw', S.mode, 'Перевод', 'вижу звучание → рисую знак пальцем', null, v => { S.mode = v; save(); renderSetup(); }),
@@ -342,8 +342,11 @@
   // ---------- колода ----------
   function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
   function buildDeck(items, count) {
-    const deck = items.slice();
-    while (deck.length < count) deck.push(items[Math.floor(Math.random() * items.length)]);
+    // каждый знак — поровну раз; если число карточек не делится,
+    // остаток добирается из разных случайных знаков (не больше чем +1 к каждому)
+    const deck = [];
+    for (let r = Math.floor(count / items.length); r > 0; r--) deck.push(...items);
+    deck.push(...shuffle(items.slice()).slice(0, count - deck.length));
     shuffle(deck);
     // не ставим одну и ту же карточку подряд
     for (let i = 1; i < deck.length; i++) if (deck[i].kana === deck[i - 1].kana) {
