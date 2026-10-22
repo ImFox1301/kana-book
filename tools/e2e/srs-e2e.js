@@ -163,6 +163,21 @@ async function answerCard(page, wrong) {
   // тёмная тема
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.screenshot({ path: SHOTS + '/similar-dark.png', fullPage: true });
+
+  // --- старые ответы сворачиваются в сводку: итоги, опыт и повторение не меняются ---
+  await page.emulateMedia({ colorScheme: 'light' });
+  const cmp = await page.evaluate(() => {
+    const k = __kana, A = k.answers, old = Date.now() - 200 * 864e5;
+    for (let i = 0; i < 60; i++) A.push({ id: 'old' + i, ts: old + i * 3600e3, k: 'の', w: 0, m: i % 2 ? 'type' : 'write', r: i % 5 ? 'ok' : 'bad' });
+    A.sort((a, b) => a.ts - b.ts);
+    const st = () => JSON.stringify([...k.srsState().values()].map(s => [s.key, s.box, s.due, s.n]).sort());
+    const before = k.totals(), srs0 = st();
+    const did = k.compactAnswers();
+    return { did, before, after: k.totals(), left: k.answers.filter(a => a.id.startsWith('old')).length, months: Object.keys(k.stats).filter(x => x.startsWith('m:')), srsSame: st() === srs0, again: k.compactAnswers() };
+  });
+  check(cmp.did && cmp.left === 0 && cmp.months.length >= 1 && !cmp.again, 'ответы старше 90 дней свёрнуты по месяцам: ' + cmp.months.join(', '));
+  check(cmp.before.n === cmp.after.n && cmp.before.ok === cmp.after.ok, `итоги не изменились: ${cmp.after.n} ответов, ${cmp.after.ok} верных`);
+  check(cmp.srsSame, 'состояние повторения после свёртки то же');
   await browser.close();
   console.log(failed ? `\nПровалено проверок: ${failed}` : '\nВсе проверки пройдены');
   process.exit(failed ? 1 : 0);

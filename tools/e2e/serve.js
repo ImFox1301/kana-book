@@ -14,7 +14,7 @@ const avatarOf = u => users.get(u).avatar ? '/api/avatar/' + encodeURIComponent(
 const meOf = u => { const x = users.get(u); return { username: x.name, displayName: x.displayName, linked: !!x.tgId, telegram: x.tgUser || null, hasPassword: !!x.pass, avatar: avatarOf(u) }; };
 const fkey = (a, b) => [a, b].sort().join('|');
 const personOf = u => ({ id: u, name: users.get(u).displayName || users.get(u).name, username: users.get(u).name, avatar: avatarOf(u) });
-const zeroStats = { streak: 0, todayMin: 0, todayCards: 0, goalMin: 30, goalCards: 50, lessonsH: 0, lessonsK: 0, weekAnswers: 0, weekAccuracy: null, xp: 0 };
+const zeroStats = { streak: 0, todayMin: 0, todayCards: 0, goalMin: 30, goalCards: 50, lessonsH: 0, lessonsK: 0, weekAnswers: 0, weekAccuracy: null, xp: 0, ach: 0 };
 function friendsOf(u) {
   const fr = [...friendsSet].filter(k => k.split('|').includes(u)).map(k => k.split('|').find(x => x !== u));
   return { friends: fr.map(f => Object.assign(personOf(f), { since: 0, stats: Object.assign({}, zeroStats, { weekAnswers: [...items.values()].filter(i => i.uid === f && i.c === 'answers').length }) })),

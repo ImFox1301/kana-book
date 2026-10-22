@@ -988,3 +988,18 @@ button, .btn, .chip, .choice, .btok, .abc-cell, .slot { -webkit-tap-highlight-co
 #write .w-cnt, #write .dots { grid-column: 1 / -1 }
 #write .actions .btn { flex: 1 1 0 } #write .actions .btn.primary { flex: 1.4 1 0 }
 #card > .actions, #write .actions { flex-wrap: nowrap } #card > .actions .btn, #write .actions .btn { padding: 0 14px; min-width: 0 }
+
+/* ---- достижения ---- */
+.achs { display: grid; gap: 10px }
+.ach { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; background: var(--surface); border-radius: var(--r-card); box-shadow: var(--shadow); padding: 14px 16px 14px 14px }
+.ach .medal { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: var(--tile); color: var(--muted); position: relative }
+.ach .medal .i { width: 26px; height: 26px }
+.ach .medal b { font: 400 24px/1 var(--kana) }
+.ach.got .medal { background: linear-gradient(160deg, #FFD9A0, #F3A65A); color: #6B3A08; box-shadow: 0 0 0 3px var(--blush) }
+.ach:not(.got) .t { color: var(--muted) }
+.ach .t { font-weight: 700; font-size: 16.5px }
+.ach .d { font-size: 13.5px; color: var(--muted); line-height: 1.35 }
+.ach .when { font-size: 12.5px; color: var(--accent); font-weight: 600; margin-top: 4px }
+.ach .prog { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; margin-top: 8px }
+.ach .prog span { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums }
+@media (min-width: 960px) { .achs { grid-template-columns: 1fr 1fr } }

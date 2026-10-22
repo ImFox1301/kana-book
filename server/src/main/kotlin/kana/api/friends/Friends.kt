@@ -24,7 +24,7 @@ import java.util.Base64
 
 data class Person(val id: Long, val name: String, val username: String, val avatar: String? = null)
 data class Stats(val streak: Int, val todayMin: Int, val todayCards: Int, val goalMin: Int, val goalCards: Int,
-                 val lessonsH: Int, val lessonsK: Int, val weekAnswers: Int, val weekAccuracy: Int?, val xp: Int = 0)
+                 val lessonsH: Int, val lessonsK: Int, val weekAnswers: Int, val weekAccuracy: Int?, val xp: Int = 0, val ach: Int = 0)
 data class Friend(val id: Long, val name: String, val username: String, val since: Long, val stats: Stats, val avatar: String? = null)
 data class UserRef(val userId: Long = 0)
 data class SearchRequest(val q: String = "")
@@ -54,9 +54,12 @@ class Progress(private val jdbc: JdbcTemplate, private val mapper: ObjectMapper)
         val n = (week["n"] as Number).toInt(); val ok = (week["ok"] as Number).toInt()
         // опыт, как в приложении: 10 за верный ответ, 100 за пройденный урок хираганы или катаканы
         val okAll = jdbc.queryForObject("select count(*) from items where user_id = ? and collection = 'answers' and not deleted and data->>'r' = 'ok'", Int::class.java, userId) ?: 0
+        // старые ответы свёрнуты в помесячные сводки (collection 'stats', id 'm:ГГГГ-ММ')
+        val okOld = jdbc.queryForObject("select coalesce(sum((data->>'ok')::int), 0) from items where user_id = ? and collection = 'stats' and item_id like 'm:%' and not deleted", Int::class.java, userId) ?: 0
+        val ach = jdbc.queryForObject("select count(*) from items where user_id = ? and collection = 'ach' and not deleted", Int::class.java, userId) ?: 0
         val lh = lessons.count { Regex("^h\\d+$").matches(it) }; val lk = lessons.count { Regex("^k\\d+$").matches(it) }
         return Stats(streak, t[0] / 60, t[1], goal?.get("min")?.asInt(30) ?: 30, goal?.get("cards")?.asInt(50) ?: 50,
-            lh, lk, n, if (n > 0) Math.round(ok * 100.0 / n).toInt() else null, okAll * 10 + (lh + lk) * 100)
+            lh, lk, n, if (n > 0) Math.round(ok * 100.0 / n).toInt() else null, (okAll + okOld) * 10 + (lh + lk) * 100, ach)
     }
 }
 

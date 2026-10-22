@@ -86,6 +86,7 @@ window.KanaSync = (function () {
         saveState();
       }
       lastSync = Date.now(); status = ''; saveState();
+      if (window.KanaApp && window.KanaApp.afterSync) try { window.KanaApp.afterSync(); } catch (e) { }
     } finally {
       running = false; rerender();
       if (again) setTimeout(syncNow, 500);

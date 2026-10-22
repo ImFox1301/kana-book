@@ -90,6 +90,9 @@ async function draw(page, ch) {
   }
   await page.waitForSelector('#screen-result .result-banner');
   check((await page.textContent('#screen-result .result-banner')).includes('пройден'), 'проверка пройдена — урок засчитан');
+  await page.waitForFunction(() => __kana.earned['lesson-1'], null, { timeout: 5000 });
+  await page.waitForSelector('.toast.on');
+  check((await page.textContent('.toast')).includes('Первый шаг'), 'достижение «Первый шаг» — с сообщением');
   await page.screenshot({ path: SHOTS + '/s6-passed.png', fullPage: true });
   check(await page.evaluate(() => !!__kana.lessonsDone.h1.done), 'урок 1 отмечен пройденным');
 
@@ -123,6 +126,12 @@ async function draw(page, ch) {
   const vib = await page.evaluate(() => window.__vib);
   check(JSON.stringify(vib) === JSON.stringify([30, [30, 90, 30]]), 'вибрация: верно — 1 импульс, ошибка — 2, выключенная молчит');
 
+  // достижения
+  await page.click('#tab-me');
+  check(/^\d+ из \d+$/.test((await page.textContent('#me-ach .d')).trim()), 'в профиле — счётчик достижений: ' + (await page.textContent('#me-ach .d')));
+  await page.click('#me-ach'); await page.waitForSelector('#screen-achievements:not([hidden])');
+  check(await page.locator('#ach-lesson-1.got').count() === 1 && await page.locator('#ach-hira-all:not(.got) .prog').count() === 1, 'экран достижений: полученные и с прогрессом');
+  await page.screenshot({ path: SHOTS + '/achievements.png', fullPage: true });
   // раздел «Я»
   await page.click('#tab-me'); await page.click('#btn-settings');
   check(await page.isVisible('#screen-settings') && (await page.textContent('#settings')).includes('Вибрация'), 'настройки — отдельный экран, в них есть вибрация');

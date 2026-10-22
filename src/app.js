@@ -21,7 +21,7 @@
     repeat: 'M4 8h14l-4-4 M20 16H6l4 4 M18 8l3 3 M6 16l-3-3', search: 'M16 10a6 6 0 1 1-12 0 6 6 0 0 1 12 0 M15 15l6 6',
     settings: 'M12.00 1.40 12.68 1.56 13.32 2.01 13.86 2.63 14.34 3.28 14.78 3.82 15.25 4.15 15.82 4.25 16.51 4.18 17.31 4.06 18.13 4.01 18.90 4.14 19.50 4.50 19.86 5.10 19.99 5.87 19.94 6.69 19.82 7.49 19.75 8.18 19.85 8.75 20.18 9.22 20.72 9.66 21.37 10.14 21.99 10.68 22.44 11.32 22.60 12.00 22.44 12.68 21.99 13.32 21.37 13.86 20.72 14.34 20.18 14.78 19.85 15.25 19.75 15.82 19.82 16.51 19.94 17.31 19.99 18.13 19.86 18.90 19.50 19.50 18.90 19.86 18.13 19.99 17.31 19.94 16.51 19.82 15.82 19.75 15.25 19.85 14.78 20.18 14.34 20.72 13.86 21.37 13.32 21.99 12.68 22.44 12.00 22.60 11.32 22.44 10.68 21.99 10.14 21.37 9.66 20.72 9.22 20.18 8.75 19.85 8.18 19.75 7.49 19.82 6.69 19.94 5.87 19.99 5.10 19.86 4.50 19.50 4.14 18.90 4.01 18.13 4.06 17.31 4.18 16.51 4.25 15.82 4.15 15.25 3.82 14.78 3.28 14.34 2.63 13.86 2.01 13.32 1.56 12.68 1.40 12.00 1.56 11.32 2.01 10.68 2.63 10.14 3.28 9.66 3.82 9.22 4.15 8.75 4.25 8.18 4.18 7.49 4.06 6.69 4.01 5.87 4.14 5.10 4.50 4.50 5.10 4.14 5.87 4.01 6.69 4.06 7.49 4.18 8.18 4.25 8.75 4.15 9.22 3.82 9.66 3.28 10.14 2.63 10.68 2.01 11.32 1.56z M15.6 12a3.6 3.6 0 1 1-7.2 0 3.6 3.6 0 0 1 7.2 0',
     sound: 'M4 9h4l5-5v16l-5-5H4z M17 8q5 4 0 8 M20 4q8 8 0 16', upload: 'M12 17V3 M6 9l6-6 6 6 M3 17v5h18v-5', bell: 'M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z M10 21h4', user: 'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0 M4 21v-3a8 8 0 0 1 16 0v3z',
-    wave: 'M2 12h2 M6 8v8 M10 3v18 M14 6v12 M18 9v6 M22 12h1', chev: 'M9 5l7 7-7 7', trash: 'M4 7h16 M9 7V4h6v3 M6 7l1 14h10l1-14',
+    wave: 'M2 12h2 M6 8v8 M10 3v18 M14 6v12 M18 9v6 M22 12h1', trophy: 'M7 4h10v5a5 5 0 0 1-10 0z M7 6H4v1a3 3 0 0 0 3 3 M17 6h3v1a3 3 0 0 1-3 3 M12 14v4 M8 21h8 M9 18h6', star: 'M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z', kana: 'M5 6h9 M9.5 3v11 M5 14c3-1 6-1 8 2 M15 9q5 2 4 7t-6 4', chev: 'M9 5l7 7-7 7', trash: 'M4 7h16 M9 7V4h6v3 M6 7l1 14h10l1-14',
     undo: 'M9 14 4 9l5-5 M4 9h10a6 6 0 0 1 0 12h-3', skip: 'M5 5l8 7-8 7z M17 5v14', sign: 'M3 4h18v11H3z M12 15v6 M8 21h8 M7 9h10', blocks: 'M3 4h7v6H3z M14 4h7v6h-7z M3 14h18v6H3z',
   };
   const svgOf = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="${KI[n]}"/></svg>`;
@@ -98,12 +98,16 @@
   const store = {
     get(k, d) { try { const v = localStorage.getItem('kana-tetrad:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) {
-      try { localStorage.setItem('kana-tetrad:' + k, JSON.stringify(v)); } catch (e) { }
+      try { localStorage.setItem('kana-tetrad:' + k, JSON.stringify(v)); }
+      catch (e) {
+        // место в браузере кончилось: молча терять данные нельзя — сказать один раз за сеанс
+        if (!store.warned && /quota/i.test((e && (e.name + ' ' + e.message)) || '')) { store.warned = true; setTimeout(() => { try { toast(acct() ? 'На устройстве не хватает места — данные сохраняются в аккаунте' : 'На устройстве не хватает места — часть данных не сохранится', 'help'); } catch (x) { } }, 0); }
+      }
       if (SYNCED.has(k) && !applying && window.KanaSync) window.KanaSync.touch();
     },
   };
   // то, что синхронизируется с аккаунтом
-  const SYNCED = new Set(['words', 'deleted', 'samples', 'settings', 'answers', 'lessons', 'activity', 'favs']);
+  const SYNCED = new Set(['words', 'deleted', 'samples', 'settings', 'answers', 'lessons', 'activity', 'favs', 'stats', 'ach']);
   let applying = false;
 
   // ---------- распознаватель ----------
@@ -130,7 +134,7 @@
   let userWords = store.get('words', []);
   let deleted = new Set(store.get('deleted', []));
   let favs = new Set(store.get('favs', []));             // избранные слова (синхронизируются)
-  const toggleFav = w => { const id = wid(w); if (favs.has(id)) favs.delete(id); else favs.add(id); store.set('favs', [...favs]); };
+  const toggleFav = w => { const id = wid(w); if (favs.has(id)) favs.delete(id); else favs.add(id); store.set('favs', [...favs]); checkAch(); };
   const wid = w => w.kana + '|' + w.mean;
   function allWords() {
     const b = BUILTIN_WORDS.map(([kana, mean, topic, read]) => ({ kana, mean, topic, read, builtin: true }));
@@ -150,6 +154,71 @@
   // ---------- история ответов ----------
   const MAX_ANSWERS = 20000;
   let answers = store.get('answers', []);
+  // Сводка старых ответов: подробно хранятся последние ~90 дней (не больше 3000 ответов), более старые
+  // сворачиваются по месяцам. 'm:ГГГГ-ММ' → { n, ok, k: { ключ: [n, ok] }, md: { режим: [n, ok] } };
+  // 'srs' → { upTo, st: { ключ: [ступень, срок, n] } } — состояние повторения после всех свёрнутых ответов.
+  let stats = store.get('stats', {});
+  let earned = store.get('ach', {});      // полученные достижения: id → { at }
+  const KEEP_DAYS = 90, KEEP_MAX = 3000;
+  const monthOf = ts => { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+  const akey = a => (a.w ? 'w:' : '') + a.k;
+  // итоги: всего ответов и верных (свёрнутые + подробные)
+  function totals() {
+    let n = 0, ok = 0;
+    for (const id in stats) if (id.startsWith('m:')) { n += stats[id].n || 0; ok += stats[id].ok || 0; }
+    for (const a of answers) { n++; if (a.r === 'ok') ok++; }
+    return { n, ok };
+  }
+  // по ключу знака или слова: [ответов, верных]; mode — только этот режим (по свёрнутым — из md)
+  function keyTotals() {
+    const m = {};
+    for (const id in stats) if (id.startsWith('m:')) for (const k in stats[id].k || {}) { const t = m[k] = m[k] || [0, 0]; t[0] += stats[id].k[k][0]; t[1] += stats[id].k[k][1]; }
+    for (const a of answers) { const t = m[akey(a)] = m[akey(a)] || [0, 0]; t[0]++; if (a.r === 'ok') t[1]++; }
+    return m;
+  }
+  function modeOk(mode) {
+    let ok = 0;
+    for (const id in stats) if (id.startsWith('m:')) ok += ((stats[id].md || {})[mode] || [0, 0])[1];
+    for (const a of answers) if (a.m === mode && a.r === 'ok') ok++;
+    return ok;
+  }
+  // свернуть старые месяцы (только с аккаунтом и после синхронизации — чтобы не потерять ответы других устройств)
+  function compactAnswers(now = Date.now()) {
+    if (guest() || !answers.length) return false;
+    answers.sort((a, b) => a.ts - b.ts);
+    const cur = monthOf(now), cutoff = now - KEEP_DAYS * DAY;
+    const months = []; for (const a of answers) { const m = monthOf(a.ts); if (!months.length || months[months.length - 1].m !== m) months.push({ m, list: [] }); months[months.length - 1].list.push(a); }
+    let left = answers.length, take = [];
+    for (const g of months) {
+      if (g.m === cur) break;
+      const old = g.list[g.list.length - 1].ts < cutoff;
+      if (!old && left <= KEEP_MAX) break;     // по порядку: не оставлять дыр в истории
+      take.push(g); left -= g.list.length;
+    }
+    if (!take.length) return false;
+    const srs = stats.srs ? { upTo: stats.srs.upTo || 0, st: Object.assign({}, stats.srs.st) } : { upTo: 0, st: {} };
+    const gone = new Set();
+    for (const g of take) {
+      const id = 'm:' + g.m, mo = stats[id] ? JSON.parse(JSON.stringify(stats[id])) : { n: 0, ok: 0, k: {}, md: {} };
+      mo.k = mo.k || {}; mo.md = mo.md || {};
+      for (const a of g.list) {
+        const key = akey(a), ok = a.r === 'ok';
+        mo.n++; if (ok) mo.ok++;
+        const t = mo.k[key] = mo.k[key] || [0, 0]; t[0]++; if (ok) t[1]++;
+        const md = mo.md[a.m || '?'] = mo.md[a.m || '?'] || [0, 0]; md[0]++; if (ok) md[1]++;
+        const st = srs.st[key] || [0, 0, 0]; st[2]++;
+        if (ok) { if (a.ts >= st[1]) { st[0] = Math.min(st[0] + 1, IVL.length - 1); st[1] = startOfDay(a.ts) + IVL[st[0]] * DAY; } }
+        else { st[0] = st[0] >= 4 ? 1 : 0; st[1] = a.ts; }
+        srs.st[key] = st; srs.upTo = Math.max(srs.upTo, a.ts);
+        gone.add(a.id);
+      }
+      stats[id] = mo;
+    }
+    stats.srs = srs;
+    answers = answers.filter(a => !gone.has(a.id));
+    store.set('stats', stats); store.set('answers', answers);
+    return true;
+  }
 
   // ---------- настройки ----------
   const def = { script: 'h', rows: { h: ['a', 'ka', 'sa'], k: ['a', 'ka', 'sa'] }, topics: null, wfilter: 'all', count: 20, mode: 'draw', sys: 'ru', len: 1, abcScript: 'h', abcMode: 'listen', abcSel: { h: [], k: [] }, reps: 5, ghost: true, voice: 'm', goal: { min: 30, cards: 50 }, onboarded: false, vibrate: true, simScript: 'h', simSel: { h: null, k: null }, simCount: 20, theme: 'system' };
@@ -649,7 +718,7 @@
       if (answers.length > MAX_ANSWERS) answers.splice(0, answers.length - MAX_ANSWERS);
       store.set('answers', answers);
     }
-    countCard(); buzz(res.status === 'ok');
+    countCard(); buzz(res.status === 'ok'); checkAch();
     renderVerdict(res);
   }
   function renderVerdict(res) {
@@ -741,6 +810,7 @@
     for (const r of rs) if (r.status !== 'ok' && !seen.has(r.it.kana)) { seen.add(r.it.kana); missed.push(r.it); }
     const el = $('#screen-result'); el.replaceChildren();
     const share = rs.length ? ok / rs.length : 0;
+    if (rs.length >= 20 && ok === rs.length && rs.length === Q.deck.length) earn('quiz-perfect');
     const mins = Math.max(1, Math.round((Date.now() - (Q.t0 || Date.now())) / 60000));
     el.append(pageHead('Результат занятия', () => { const b = Q && Q.back; if (FLOW) return backToLesson(); Q = null; show(b || 'practice'); }),
       h('div', { class: 'res-top' }, h('div', { class: 'mark ' + (share >= PASS ? 'ok' : rs.length ? 'bad' : 'skip'), 'aria-hidden': 'true' }),
@@ -1027,6 +1097,7 @@
         answers.push(rec_); if (answers.length > MAX_ANSWERS) answers.splice(0, answers.length - MAX_ANSWERS);
         store.set('answers', answers);
       }
+      checkAch();
       if (res.ok) return accept(false);
       st.bad++; if (st.ok === 0 && st.bad === 1) st.firstBad = 1;
       pad.el.classList.add('bad');
@@ -1091,8 +1162,8 @@
 
   // ---------- переключение экранов ----------
   let current = 'home';
-  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me', 'similar', 'reading', 'builder', 'login', 'register', 'friends', 'settings', 'progress'];
-  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice', reading: 'practice', builder: 'practice', login: 'me', register: 'me', friends: 'friends', settings: 'me', progress: 'me' };
+  const SCREENS = ['onboard', 'home', 'lessons', 'lesson', 'lintro', 'practice', 'setup', 'quiz', 'result', 'abc', 'write', 'dict', 'me', 'similar', 'reading', 'builder', 'login', 'register', 'friends', 'settings', 'progress', 'achievements'];
+  const TAB_OF = { onboard: null, home: 'home', lessons: 'lessons', lesson: 'lessons', lintro: 'lessons', practice: 'practice', setup: 'practice', quiz: 'practice', result: 'practice', abc: 'practice', write: 'practice', dict: 'dict', me: 'me', similar: 'practice', reading: 'practice', builder: 'practice', login: 'me', register: 'me', friends: 'friends', settings: 'me', progress: 'me', achievements: 'me' };
   const tabOf = name => (FLOW && ['quiz', 'result', 'write'].includes(name)) ? 'lessons' : TAB_OF[name];
   const lastOf = { home: 'home', lessons: 'lessons', practice: 'practice', dict: 'dict', me: 'me', friends: 'friends' };
   // настоящая высота нижней панели (с safe area и крупным шрифтом) — чтобы плашка обновления и панель прописей не прятались под ней
@@ -1114,7 +1185,7 @@
       // экран входа рисует sync.js; на самом старте он ещё не загружен — дорисуем чуть позже
       login: () => window.KanaSync ? window.KanaSync.renderAuthPage($('#screen-login'), 'login') : setTimeout(() => { if (current === 'login') show('login'); }, 30),
       register: () => window.KanaSync ? window.KanaSync.renderAuthPage($('#screen-register'), 'register') : setTimeout(() => { if (current === 'register') show('register'); }, 30),
-      friends: () => { renderFriends(); loadFriends(); }, settings: renderSettings, progress: renderProgressScreen })[name]?.();
+      friends: () => { renderFriends(); loadFriends(); }, settings: renderSettings, progress: renderProgressScreen, achievements: renderAchievements })[name]?.();
     updateTabs();
     // фокус в первое поле — только если пользователь ещё никуда не нажал (иначе текст уйдёт не в то поле)
     if (name === 'login' || name === 'register') setTimeout(() => { const f = $('#screen-' + name + ' input'); if (f && (!document.activeElement || document.activeElement === document.body)) f.focus(); }, 50);
@@ -1211,7 +1282,7 @@
     const kanji = $('#add-kanji').value.trim() || undefined;
     if (!KANA_RE.test(kana)) { $('#add-ok').textContent = ''; $('#add-preview').textContent = 'Слово должно быть записано хираганой или катаканой.'; return; }
     if (kanji && !KANJI_RE.test(kanji)) { $('#add-ok').textContent = ''; $('#add-preview').textContent = 'Запись иероглифами: только иероглифы и кана, до 30 знаков.'; return; }
-    userWords.push({ kana, mean, topic, read, kanji }); deleted.delete(kana + '|' + mean); saveWords();
+    userWords.push({ kana, mean, topic, read, kanji }); deleted.delete(kana + '|' + mean); saveWords(); checkAch();
     prefetchWord(kana, kanji);
     $('#add-ok').textContent = `Добавлено: ${kana}`; e.target.reset(); $('#add-preview').textContent = ''; renderDict();
   });
@@ -1268,7 +1339,7 @@
   const dayKey = ts => { const d = new Date(ts); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
   function renderProgress() {
     const el = $('#stats'); el.replaceChildren();
-    const total = answers.length;
+    const total = totals().n;
     const fc = srsForecast();
     if (fc.total) el.append(h('p', { class: 'small muted' }, `В интервальном повторении: ${fc.total}. Держатся неделю и дольше: ${fc.learned}. На сегодня: ${fc.due}, на завтра: ${fc.tomorrow}.`));
     if (!total) { el.append(h('p', { class: 'muted' }, 'Пройдите первый квиз — здесь появится, какие знаки уже держатся, а какие путаются.')); return; }
@@ -1428,7 +1499,7 @@
     const st = lessonsDone[l.id] = Object.assign({}, lessonsDone[l.id]);
     if (step === 'quiz') { st.quiz = Math.max(st.quiz || 0, val); if (val >= PASS * 100 && !st.done) st.done = Date.now(); }
     else st[step] = st[step] || Date.now();
-    saveLessons();
+    saveLessons(); checkAch();
   }
   function backToLesson() { const l = FLOW && FLOW.lesson; FLOW = null; Q = null; WR = null; if (l) openLesson(l); else show('lessons'); }
 
@@ -1441,6 +1512,8 @@
   function srsState() {
     const m = new Map();
     const get = (k, w) => { const key = (w ? 'w:' : '') + k; let st = m.get(key); if (!st) m.set(key, st = { key, k, w: !!w, box: 0, due: 0, n: 0 }); return st; };
+    // начало — состояние после свёрнутых ответов
+    if (stats.srs) for (const key in stats.srs.st) { const [box, due, n] = stats.srs.st[key], w = key.startsWith('w:'); Object.assign(get(w ? key.slice(2) : key, w), { box, due, n }); }
     for (const a of answers) {
       const st = get(a.k, a.w); st.n++;
       if (a.r === 'ok') { if (a.ts >= st.due) { st.box = Math.min(st.box + 1, IVL.length - 1); st.due = startOfDay(a.ts) + IVL[st.box] * DAY; } }
@@ -1972,18 +2045,116 @@
   }
   // уровень: 10 очков за верный ответ и 100 за пройденный урок
   const levelOf = xp => Math.floor(Math.sqrt(xp / 150)) + 1, levelXp = n => 150 * (n - 1) * (n - 1);
-  function myXp() { return answers.filter(a => a.r === 'ok').length * 10 + LESSONS.filter(isDone).length * 100; }
+  function myXp() { return totals().ok * 10 + LESSONS.filter(isDone).length * 100; }
   window.KanaLevel = () => {
     if (guest()) return null;
     const xp = myXp(), lv = levelOf(xp), lo = levelXp(lv), hi = levelXp(lv + 1);
     return h('div', {}, h('div', { class: 'lvl' }, `Уровень ${lv} · ${xp.toLocaleString('ru-RU')} XP`), h('div', { class: 'bar' }, h('i', { style: `width:${(xp - lo) / (hi - lo) * 100}%` })));
   };
+  // ---------- достижения ----------
+  // Получаются один раз и остаются навсегда (синхронизируются). Проверяются после занятий; при синхронизации — без всплывающих сообщений.
+  function bestStreak() {
+    const days = [...activeDays()].map(k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d).getTime(); }).sort((a, b) => a - b);
+    let best = 0, run = 0, prev = null;
+    for (const t of days) { run = prev != null && Math.round((t - prev) / DAY) === 1 ? run + 1 : 1; best = Math.max(best, run); prev = t; }
+    return best;
+  }
+  function achCtx() {
+    const kt = keyTotals(), wi = wordIndex(), srs = [...srsState().values()];
+    const done = id => (lessonsDone[id] || {}).quiz >= PASS * 100;
+    const days = new Set(Object.values(activity).map(a => a.d));
+    return {
+      lessons: LESSONS.filter(isDone).length, lessonsH: LESSONS.filter(l => l.script === 'h' && isDone(l)).length, lessonsK: LESSONS.filter(l => l.script === 'k' && isDone(l)).length,
+      perfect: LESSONS.some(l => (lessonState(l).quiz || 0) >= 100) ? 1 : 0,
+      level: levelOf(myXp()), ok: totals().ok,
+      kana: srs.filter(x => !x.w && x.box >= 4).length,
+      words: Object.keys(kt).filter(k => k.startsWith('w:') && kt[k][1] >= 3 && wi.has(k.slice(2))).length,
+      own: userWords.length, favs: favs.size, streak: bestStreak(), goals: [...days].filter(goalMet).length,
+      builder: BUILDER.filter(lv => done('b-' + lv.id)).length, reading: READING.filter(t => done('r-' + t.id)).length,
+      write: modeOk('write'), friends: FR.data ? FR.data.friends.length : 0,
+    };
+  }
+  const L = LESSONS.length, LH = LESSONS.filter(l => l.script === 'h').length, LK = L - LH;
+  const ACH = [
+    ['Уроки', 'book', [
+      ['lesson-1', 'Первый шаг', 'Пройти первый урок', c => c.lessons, 1],
+      ['hira-all', 'Хирагана', `Пройти все ${LH} уроков хираганы`, c => c.lessonsH, LH],
+      ['kata-all', 'Катакана', `Пройти все ${LK} уроков катаканы`, c => c.lessonsK, LK],
+      ['lessons-all', 'Обе азбуки', `Пройти все ${L} уроков`, c => c.lessons, L],
+      ['lesson-100', 'Без единой ошибки', 'Сдать проверку урока на 100%', c => c.perfect, 1]]],
+    ['Уровни', 'star', [5, 10, 15, 20].map(n => [`level-${n}`, `Уровень ${n}`, `Набрать ${levelXp(n).toLocaleString('ru-RU')} XP`, c => c.level, n])],
+    ['Знаки', 'kana', [
+      ['kana-10', 'Первые знаки', '10 знаков держатся в повторении неделю и дольше', c => c.kana, 10],
+      ['kana-46', 'Целая азбука', '46 знаков держатся неделю и дольше', c => c.kana, 46],
+      ['kana-92', 'Две азбуки', '92 знака держатся неделю и дольше', c => c.kana, 92]]],
+    ['Слова', 'cards', [
+      ['words-10', 'Первые слова', '10 слов: каждое верно хотя бы 3 раза', c => c.words, 10],
+      ['words-50', 'Словарный запас', '50 слов: каждое верно хотя бы 3 раза', c => c.words, 50],
+      ['words-100', 'Сто слов', '100 слов: каждое верно хотя бы 3 раза', c => c.words, 100],
+      ['own-1', 'Своё слово', 'Добавить своё слово в словарь', c => c.own, 1],
+      ['favs-10', 'Любимые слова', '10 слов в избранном', c => c.favs, 10]]],
+    ['Постоянство', 'flame', [
+      ['streak-3', 'Три дня', '3 дня подряд с занятиями', c => c.streak, 3],
+      ['streak-7', 'Неделя', '7 дней подряд', c => c.streak, 7],
+      ['streak-30', 'Месяц', '30 дней подряд', c => c.streak, 30],
+      ['streak-100', 'Сто дней', '100 дней подряд', c => c.streak, 100],
+      ['goal-10', 'Цель достигнута', 'Выполнить цель дня 10 раз', c => c.goals, 10]]],
+    ['Практика', 'pen', [
+      ['ok-100', 'Сотня', '100 верных ответов', c => c.ok, 100],
+      ['ok-1000', 'Тысяча', '1 000 верных ответов', c => c.ok, 1000],
+      ['ok-10000', 'Десять тысяч', '10 000 верных ответов', c => c.ok, 10000],
+      ['quiz-perfect', 'Чистый квиз', 'Квиз из 20 карточек и больше без единой ошибки', null, 1],
+      ['builder-all', 'Строитель фраз', `Пройти все ${BUILDER.length} уровней конструктора`, c => c.builder, BUILDER.length],
+      ['reading-all', 'Читаю надписи', `Пройти все ${READING.length} тем чтения надписей`, c => c.reading, READING.length],
+      ['write-100', 'Твёрдая рука', '100 знаков, написанных по памяти', c => c.write, 100]]],
+    ['Друзья', 'friends', [
+      ['friend-1', 'Вместе веселее', 'Добавить первого друга', c => c.friends, 1],
+      ['friend-5', 'Своя компания', '5 друзей', c => c.friends, 5]]],
+  ];
+  const ACH_ALL = ACH.flatMap(([g, icon, list]) => list.map(([id, t, d, val, target]) => ({ id, t, d, val, target, icon, g })));
+  function earn(id, quiet) {
+    if (guest() || earned[id]) return false;
+    earned[id] = { at: Date.now() }; store.set('ach', earned);
+    if (!quiet) { const a = ACH_ALL.find(x => x.id === id); toast(`Новое достижение: ${a ? a.t : id}`, 'trophy'); }
+    return true;
+  }
+  let achTimer = null;
+  // проверить все достижения; quiet — без сообщений (вход, синхронизация)
+  function checkAch(quiet) {
+    if (guest()) return;
+    clearTimeout(achTimer);
+    achTimer = setTimeout(() => {
+      const c = achCtx(), got = [];
+      for (const a of ACH_ALL) if (a.val && !earned[a.id] && a.val(c) >= a.target) { earned[a.id] = { at: Date.now() }; got.push(a); }
+      if (!got.length) return;
+      store.set('ach', earned);
+      if (!quiet) toast(got.length === 1 ? `Новое достижение: ${got[0].t}` : `Новые достижения: ${got.map(a => a.t).join(', ')}`, 'trophy');
+      if (current === 'me') renderMe(); else if (current === 'achievements') renderAchievements();
+    }, quiet ? 50 : 400);
+  }
+  function renderAchievements() {
+    const el = $('#screen-achievements'); el.replaceChildren();
+    const n = ACH_ALL.filter(a => earned[a.id]).length, c = guest() ? null : achCtx();
+    el.append(pageHead('Достижения', 'me'), h('p', { class: 'psub' }, `Получено ${n} из ${ACH_ALL.length}`));
+    if (guest()) { el.append(guestCard('Достижения сохраняются с аккаунтом.')); return; }
+    const date = ts => new Date(ts).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+    for (const [g, icon, list] of ACH) {
+      el.append(h('h2', { class: 'h2' }, g), h('div', { class: 'achs' }, ...list.map(([id, t, d, val, target]) => {
+        const got = earned[id], v = val ? Math.min(val(c), target) : 0;
+        return h('div', { class: 'ach' + (got ? ' got' : ''), id: 'ach-' + id },
+          h('span', { class: 'medal' }, icon === 'kana' ? h('b', { lang: 'ja' }, 'あ') : I(icon)),
+          h('div', {}, h('div', { class: 't' }, t), h('div', { class: 'd' }, d),
+            got ? h('div', { class: 'when' }, 'Получено ' + date(got.at))
+              : target > 1 ? h('div', { class: 'prog' }, h('div', { class: 'bar' }, h('i', { style: `width:${v / target * 100}%` })), h('span', {}, `${v.toLocaleString('ru-RU')} / ${target.toLocaleString('ru-RU')}`)) : null));
+      })));
+    }
+  }
   // «Профиль»: фото, имя, уровень, цель, сводка, друзья, настройки, аккаунт
   function renderMe() {
     if (window.KanaSync) window.KanaSync.renderAccount($('#account-box'));
     const ex = $('#me-extra'); ex.replaceChildren();
     if (guest()) return;
-    const total = answers.length, ok = answers.filter(a => a.r === 'ok').length;
+    const { n: total, ok } = totals();
     const week = answers.filter(a => a.ts >= Date.now() - 7 * 864e5).length;
     const tile = (l, v) => h('button', { class: 'tile', type: 'button', onclick: () => show('progress') }, h('div', { class: 'l' }, l), h('div', { class: 'v' }, v));
     const inc = FR.data ? FR.data.incoming.length : 0;
@@ -1992,6 +2163,7 @@
       h('div', { class: 'me-tiles' }, tile('Всего ответов', total.toLocaleString('ru-RU')), tile('Верных ответов', total ? Math.round(ok / total * 100) + '%' : '—'), tile('За неделю', String(week)), tile('Дней подряд', String(streakDays()))),
       h('div', { class: 'me-links' },
         cta('progress', 'Мой прогресс', `${LESSONS.filter(isDone).length} ${plural(LESSONS.filter(isDone).length, 'урок пройден', 'урока пройдено', 'уроков пройдено')} · знаки и активность`, null, () => show('progress')),
+        (() => { const c = cta('trophy', 'Достижения', `${ACH_ALL.filter(a => earned[a.id]).length} из ${ACH_ALL.length}`, null, () => show('achievements')); c.id = 'me-ach'; return c; })(),
         (() => { const c = cta('friends', 'Друзья', friendsLine(), null, () => show('friends'), inc ? 'main' : ''); c.id = 'me-friends'; return c; })()),
       h('div', { class: 'sheet me-set' }, h('div', { class: 'h3' }, 'Настройки'),
         prow('help', 'Транскрипция каны', SYS_NAME[S.sys], openSettings),
@@ -2064,7 +2236,7 @@
     FR.loading = true;
     const r = await api('/friends');
     FR.loading = false;
-    if (r.status === 200) { FR.data = r.data; setDot(); }
+    if (r.status === 200) { FR.data = r.data; setDot(); checkAch(); }
     // обновляем только список — поле поиска и кнопки не перерисовываются, введённое и нажатия не теряются
     if (current === 'friends') { if ($('#fr-list')) renderFriendsList(); else renderFriends(); }
   }
@@ -2104,7 +2276,7 @@
   function friendCard(f) {
     const s = f.stats, today = `${s.todayMin}/${s.goalMin} мин`;
     const goalDone = s.todayMin >= s.goalMin && s.todayCards >= s.goalCards;
-    const sum = [s.streak ? `${s.streak} ${plural(s.streak, 'день', 'дня', 'дней')} подряд` : 'серии пока нет', `Уровень ${levelOf(s.xp || 0)}`].join(' · ');
+    const sum = [s.streak ? `${s.streak} ${plural(s.streak, 'день', 'дня', 'дней')} подряд` : 'серии пока нет', `Уровень ${levelOf(s.xp || 0)}`, s.ach ? `${s.ach} ${plural(s.ach, 'достижение', 'достижения', 'достижений')}` : null].filter(Boolean).join(' · ');
     return h('details', { class: 'fcard' },
       h('summary', {}, avatarEl(f.name, f.avatar), h('div', {}, h('div', { class: 'nm' }, f.name), h('div', { class: 'lg' }, sum)), h('span', { class: 'chev' }, I('chev'))),
       h('div', { class: 'more' },
@@ -2262,6 +2434,8 @@
       for (const w of userWords) out.push({ c: 'words', id: wid(w), data: { kana: w.kana, mean: w.mean, topic: w.topic, read: w.read, kanji: w.kanji } });
       for (const id of deleted) out.push({ c: 'hidden', id, data: {} });
       for (const id of favs) out.push({ c: 'favs', id, data: {} });
+      for (const id in stats) out.push({ c: 'stats', id, data: stats[id] });
+      for (const id in earned) out.push({ c: 'ach', id, data: earned[id] });
       for (const ch in samples) for (const s of samples[ch]) out.push({ c: 'samples', id: sampleId(ch, s), data: { ch, s } });
       out.push({ c: 'settings', id: 'main', data: Object.assign({}, S) });
       for (const a of answers) { const { id, ...rest } = a; out.push({ c: 'answers', id, data: rest }); }
@@ -2273,6 +2447,8 @@
       if (c === 'words') { userWords = userWords.filter(w => wid(w) !== id); if (data) userWords.push({ kana: data.kana, mean: data.mean, topic: data.topic, read: data.read, kanji: data.kanji }); }
       else if (c === 'hidden') { if (data) deleted.add(id); else deleted.delete(id); }
       else if (c === 'favs') { if (data) favs.add(id); else favs.delete(id); }
+      else if (c === 'stats') { if (data) stats[id] = data; else delete stats[id]; }
+      else if (c === 'ach') { if (data) earned[id] = data; else delete earned[id]; }
       else if (c === 'samples') {
         const ch = data ? data.ch : id.split(':')[0];
         const list = (samples[ch] || []).filter(s => sampleId(ch, s) !== id);
@@ -2293,14 +2469,14 @@
       applying = true;
       answers.sort((a, b) => a.ts - b.ts);
       store.set('words', userWords); store.set('deleted', [...deleted]); store.set('samples', samples); store.set('settings', S); store.set('answers', answers);
-      store.set('lessons', lessonsDone); store.set('activity', activity); store.set('favs', [...favs]);
+      store.set('lessons', lessonsDone); store.set('activity', activity); store.set('favs', [...favs]); store.set('stats', stats); store.set('ach', earned);
       applying = false;
-      loadSamples(); applyTheme();
+      loadSamples(); applyTheme(); checkAch(true);
       ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, similar: renderSimilar, reading: renderReading, builder: renderBuilder })[current]?.();
       renderStreak();
     },
     resetLocal() {
-      userWords = []; deleted = new Set(); favs = new Set(); samples = {}; answers = []; lessonsDone = {}; activity = {};
+      userWords = []; deleted = new Set(); favs = new Set(); samples = {}; answers = []; lessonsDone = {}; activity = {}; stats = {}; earned = {};
       const theme = S.theme;   // тема остаётся и после выхода из аккаунта
       for (const k in S) delete S[k]; Object.assign(S, JSON.parse(JSON.stringify(def)), { welcomed: true, theme });
       FR.data = null; FR.found = null; FR.invite = null; FR.msg = '';
@@ -2311,12 +2487,14 @@
     back() { show(beforeAuth && !['login', 'register'].includes(beforeAuth) ? beforeAuth : 'me'); },
     // после входа: новый аккаунт — настройка цели; есть приглашение — к друзьям
     // тема, выбранная до входа, важнее сохранённой в аккаунте
+    // после удачной синхронизации: свернуть старые ответы (ответы других устройств уже пришли)
+    afterSync() { if (compactAnswers()) { if (window.KanaSync) window.KanaSync.touch(); } },
     beforeLogin() { loginTheme = store.get('theme-chosen', false) ? S.theme : null; },
     afterLogin() {
       if (loginTheme) { S.theme = loginTheme; loginTheme = null; store.set('theme-chosen', false); save(); applyTheme(); } show(!S.onboarded ? 'onboard' : FR.pendingInvite ? 'friends' : 'me'); autoPush(); },
   };
 
-  window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next, show, openLesson, get lessonsDone() { return lessonsDone; }, dayTotals, todayKey, buzz, srsState, srsDue, srsForecast, startReview, startSim, confusions, startReading, startBuilder };
+  window.__kana = { selectedItems, buildDeck, judgeChar, S, startQuiz, get Q() { return Q; }, finish, next, show, openLesson, get lessonsDone() { return lessonsDone; }, dayTotals, todayKey, buzz, srsState, srsDue, srsForecast, startReview, startSim, confusions, startReading, startBuilder, compactAnswers, totals, keyTotals, checkAch, get earned() { return earned; }, get stats() { return stats; }, get answers() { return answers; } };
   // ссылки: #invite=<код> — приглашение в друзья, #friends — из уведомления
   function route(initial) {
     const hash = location.hash;
