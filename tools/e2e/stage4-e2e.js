@@ -86,7 +86,7 @@ async function build(page, wrong) {
   const pctx = await browser.newContext({ viewport: { width: 400, height: 860 } });
   await pctx.addInitScript(f => {
     let sub = null;
-    const make = () => ({ endpoint: f.endpoint, toJSON: () => ({ endpoint: f.endpoint, keys: { p256dh: f.p256dh, auth: f.auth } }), unsubscribe: async () => { sub = null; return true; } });
+    const make = () => ({ endpoint: f.endpoint, toJSON: () => ({ endpoint: f.endpoint, keys: { p256dh: f.p256dh, auth: f.auth } }), unsubscribe: () => { sub = null; return new Promise(() => { }); } });   // как в Safari: отписка может не завершиться — выход не должен зависнуть
     Object.defineProperty(Notification, 'permission', { get: () => 'granted' });
     Notification.requestPermission = async () => 'granted';
     PushManager.prototype.subscribe = async function (o) { window.__pushKey = o && o.applicationServerKey && o.applicationServerKey.length; sub = make(); return sub; };

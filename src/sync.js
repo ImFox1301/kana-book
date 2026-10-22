@@ -260,10 +260,12 @@ window.KanaSync = (function () {
       if (was !== account.linked && window.KanaApp) window.KanaApp.rerender();
     }
   }
+  // шаг выхода не должен «повесить» выход: сеть или отписка от уведомлений могут не ответить
+  const limit = (p, ms) => Promise.race([Promise.resolve(p).catch(() => { }), new Promise(r => setTimeout(r, ms))]);
   async function logout() {
-    await syncNow();
-    if (window.KanaPush) await window.KanaPush.forget();   // напоминания этого устройства привязаны к аккаунту
-    await api('/auth/logout', {});
+    await limit(syncNow(), 5000);                                              // успеть отправить последнее
+    if (window.KanaPush) await limit(window.KanaPush.forget(), 4000);          // напоминания этого устройства привязаны к аккаунту
+    await limit(api('/auth/logout', {}), 4000);
     account = null; cursor = 0; snap = {}; lastSync = 0; status = ''; saveState();
     ui.error = ''; ui.notice = ''; stopTg();
     window.KanaApp.resetLocal();   // перерисует «Я» уже без аккаунта

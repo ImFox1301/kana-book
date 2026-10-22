@@ -45,7 +45,8 @@
     const form = h('form', { method: 'dialog', class: 'dlg-in', oninput: update, onsubmit: async e => {
       e.preventDefault(); if (ok.disabled) return;
       busy = true; update(); err.hidden = true;
-      const res = onConfirm ? await onConfirm() : null;
+      let res = null;
+      try { res = onConfirm ? await onConfirm() : null; } catch (ex) { res = (ex && ex.message) || 'Не получилось — попробуйте ещё раз'; }
       busy = false;
       if (typeof res === 'string' && res) { err.textContent = res; err.hidden = false; update(); return; }
       close();
@@ -1890,8 +1891,8 @@
   // при выходе из аккаунта: это устройство больше ничего не получает
   async function pushForget() {
     const sub = await pushSub();
-    if (sub) { await api('/push/unsubscribe', { endpoint: sub.endpoint }); try { await sub.unsubscribe(); } catch (e) { } }
     PS.on = false; PS.sub = false; PS.checked = false;
+    if (sub) { await api('/push/unsubscribe', { endpoint: sub.endpoint }); try { sub.unsubscribe().catch(() => { }); } catch (e) { } }   // в Safari отписка может не завершаться — не ждём её
   }
   async function pushTime(v) {
     PS.time = v; store.set('remind-time', v);
