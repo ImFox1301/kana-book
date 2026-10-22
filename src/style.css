@@ -807,7 +807,7 @@ button.tile { cursor: pointer }
 .w-row .r { color: var(--muted) }
 .w-row.hard { background: var(--error-soft) }
 .w-row .bad { color: var(--error); font-weight: 700 }
-#write .actions .btn.primary { flex: 1 1 100% }
+
 
 /* ---- обновление ---- */
 .updbar { position: fixed; left: 0; right: 0; bottom: calc(var(--nav-real, calc(var(--nav-h) + env(safe-area-inset-bottom, 0px))) + 10px); z-index: 40; display: flex; justify-content: center; padding: 0 16px; pointer-events: none }
@@ -956,3 +956,35 @@ dialog.dlg[open] { animation: pop .18s ease-out }
 .dlg .dict-tools { justify-content: space-between }
 .name-edit .icbtn { width: 42px; height: 42px }
 @media (min-width: 960px) { #screen-me .profile, #screen-me .ask-name, #screen-me .logout-box { grid-column: 1 / -1 } #screen-me .logout-box { max-width: 480px } }
+
+/* ---- телефоны: без двойного зума при быстрых нажатиях, кнопки упражнения всегда видны ---- */
+html { touch-action: manipulation }
+button, .btn, .chip, .choice, .btok, .abc-cell, .slot { -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: manipulation }
+.pad, .pad canvas { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none }
+/* подложка для рисования ужимается на невысоких экранах */
+.pad { width: min(100%, 360px, max(200px, 100dvh - 430px)) }
+.prompt.draw { min-height: 0; padding: 16px 52px 14px; gap: 4px }
+.prompt.draw .big { font-size: 36px }
+.prompt.draw .lab { margin-top: 2px; font-size: 16px }
+/* «Далее» и «Пропустить» прилипают к низу экрана */
+#card > .actions, #write .actions, #lintro .icard > .actions, .verdict > .btn.primary:last-child {
+  position: sticky; bottom: max(12px, env(safe-area-inset-bottom, 0px)); z-index: 5 }
+#card > .actions, #write .actions, #lintro .icard > .actions { padding: 10px 0 0; margin-top: -4px; background: linear-gradient(180deg, transparent, var(--canvas) 14px) }
+.verdict > .btn.primary:last-child { box-shadow: 0 -6px 14px var(--surface) }
+@media (max-height: 700px) {
+  .qbar { padding: 10px 0 12px } .qbar .qt { font-size: 22px }
+  .prompt { min-height: 170px; padding: 18px 16px }
+  .prompt .kana { font-size: 84px }
+  .card { gap: 12px }
+}
+/* прописи: компактная шапка — образец слева, знак и счёт справа */
+#write .w-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; background: var(--surface); border-radius: 20px; box-shadow: var(--shadow); padding: 12px 14px }
+#write .w-model canvas.box { width: 72px; height: 72px; box-shadow: none; background: var(--canvas) }
+#write .w-model .small { display: none }
+#write .w-info { display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 4px 10px; justify-items: start }
+#write .w-kana { font-size: 34px }
+#write .w-read { font-size: 18px }
+#write .w-say { grid-column: 4; justify-self: end; width: 42px; height: 42px; padding: 0; justify-content: center }
+#write .w-cnt, #write .dots { grid-column: 1 / -1 }
+#write .actions .btn { flex: 1 1 0 } #write .actions .btn.primary { flex: 1.4 1 0 }
+#card > .actions, #write .actions { flex-wrap: nowrap } #card > .actions .btn, #write .actions .btn { padding: 0 14px; min-width: 0 }

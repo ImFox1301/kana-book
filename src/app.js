@@ -408,7 +408,7 @@
       const units = [...it.kana];
       const slotStrokes = units.map(() => []);
       let cur = 0;
-      const prompt = h('div', { class: 'prompt' },
+      const prompt = h('div', { class: 'prompt draw' },
         h('span', { class: 'lab' }, isWord ? 'Напишите слово' : 'Нарисуйте знак'),
         isWord ? h('span', { class: 'meaning' }, it.w.mean) : null,
         h('span', { class: 'big' }, readingOf(it, Q.sys)),
@@ -995,8 +995,8 @@
       h('div', { class: 'w-info' },
         h('div', { class: 'w-kana' }, k),
         h('div', { class: 'w-read' }, displayReading(k, S.sys), h('span', { class: 'muted' }, ' · ' + displayReading(k, otherSys(S.sys)))),
-        h('button', { class: 'iconbtn', type: 'button', onclick: () => playKana(k) }, svgIcon('sound'), 'Произношение'),
-        h('div', { class: 'small muted' }, `Знак ${WR.i + 1} из ${WR.kanas.length} · написано ${st.ok} из ${WR.reps}`),
+        h('button', { class: 'iconbtn w-say', type: 'button', title: 'Произношение', 'aria-label': 'Произношение', onclick: () => playKana(k) }, svgIcon('sound')),
+        h('div', { class: 'small muted w-cnt' }, `Знак ${WR.i + 1} из ${WR.kanas.length} · написано ${st.ok} из ${WR.reps}`),
         dots));
     const msg = h('div', { class: 'msg w-msg', role: 'status' });
     const pad = makePad(() => { msg.textContent = ''; msg.className = 'msg w-msg'; pad.el.classList.remove('ok', 'bad'); });
