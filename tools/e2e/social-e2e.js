@@ -171,7 +171,11 @@ async function openBot(page, sel) {
   await A.page.waitForSelector('#me-login #btn-tg-login');
   nonce = await openBot(A.page, '#btn-tg-login');
   await start(tgIds.ivan, nonce, 'Иван', 'ivan_' + sfx);
-  await A.page.waitForFunction(() => (document.querySelector('#tg-status') || {}).textContent?.includes('Подтвердите'));
+  await A.page.waitForFunction(() => (document.querySelector('#tg-status') || {}).textContent?.includes('Подтвердите'), null, { timeout: 20000 }).catch(async e => {
+    // для разбора в CI: что на экране и какая попытка входа ждётся
+    console.log('FAIL состояние входа: ' + await A.page.evaluate(() => JSON.stringify({ st: [...document.querySelectorAll('#tg-status')].map(x => x.textContent), screens: [...document.querySelectorAll('section:not([hidden])')].map(s => s.id),
+      href: (document.querySelector('#btn-tg-login') || {}).href, ss: sessionStorage.getItem('kana-tetrad:tg'), acct: localStorage.getItem('kana-tetrad:account') })) + ' nonce теста: ' + nonce);
+    throw e; });
   check(true, 'Иван: бот просит подтвердить вход');
   await start(tgIds.ivan, nonce, 'Иван', 'ivan_' + sfx);   // ссылку открыли ещё раз
   const sent = await (await fetch(TG + '/__tg/sent')).json();
