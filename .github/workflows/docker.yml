@@ -97,7 +97,7 @@ jobs:
           fail=0
           for t in sync abc lessons srs kata stage4 social; do
             # провалы — в аннотации запуска, чтобы их было видно без скачивания логов
-            TG_CTRL=http://127.0.0.1:8792 node tools/e2e/$t-e2e.js http://localhost:8790 > $t.log 2>&1 || { fail=1; grep -E "FAIL|Error|ошибка|    at " $t.log | head -15 | sed "s/^/::error title=$t-e2e::/"; }
+            TG_CTRL=http://127.0.0.1:8792 timeout 300 node tools/e2e/$t-e2e.js http://localhost:8790 > $t.log 2>&1 || { fail=1; echo "::error title=$t-e2e::упал или завис; последние шаги: $(grep -E "^(ok|FAIL)" $t.log | tail -3 | tr '\n' ' ' | cut -c1-400)"; grep -E "FAIL|Error|ошибка|    at " $t.log | head -15 | sed "s/^/::error title=$t-e2e::/"; }
             cat $t.log
           done
           node tools/e2e/haptics-ios.js http://localhost:8790/ || { fail=1; echo '::error title=haptics-ios::iPhone haptics check failed'; }
