@@ -57,8 +57,8 @@ self.addEventListener('fetch', event => {
     return;
   }
   if (url.pathname.startsWith('/api/')) return;   // остальное API всегда идёт на сервер
-  if (url.pathname.includes('/audio/words/')) {
-    // озвучка слов: скачивается при первом прослушивании и остаётся в кэше текущей версии
+  if (url.pathname.includes('/audio/words/') || url.pathname.includes('/img/')) {
+    // озвучка слов и крупные иллюстрации: скачиваются при первом показе и остаются в кэше текущей версии
     event.respondWith(caches.open(CACHE).then(async c => {
       const hit = await c.match(req, { ignoreSearch: true });
       if (hit) return hit;

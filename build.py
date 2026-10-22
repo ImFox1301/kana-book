@@ -50,7 +50,6 @@ html = f"""<!doctype html>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="KANA">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="preload" href="img/fuji-s.webp" as="image" media="(max-width: 959px)">
 <link rel="preload" href="fonts/noto-sans-regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/noto-sans-bold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/noto-sans-jp.woff2" as="font" type="font/woff2" crossorigin>
@@ -86,7 +85,7 @@ manifest = {
 # озвучка слов (≈3 МБ) кэшируется по мере прослушивания (см. sw.js)
 files = ["index.html", "manifest.webmanifest"] + sorted(
     str(p.relative_to(dist)) for p in dist.rglob("*")
-    if p.is_file() and p.suffix in {".woff2", ".png", ".webp", ".svg", ".mp3", ".js", ".ttf"} and "audio/words" not in str(p.relative_to(dist)) and p.name != "sw.js")
+    if p.is_file() and p.suffix in {".woff2", ".png", ".webp", ".svg", ".mp3", ".js", ".ttf"} and "audio/words" not in str(p.relative_to(dist)) and not (p.suffix == ".webp" and not p.stem.endswith("-s")) and p.name != "sw.js")
 h = hashlib.sha256()
 for f in files:
     h.update(f.encode()); h.update((dist / f).read_bytes())

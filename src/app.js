@@ -106,6 +106,23 @@
   }
   if (darkMq && darkMq.addEventListener) darkMq.addEventListener('change', () => applyTheme());
   applyTheme();
+  // иллюстрации: семь сюжетов по дням недели, в редакции текущего времени года
+  // (весна — март–май, лето — июнь–август, осень — сентябрь–ноябрь, зима — декабрь–февраль)
+  const SCENES = ['fuji', 'osaka', 'pagoda', 'tokyo', 'torii', 'kyoto', 'arashiyama'];   // понедельник … воскресенье
+  const seasonOf = d => { const m = d.getMonth(); return m >= 2 && m <= 4 ? 'spring' : m >= 5 && m <= 7 ? 'summer' : m >= 8 && m <= 10 ? 'autumn' : 'winter'; };
+  // k — место картинки: 0 — главная, дальше сдвиг, чтобы на соседних экранах сюжеты не повторялись
+  const art = (k, large) => { const d = new Date(), day = (d.getDay() + 6) % 7; return `img/${seasonOf(d)}/${SCENES[(day + k) % 7]}${large ? '' : '-s'}.webp`; };
+  let artKey = '';
+  function applyArt() {
+    const d = new Date(), key = d.toDateString(); if (key === artKey) return false; artKey = key;
+    const r = document.documentElement.style;
+    r.setProperty('--art-hero', `url(${art(0)})`); r.setProperty('--art-hero-l', `url(${art(0, true)})`);
+    r.setProperty('--art-avatar', `url(img/${seasonOf(d)}/torii-s.webp)`);
+    const side = document.querySelector('.bnav .sb.art img'); if (side) side.src = art(4);
+    return true;
+  }
+  applyArt();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && applyArt() && ['home', 'lessons', 'reading'].includes(current)) show(current); });   // новый день — новые картинки
 
   function selectedItems() {
     if (S.script === 'w') {
@@ -504,7 +521,7 @@
     const el = $('#screen-reading'); el.replaceChildren();
     if (!RT) {
       el.append(pageHead('Чтение надписей', 'practice'),
-        h('p', { class: 'psub' }, 'Короткие надписи для реальной жизни'), h('div', { class: 'banner', style: 'background-image:url(img/tokyo-s.webp)' }),
+        h('p', { class: 'psub' }, 'Короткие надписи для реальной жизни'), h('div', { class: 'banner', style: `background-image:url(${art(5)})` }),
         h('p', { class: 'small muted', style: 'margin:0' }, 'Вывески, указатели и меню по темам. Надписи каной тренируются и на чтение, надписи иероглифами достаточно узнавать в лицо — чтение показывается после ответа. Шрифт — как на настоящих табличках, а не рукописный.'),
         readingList(),
         h('div', { class: 'actions' }, iconBtn('btn ghost wide', 'next', 'Все темы вперемешку', () => startReading(null, 'mean'))));
@@ -513,7 +530,7 @@
     const t = RT, items = readingItems(t), kanaOnly = items.filter(x => !hasKanji(x.w.sign));
     el.append(pageHead(t.title, () => { RT = null; renderReading(); window.scrollTo(0, 0); }),
       h('div', { class: 'crumb' }, 'Чтение надписей' + ((lessonsDone['r-' + t.id] || {}).quiz ? ` · лучший результат ${lessonsDone['r-' + t.id].quiz}%` : '')),
-      h('div', { class: 'banner', style: 'background-image:url(img/pagoda-s.webp)' }),
+      h('div', { class: 'banner', style: `background-image:url(${art(6)})` }),
       h('p', { class: 'lintro-text' }, t.intro),
       h('div', { class: 'actions col' },
         iconBtn('btn primary wide', 'next', `Что означает? · ${items.length}`, () => startReading(t, 'mean'), 'Квиз: выбрать значение надписи'),
@@ -1464,16 +1481,16 @@
   }
 
   // ---------- экран «Уроки» ----------
-  const COURSE = { h: { name: 'Хирагана', pic: 'fuji' }, k: { name: 'Катакана', pic: 'torii' }, r: { name: 'Чтение надписей', pic: 'tokyo' } };
+  const COURSE = { h: { name: 'Хирагана', pic: 1 }, k: { name: 'Катакана', pic: 2 }, r: { name: 'Чтение надписей', pic: 3 } };
   function renderLessons() {
     const el = $('#screen-lessons'); el.replaceChildren();
     const rec = guest() ? null : recommended();
     const tab = ['h', 'k', 'r'].includes(S.lessonTab) ? S.lessonTab : (rec ? rec.script : 'h');
     el.append(pageHead('Уроки'), segm('Курс', [['h', 'Хирагана'], ['k', 'Катакана'], ['r', 'Чтение']], tab, v => { S.lessonTab = v; save(); renderLessons(); }));
     el.lastChild.classList.add('tabs'); el.lastChild.id = 'lesson-tabs';
-    const pic = n => h('div', { class: 'pic', style: `background-image:url(img/${n}-s.webp)` });
+    const pic = n => h('div', { class: 'pic', style: `background-image:url(${art(n)})` });
     if (tab === 'r') {
-      el.append(h('div', { class: 'sheet course' }, pic('tokyo'), h('div', { class: 'body' }, h('h2', {}, 'Чтение надписей'), h('div', { class: 'meta' }, `${READING.length} ${plural(READING.length, 'тема', 'темы', 'тем')}`))),
+      el.append(h('div', { class: 'sheet course' }, pic(COURSE.r.pic), h('div', { class: 'body' }, h('h2', {}, 'Чтение надписей'), h('div', { class: 'meta' }, `${READING.length} ${plural(READING.length, 'тема', 'темы', 'тем')}`))),
         h('h2', { class: 'h2' }, 'Темы'), readingList());
       return;
     }
@@ -2032,7 +2049,7 @@
     const el = $('#screen-friends'); el.replaceChildren();
     el.append(pageHead('Друзья', 'me'), h('p', { class: 'psub' }, 'Практикуйтесь вместе'));
     if (!acct()) { el.append(guestCard('Друзья доступны с аккаунтом.')); return; }
-    el.append(h('div', { class: 'banner', style: 'background-image:url(img/pagoda-s.webp)' }));
+    el.append(h('div', { class: 'banner', style: `background-image:url(${art(4)})` }));
     if (FR.pendingInvite) {
       const inf = FR.inviteInfo;
       if (!inf) checkInvite();
