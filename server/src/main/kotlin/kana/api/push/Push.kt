@@ -224,7 +224,7 @@ class PushService(private val jdbc: JdbcTemplate, private val keys: VapidKeys, p
             min == 0 && cards == 0 -> "Сегодня ещё не было занятий. Цель: $gMin мин и $gCards карточек."
             else -> "До цели дня осталось: $left."
         }
-        return Message("Кана-тетрадь", body)
+        return Message("KANA", body)
     }
 
     private fun plural(n: Int, one: String, few: String, many: String): String {
@@ -265,6 +265,6 @@ class PushController(private val push: PushService, private val keys: VapidKeys,
     fun test(req: HttpServletRequest): Map<String, Int> {
         val u = user(req)
         if (!limiter.tryAcquire("push-test:$u", 5, 60_000)) throw ApiException(HttpStatus.TOO_MANY_REQUESTS, "Слишком часто — попробуйте через минуту")
-        return mapOf("sent" to push.sendTo(u, Message("Кана-тетрадь", "Напоминания работают. Так будет выглядеть напоминание о занятиях.", "test")))
+        return mapOf("sent" to push.sendTo(u, Message("KANA", "Напоминания работают. Так будет выглядеть напоминание о занятиях.", "test")))
     }
 }

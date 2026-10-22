@@ -131,7 +131,7 @@ async function openBot(page, sel) {
   await signup(C.page, { name: 'Олег', user: 'oleg_' + sfx });
   // фото профиля с устройства
   await C.page.click('#tab-me');
-  const png = require('path').resolve(__dirname, '../../assets/icons/icon-192.png');
+  const png = require('path').resolve(__dirname, '../../assets/icons/kana-icon-192.png');
   await C.page.setInputFiles('#avatar-file', png);
   await C.page.waitForSelector('#btn-avatar img');
   check(await C.page.isVisible('#btn-avatar-del'), 'Олег: фото профиля загружено');
@@ -150,8 +150,11 @@ async function openBot(page, sel) {
   check((await C.page.textContent('#screen-friends')).includes('Ждут ответа'), 'Олег: заявка отправлена');
   await A.page.reload(); await A.page.waitForSelector('#me-dot:not([hidden])', { timeout: 10000 });
   check(true, 'Иван: на вкладке «Друзья» отметка о заявке');
-  await A.page.click('#tab-me'); await A.page.click('#me-friends');
-  await A.page.waitForSelector('#incoming');
+  // нажатие на уведомление при открытом приложении: service worker присылает { type: 'open', url }
+  await A.page.click('#tab-home');
+  await A.page.evaluate(() => navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'open', url: location.origin + '/#friends' } })));
+  await A.page.waitForSelector('#screen-friends:not([hidden]) #incoming');
+  check(true, 'Иван: уведомление открывает экран с заявкой');
   await A.page.click('#incoming .btn:has-text("Принять")');
   await A.page.waitForFunction(() => document.querySelectorAll('#screen-friends .fcard').length === 2);
   check(await A.page.isHidden('#me-dot'), 'Иван: заявка принята, двое друзей');

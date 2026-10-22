@@ -115,9 +115,9 @@ class TelegramFriendsTest(@Autowired val mvc: MockMvc, @Autowired val om: Object
         startCmd(tgId, n2.first)
         // ту же ссылку открыли ещё раз и просто /start без кода — бот повторяет вопрос, а не «ссылка устарела»
         startCmd(tgId, n2.first)
-        assertTrue(lastTo(tgId)["text"].asText().startsWith("Войти в Кана-тетрадь"), lastTo(tgId)["text"].asText())
+        assertTrue(lastTo(tgId)["text"].asText().startsWith("Войти в KANA"), lastTo(tgId)["text"].asText())
         update(mapOf("message_id" to 3, "chat" to mapOf("id" to tgId, "type" to "private"), "from" to from(tgId), "text" to "/start"))
-        assertTrue(lastTo(tgId)["text"].asText().startsWith("Войти в Кана-тетрадь"), lastTo(tgId)["text"].asText())
+        assertTrue(lastTo(tgId)["text"].asText().startsWith("Войти в KANA"), lastTo(tgId)["text"].asText())
         assertEquals("ok:${n2.first}", lastTo(tgId)["reply_markup"]["inline_keyboard"][0][0]["callback_data"].asText())
         callback(tgId, "ok:${n2.first}")
         val ok2 = status(n2)

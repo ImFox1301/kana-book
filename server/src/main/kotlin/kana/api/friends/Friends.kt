@@ -114,14 +114,14 @@ class FriendsService(private val jdbc: JdbcTemplate, private val progress: Progr
         if (jdbc.queryForObject("select count(*) from friend_requests where from_id = ?", Long::class.java, me)!! >= 50)
             throw ApiException(HttpStatus.TOO_MANY_REQUESTS, "Слишком много неотвеченных заявок")
         val added = jdbc.update("insert into friend_requests (from_id, to_id) values (?, ?) on conflict do nothing", me, to)
-        if (added > 0) person(me)?.let { push.sendTo(to, Message("Кана-тетрадь", "${it.name} хочет добавить вас в друзья", "friends", "/#friends")) }
+        if (added > 0) person(me)?.let { push.sendTo(to, Message("KANA", "${it.name} хочет добавить вас в друзья", "friends", "/#friends")) }
     }
 
     fun accept(me: Long, from: Long) {
         val removed = jdbc.update("delete from friend_requests where from_id = ? and to_id = ?", from, me)
         if (removed == 0 && !areFriends(me, from)) throw ApiException(HttpStatus.NOT_FOUND, "Заявка не найдена")
         befriend(me, from)
-        person(me)?.let { push.sendTo(from, Message("Кана-тетрадь", "${it.name} теперь у вас в друзьях", "friends", "/#friends")) }
+        person(me)?.let { push.sendTo(from, Message("KANA", "${it.name} теперь у вас в друзьях", "friends", "/#friends")) }
     }
 
     private fun befriend(x: Long, y: Long) {
@@ -157,7 +157,7 @@ class FriendsService(private val jdbc: JdbcTemplate, private val progress: Progr
         if (from == me) throw ApiException(HttpStatus.BAD_REQUEST, "Это ваше собственное приглашение — отправьте его другу")
         jdbc.update("delete from friend_invites where token_hash = ?", sha(token))   // одноразовое
         befriend(me, from)
-        person(me)?.let { push.sendTo(from, Message("Кана-тетрадь", "${it.name} принял(а) приглашение — теперь вы друзья", "friends", "/#friends")) }
+        person(me)?.let { push.sendTo(from, Message("KANA", "${it.name} принял(а) приглашение — теперь вы друзья", "friends", "/#friends")) }
         return person(from)!!
     }
 }

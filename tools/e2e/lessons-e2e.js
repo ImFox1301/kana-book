@@ -29,6 +29,7 @@ async function draw(page, ch) {
   await page.goto(BASE + '/');
   await page.waitForSelector('#screen-onboard:not([hidden])');
   check(await page.isHidden('#bnav'), 'на первом запуске нижней панели нет');
+  await page.waitForSelector('#btn-welcome-register');
   check(await page.isVisible('#btn-guest') && await page.isVisible('#btn-welcome-register'), 'приветствие: создать аккаунт, войти или без аккаунта');
   await page.screenshot({ path: SHOTS + '/s0-welcome.png', fullPage: true });
   await page.click('#btn-welcome-register');

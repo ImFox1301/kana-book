@@ -44,24 +44,26 @@ html = f"""<!doctype html>
 <meta name="theme-color" content="#0B1724" media="(prefers-color-scheme: dark)">
 <meta name="description" content="Тренажёр хираганы, катаканы и слов: рисуйте знаки пальцем или пишите их звучание">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/png" href="icons/favicon-48.png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="icons/kana-app.svg">
+<link rel="icon" type="image/png" href="icons/kana-favicon-48.png">
+<link rel="apple-touch-icon" href="icons/kana-apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Кана-тетрадь">
+<meta name="apple-mobile-web-app-title" content="KANA">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preload" href="img/fuji-s.webp" as="image" media="(max-width: 959px)">
 <link rel="preload" href="fonts/noto-sans-regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/noto-sans-bold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/noto-sans-jp.woff2" as="font" type="font/woff2" crossorigin>
 {FONTS}
+<script>try{{var t=(JSON.parse(localStorage.getItem('kana-tetrad:settings')||'{{}}')||{{}}).theme;if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}}catch(e){{}}</script>
 <style>:root{{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}}body{{margin:0}}[hidden]{{display:none!important}}</style>
 {page}
 """
 (dist / "index.html").write_text(html, encoding="utf-8")
 
 manifest = {
-    "name": "Кана-тетрадь",
-    "short_name": "Кана",
+    "name": "KANA",
+    "short_name": "KANA",
     "description": "Тренажёр хираганы, катаканы и слов",
     "lang": "ru",
     "start_url": "./",
@@ -72,9 +74,9 @@ manifest = {
     "background_color": "#F8F5F0",
     "theme_color": "#0B2D49",
     "icons": [
-        {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-        {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
-        {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+        {"src": "icons/kana-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+        {"src": "icons/kana-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+        {"src": "icons/kana-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
     ],
 }
 (dist / "manifest.webmanifest").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -84,7 +86,7 @@ manifest = {
 # озвучка слов (≈3 МБ) кэшируется по мере прослушивания (см. sw.js)
 files = ["index.html", "manifest.webmanifest"] + sorted(
     str(p.relative_to(dist)) for p in dist.rglob("*")
-    if p.is_file() and p.suffix in {".woff2", ".png", ".webp", ".mp3", ".js", ".ttf"} and "audio/words" not in str(p.relative_to(dist)) and p.name != "sw.js")
+    if p.is_file() and p.suffix in {".woff2", ".png", ".webp", ".svg", ".mp3", ".js", ".ttf"} and "audio/words" not in str(p.relative_to(dist)) and p.name != "sw.js")
 h = hashlib.sha256()
 for f in files:
     h.update(f.encode()); h.update((dist / f).read_bytes())

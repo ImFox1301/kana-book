@@ -1,4 +1,4 @@
-<title>Кана-тетрадь</title>
+<title>KANA</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&family=Noto+Sans+JP:wght@400&display=swap">
@@ -91,33 +91,9 @@
 
   <!-- СЛОВАРЬ -->
   <section id="screen-dict" hidden>
-    <div class="phead"><h1 class="h1">Словарь</h1></div>
-    <div class="dict-top">
-      <label class="search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 10a6 6 0 1 1-12 0 6 6 0 0 1 12 0 M15 15l6 6"/></svg><input type="search" id="dict-q" placeholder="Слово, кана или перевод" aria-label="Поиск"></label>
-      <div class="segm tabs" id="dict-tabs" role="group" aria-label="Показать"></div>
-      <div class="topics" id="dict-topics" hidden></div>
-    </div>
-    <div class="guest-card" id="dict-guest" hidden>
-      <div class="gh"><span class="tilei mint"><svg class="i" viewBox="0 0 24 24"><path d="M6 10h12v12H6z M8 10V6a4 4 0 0 1 8 0v4"/></svg></span><b>Свои слова — с аккаунтом</b></div>
-      <p>Свои слова, импорт и резервная копия доступны с аккаунтом — так слова сохраняются и есть на всех ваших устройствах. Стартовый словарь можно смотреть, слушать и тренировать и без входа.</p>
-      <div class="row"><button class="btn primary" type="button" id="dict-register">Создать аккаунт</button><button class="btn ghost" type="button" id="dict-login">Войти</button></div>
-    </div>
-    <div class="panels" id="dict-panels">
-    <details class="panel" id="add-panel">
-      <summary><span class="tilei mint"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M3 12h18"/></svg></span><span>Добавить слово<small>Кана, перевод и тема</small></span><span class="chev"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></span></summary>
-      <form class="form" id="add-form">
-        <div class="row">
-          <label>Слово каной<input id="add-kana" class="k" required placeholder="さかな"></label>
-          <label>Перевод<input id="add-mean" required placeholder="рыба"></label>
-          <label>Тема<input id="add-topic" list="topics" placeholder="Еда"></label>
-        </div>
-        <label>Запись иероглифами — необязательно, для правильного ударения в озвучке<input id="add-kanji" class="k" placeholder="猫"></label>
-        <label>Особое чтение (если читается не так, как пишется), латиница|кириллица<input id="add-read" placeholder="konnichiwa|коннитива"></label>
-        <div id="add-preview" class="small muted"></div>
-        <div><button class="btn primary" type="submit">Сохранить слово</button> <span class="okmsg" id="add-ok"></span></div>
-      </form>
-      <datalist id="topics"></datalist>
-    </details>
+    <div class="phead"><h1 class="h1">Словарь</h1>
+      <div class="right"><button class="icbtn" id="dict-menu-btn" type="button" aria-label="Ещё" aria-expanded="false" aria-controls="dict-menu" title="Импорт и резервная копия"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01 M12 12h.01 M19 12h.01" stroke-width="3.2"/></svg></button></div></div>
+    <div class="dict-menu" id="dict-menu" hidden>
     <details class="panel" id="import-panel">
       <summary><span class="tilei"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17V3 M6 9l6-6 6 6 M3 17v5h18v-5"/></svg></span><span>Импорт словаря<small>CSV, TXT или колода Anki</small></span><span class="chev"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></span></summary>
       <div class="form">
@@ -144,6 +120,35 @@
       </div>
     </details>
     </div>
+    <div class="dict-top">
+      <label class="search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 10a6 6 0 1 1-12 0 6 6 0 0 1 12 0 M15 15l6 6"/></svg><input type="search" id="dict-q" placeholder="Слово, кана или перевод" aria-label="Поиск"></label>
+      <div class="segm tabs" id="dict-tabs" role="group" aria-label="Показать"></div>
+    </div>
+    <div class="guest-card" id="dict-guest" hidden>
+      <div class="gh"><span class="tilei mint"><svg class="i" viewBox="0 0 24 24"><path d="M6 10h12v12H6z M8 10V6a4 4 0 0 1 8 0v4"/></svg></span><b>Свои слова — с аккаунтом</b></div>
+      <p>Свои слова, импорт и резервная копия доступны с аккаунтом — так слова сохраняются и есть на всех ваших устройствах. Стартовый словарь можно смотреть, слушать и тренировать и без входа.</p>
+      <div class="row"><button class="btn primary" type="button" id="dict-register">Создать аккаунт</button><button class="btn ghost" type="button" id="dict-login">Войти</button></div>
+    </div>
+    <div class="panels" id="dict-panels">
+    <details class="panel" id="add-panel">
+      <summary><span class="tilei mint"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M3 12h18"/></svg></span><span>Добавить слово<small>Кана, перевод и тема</small></span><span class="chev"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></span></summary>
+      <form class="form" id="add-form">
+        <div class="row">
+          <label>Слово каной<input id="add-kana" class="k" required placeholder="さかな"></label>
+          <label>Перевод<input id="add-mean" required placeholder="рыба"></label>
+          <label>Тема<input id="add-topic" list="topics" placeholder="Еда"></label>
+        </div>
+        <label>Запись иероглифами — необязательно, для правильного ударения в озвучке<input id="add-kanji" class="k" placeholder="猫"></label>
+        <label>Особое чтение (если читается не так, как пишется), латиница|кириллица<input id="add-read" placeholder="konnichiwa|коннитива"></label>
+        <div id="add-preview" class="small muted"></div>
+        <div><button class="btn primary" type="submit">Сохранить слово</button> <span class="okmsg" id="add-ok"></span></div>
+      </form>
+      <datalist id="topics"></datalist>
+    </details>
+    
+    
+    </div>
+    <div class="topics" id="dict-topics" hidden role="group" aria-label="Темы"></div>
     <div class="dict-count" id="dict-count"></div>
     <div class="wlist" id="wlist"></div>
   </section>
@@ -185,7 +190,7 @@
   <!-- ПРОФИЛЬ: аккаунт, цель, сводка; настройки — отдельно -->
   <section id="screen-me" hidden>
     <div class="phead"><h1 class="h1">Профиль</h1>
-      <button class="icbtn" id="btn-settings" type="button" title="Настройки" aria-label="Настройки"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M5 19l2-2 M17 7l2-2"/></svg></button></div>
+      <button class="icbtn" id="btn-settings" type="button" title="Настройки" aria-label="Настройки"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.00 1.40 12.68 1.56 13.32 2.01 13.86 2.63 14.34 3.28 14.78 3.82 15.25 4.15 15.82 4.25 16.51 4.18 17.31 4.06 18.13 4.01 18.90 4.14 19.50 4.50 19.86 5.10 19.99 5.87 19.94 6.69 19.82 7.49 19.75 8.18 19.85 8.75 20.18 9.22 20.72 9.66 21.37 10.14 21.99 10.68 22.44 11.32 22.60 12.00 22.44 12.68 21.99 13.32 21.37 13.86 20.72 14.34 20.18 14.78 19.85 15.25 19.75 15.82 19.82 16.51 19.94 17.31 19.99 18.13 19.86 18.90 19.50 19.50 18.90 19.86 18.13 19.99 17.31 19.94 16.51 19.82 15.82 19.75 15.25 19.85 14.78 20.18 14.34 20.72 13.86 21.37 13.32 21.99 12.68 22.44 12.00 22.60 11.32 22.44 10.68 21.99 10.14 21.37 9.66 20.72 9.22 20.18 8.75 19.85 8.18 19.75 7.49 19.82 6.69 19.94 5.87 19.99 5.10 19.86 4.50 19.50 4.14 18.90 4.01 18.13 4.06 17.31 4.18 16.51 4.25 15.82 4.15 15.25 3.82 14.78 3.28 14.34 2.63 13.86 2.01 13.32 1.56 12.68 1.40 12.00 1.56 11.32 2.01 10.68 2.63 10.14 3.28 9.66 3.82 9.22 4.15 8.75 4.25 8.18 4.18 7.49 4.06 6.69 4.01 5.87 4.14 5.10 4.50 4.50 5.10 4.14 5.87 4.01 6.69 4.06 7.49 4.18 8.18 4.25 8.75 4.15 9.22 3.82 9.66 3.28 10.14 2.63 10.68 2.01 11.32 1.56z M15.6 12a3.6 3.6 0 1 1-7.2 0 3.6 3.6 0 0 1 7.2 0"/></svg></button></div>
     <div id="account-box" hidden></div>
     <div id="me-extra" style="display:contents"></div>
   </section>

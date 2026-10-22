@@ -78,7 +78,7 @@ window.KanaPdf = (function () {
     st.add = () => {
       st.page = doc.addPage(A4); st.n++; st.y = A4[1] - M;
       drawLine(st.page, title, M, A4[1] - 24, F, 8.5, P.rgb(0.42, 0.46, 0.5));
-      drawLine(st.page, 'Кана-тетрадь · штрихи: KanjiVG (CC BY-SA 3.0)', M, 22, F, 7.5, P.rgb(0.55, 0.58, 0.62));
+      drawLine(st.page, 'KANA · штрихи: KanjiVG (CC BY-SA 3.0)', M, 22, F, 7.5, P.rgb(0.55, 0.58, 0.62));
       drawLine(st.page, String(st.n), A4[0] - M - 10, 22, F, 8, P.rgb(0.42, 0.46, 0.5));
     };
     st.need = h => { if (!st.page || st.y - h < M) st.add(); };
@@ -92,7 +92,7 @@ window.KanaPdf = (function () {
   async function notes(l, ctx) {
     const P = window.PDFLib, doc = await P.PDFDocument.create(), F = await fonts(doc);
     const ink = P.rgb(0.11, 0.13, 0.15), muted = P.rgb(0.34, 0.37, 0.4), accent = P.rgb(0.18, 0.31, 0.53);
-    doc.setTitle(`${l.title} — конспект`); doc.setAuthor('Кана-тетрадь');
+    doc.setTitle(`${l.title} — конспект`); doc.setAuthor('KANA');
     const pg = pager(doc, F, P, `Урок ${ctx.no} · ${ctx.scriptName || 'хирагана'} · конспект`);
     pg.add();
     pg.text(l.title, 22, { bold: true }); pg.y -= 4;
@@ -163,7 +163,7 @@ window.KanaPdf = (function () {
   async function sheet(l, ctx) {
     const P = window.PDFLib, doc = await P.PDFDocument.create(), F = await fonts(doc);
     const ink = P.rgb(0.11, 0.13, 0.15), accent = P.rgb(0.18, 0.31, 0.53);
-    doc.setTitle(`${l.title} — прописи`); doc.setAuthor('Кана-тетрадь');
+    doc.setTitle(`${l.title} — прописи`); doc.setAuthor('KANA');
     const pg = pager(doc, F, P, `Урок ${ctx.no} · ${ctx.scriptName || 'хирагана'} · прописи`);
     pg.add();
     pg.text(`Прописи: ${l.title}`, 18, { bold: true });

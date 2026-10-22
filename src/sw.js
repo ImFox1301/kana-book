@@ -1,4 +1,4 @@
-// Service worker Кана-тетради. VERSION и ASSETS подставляет build.py при каждой сборке.
+// Service worker KANA. VERSION и ASSETS подставляет build.py при каждой сборке.
 const VERSION = '__VERSION__';
 const CACHE = 'kana-' + VERSION;
 const TTS_CACHE = 'tts-v2';   // не зависит от версии приложения — переживает обновления
@@ -13,9 +13,9 @@ self.addEventListener('install', event => {
 self.addEventListener('push', event => {
   let m = {};
   try { m = event.data ? event.data.json() : {}; } catch (e) { m = { body: event.data && event.data.text() }; }
-  event.waitUntil(self.registration.showNotification(m.title || 'Кана-тетрадь', {
+  event.waitUntil(self.registration.showNotification(m.title || 'KANA', {
     body: m.body || 'Пора позаниматься', tag: m.tag || 'reminder', renotify: false,
-    icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', lang: 'ru', data: { url: m.url || '/' },
+    icon: 'icons/kana-icon-192.png', badge: 'icons/kana-icon-192.png', lang: 'ru', data: { url: m.url || '/' },
   }));
 });
 self.addEventListener('notificationclick', event => {
@@ -24,7 +24,8 @@ self.addEventListener('notificationclick', event => {
   event.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const w = wins.find(c => c.url.startsWith(self.location.origin));
-    if (w) { await w.focus(); return; }
+    // приложение уже открыто — показать нужный экран (например, заявку в друзья) без перезагрузки
+    if (w) { await w.focus(); w.postMessage({ type: 'open', url }); return; }
     await self.clients.openWindow(url);
   })());
 });

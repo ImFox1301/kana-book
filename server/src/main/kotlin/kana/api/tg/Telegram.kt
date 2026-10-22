@@ -118,7 +118,7 @@ class TgService(private val jdbc: JdbcTemplate, private val api: TgApi, private 
             m["contact"]?.let { return onContact(chat, from, it) }
             val text = m["text"]?.asText() ?: return
             if (text.startsWith("/start")) onStart(chat, from, text.removePrefix("/start").trim())
-            else api.send(chat, "Это бот Кана-тетради. Чтобы войти, откройте приложение → «Я» → «Войти через Telegram».")
+            else api.send(chat, "Это бот KANA. Чтобы войти, откройте приложение → «Профиль» → «Войти».")
         } catch (e: Exception) { log.warn("telegram update: {}", e.message) }
     }
 
@@ -131,7 +131,7 @@ class TgService(private val jdbc: JdbcTemplate, private val api: TgApi, private 
     private fun prompt(chat: Long, r: Row) {
         val linked = r.tgId?.let(::userByTg)
         when (r.status) {
-            "confirm" -> api.send(chat, "Войти в Кана-тетрадь как «${linked?.get("name") ?: "вы"}»?\nЕсли вы не начинали вход сами, нажмите «Это не я».", confirmMarkup(r.nonce))
+            "confirm" -> api.send(chat, "Войти в KANA как «${linked?.get("name") ?: "вы"}»?\nЕсли вы не начинали вход сами, нажмите «Это не я».", confirmMarkup(r.nonce))
             "need_contact" -> api.send(chat, if (r.kind == "login")
                 "Чтобы войти, поделитесь номером телефона — нажмите кнопку ниже. Номер нужен, чтобы привязать к нему аккаунт; другим пользователям он не показывается."
                 else "Чтобы привязать номер телефона к аккаунту, нажмите кнопку ниже. Другим пользователям номер не показывается.", contactKeyboard)
@@ -144,7 +144,7 @@ class TgService(private val jdbc: JdbcTemplate, private val api: TgApi, private 
         val r = if (nonce.isNotEmpty()) row("nonce = ?", nonce)
                 else row("tg_id = ? and status in ('need_contact', 'confirm') order by created_at desc limit 1", tgId)?.takeIf { it.fresh }
         if (r == null) {
-            api.send(chat, if (nonce.isEmpty()) "Здравствуйте! Это бот Кана-тетради. Чтобы войти, откройте приложение → «Я» → «Войти через Telegram»."
+            api.send(chat, if (nonce.isEmpty()) "Здравствуйте! Это бот KANA. Чтобы войти, откройте приложение → «Профиль» → «Войти»."
                            else "Ссылка не найдена. Начните вход в приложении ещё раз.", noKeyboard)
             return
         }
@@ -165,7 +165,7 @@ class TgService(private val jdbc: JdbcTemplate, private val api: TgApi, private 
         if (r.kind == "login") {
             if (linked != null) {
                 set(r.nonce, "confirm", tgId = tgId)
-                api.send(chat, "Войти в Кана-тетрадь как «${linked["name"]}»?\nЕсли вы не начинали вход сами, нажмите «Это не я».", confirmMarkup(r.nonce))
+                api.send(chat, "Войти в KANA как «${linked["name"]}»?\nЕсли вы не начинали вход сами, нажмите «Это не я».", confirmMarkup(r.nonce))
             } else {
                 set(r.nonce, "need_contact", tgId = tgId)
                 prompt(chat, r.copy(status = "need_contact", tgId = tgId))
@@ -176,7 +176,7 @@ class TgService(private val jdbc: JdbcTemplate, private val api: TgApi, private 
                 owner != null && owner.toLong() == r.userId -> { set(r.nonce, "approved", tgId = tgId, result = r.userId); api.send(chat, "Этот Telegram уже привязан к вашему аккаунту.", noKeyboard) }
                 // аккаунт, созданный входом через Telegram (без пароля), объединим с этим — так не теряется прогресс
                 owner != null && !hasPassword(owner.toLong()) -> { set(r.nonce, "need_contact", tgId = tgId); prompt(chat, r.copy(status = "need_contact", tgId = tgId)) }
-                owner != null -> { set(r.nonce, "error", "Этот Telegram уже привязан к другому аккаунту", tgId); api.send(chat, "Этот Telegram уже привязан к другому аккаунту Кана-тетради.", noKeyboard) }
+                owner != null -> { set(r.nonce, "error", "Этот Telegram уже привязан к другому аккаунту", tgId); api.send(chat, "Этот Telegram уже привязан к другому аккаунту KANA.", noKeyboard) }
                 else -> { set(r.nonce, "need_contact", tgId = tgId); prompt(chat, r.copy(status = "need_contact", tgId = tgId)) }
             }
         }
@@ -206,7 +206,7 @@ class TgService(private val jdbc: JdbcTemplate, private val api: TgApi, private 
                                else "Готово! Номер привязан к аккаунту. Вернитесь в приложение.", noKeyboard)
             } catch (e: DuplicateKeyException) {
                 set(r.nonce, "error", "Этот Telegram уже привязан к другому аккаунту")
-                api.send(chat, "Этот Telegram уже привязан к другому аккаунту Кана-тетради.", noKeyboard)
+                api.send(chat, "Этот Telegram уже привязан к другому аккаунту KANA.", noKeyboard)
             }
         }
     }

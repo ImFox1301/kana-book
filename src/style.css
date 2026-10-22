@@ -265,19 +265,19 @@ header.top:not(:has(:not([hidden]))) { display: none }
 
 /* ---- Сегодня ---- */
 .home { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) }
-.hero { position: relative; margin: 0 calc(-1 * max(var(--gutter), env(safe-area-inset-left, 0px))); min-height: 348px; padding: 34px var(--gutter) 120px; color: #fff;
+.hero { position: relative; margin: 14px 0 0; border-radius: 24px; box-shadow: var(--shadow); min-height: 348px; padding: 28px 20px 120px; color: #fff;
   background: #1D2E58 url("img/fuji-s.webp") center 58% / cover no-repeat; overflow: hidden }
 .hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(9, 22, 52, .55) 0%, rgba(9, 22, 52, .18) 45%, rgba(9, 22, 52, 0) 70%) }
 .hero > * { position: relative }
-.hero h1 { margin: 0; font-size: 30px; line-height: 1.15; font-weight: 800; max-width: 80% ; text-shadow: 0 1px 8px rgba(0, 0, 0, .25) }
+.hero h1 { margin: 0; font-size: 28px; line-height: 1.15; font-weight: 800; max-width: calc(100% - 70px); text-shadow: 0 1px 8px rgba(0, 0, 0, .25) }
 .hero p { margin: 10px 0 0; font-size: 16px; line-height: 1.45; max-width: 15em; opacity: .95; text-shadow: 0 1px 6px rgba(0, 0, 0, .3) }
-.hero .flame { position: absolute; right: var(--gutter); top: 28px; min-width: 46px; height: 46px; border-radius: 14px; background: #fff; color: var(--ink); border: 0; display: flex; gap: 4px; align-items: center; justify-content: center; padding: 0 10px; font: 700 15px var(--ui); box-shadow: var(--shadow); cursor: pointer }
+.hero .flame { position: absolute; right: 16px; top: 22px; min-width: 46px; height: 46px; border-radius: 14px; background: #fff; color: var(--ink); border: 0; display: flex; gap: 4px; align-items: center; justify-content: center; padding: 0 10px; font: 700 15px var(--ui); box-shadow: var(--shadow); cursor: pointer }
 :root[data-theme="dark"] .hero .flame { color: #0B2D49 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hero .flame { color: #0B2D49 } }
 .hero .flame .i { width: 24px; height: 24px }
 .hero .flame.on .i { color: #E24D60 }
 .hello-d { display: none }
-.cont { position: relative; margin-top: -126px; padding: 20px; display: grid; gap: 12px; z-index: 1; color: var(--ink) }
+.cont { position: relative; margin: -126px 12px 0; padding: 20px; display: grid; gap: 12px; z-index: 1; color: var(--ink) }
 .cont .lab { font-weight: 700; font-size: 17px }
 .cont .ln { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: end; border-left: 3px solid var(--mist); padding: 2px 0 2px 14px }
 .cont .ln b { font-size: 16px; line-height: 1.35 }
@@ -313,12 +313,13 @@ header.top:not(:has(:not([hidden]))) { display: none }
 .week .goal i { background: var(--success); box-shadow: 0 0 0 3px var(--accent-soft) }
 .week .today { color: var(--ink); font-weight: 700 }
 .week small { font-size: 11.5px; font-variant-numeric: tabular-nums }
-.bars { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; align-items: end; height: 190px; padding-top: 8px }
-.bars > div { display: grid; grid-template-rows: 1fr auto; justify-items: center; gap: 10px; height: 100%; min-width: 0 }
-.bars i { align-self: end; width: min(38px, 80%); border-radius: 10px 10px 6px 6px; background: var(--accent); min-height: 6px }
+.bars { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; padding-top: 8px }
+.bars .col { display: grid; grid-template-rows: 160px 18px; justify-items: center; gap: 8px; min-width: 0 }
+.bars .bw { height: 160px; width: 100%; display: flex; align-items: flex-end; justify-content: center }
+.bars i { display: block; width: min(38px, 80%); border-radius: 10px 10px 6px 6px; background: var(--accent) }
 .bars i.zero { background: var(--track) }
-.bars span { font-size: 12.5px; color: var(--muted); white-space: nowrap }
-.bars.dense { gap: 3px } .bars.dense i { width: 80%; border-radius: 4px } .bars.dense span { font-size: 10px }
+.bars span { font-size: 12.5px; line-height: 18px; color: var(--muted); white-space: nowrap; overflow: visible; max-width: 100% }
+.bars.dense { gap: 3px } .bars.dense i { width: 80%; border-radius: 4px } .bars.dense span { font-size: 10.5px }
 .wod { display: grid; gap: 6px; align-content: start }
 .wod .big { font-family: var(--kana); font-size: 46px; line-height: 1.15 }
 .wod .rd { color: var(--muted); font-size: 15px }
@@ -652,7 +653,7 @@ button.tile { cursor: pointer }
 /* ---- приветствие и вход ---- */
 .welcome { display: grid; gap: 0; margin: 0 calc(-1 * max(var(--gutter), env(safe-area-inset-left, 0px))); }
 .welcome .wt { font-size: 32px; font-weight: 800; padding: 30px var(--gutter) 18px; margin: 0 }
-.welcome .pic { height: 300px; background: #1D2E58 url("img/fuji-s.webp") center 55% / cover no-repeat }
+.welcome .pic { height: 220px; background: #1D2E58 url("img/fuji-s.webp") center 55% / cover no-repeat }
 .welcome .body { display: grid; gap: 12px; padding: 24px var(--gutter) 8px; text-align: center; justify-items: center }
 .welcome .logo { font-size: 50px; font-weight: 800; letter-spacing: .02em; line-height: 1 }
 .welcome .tag { font-size: 20px; color: var(--muted); margin: 4px 0 0 }
@@ -841,3 +842,33 @@ button.tile { cursor: pointer }
 .actions.col { flex-direction: column }
 .actions.col .btn { width: 100%; flex: none }
 .cont .row .btn { padding: 0 12px; white-space: nowrap }
+
+/* плавная смена темы */
+.theme-anim, .theme-anim *, .theme-anim *::before, .theme-anim *::after { transition: background-color .35s, color .35s, border-color .35s, box-shadow .35s !important }
+/* выход из аккаунта — внизу профиля */
+.logout-box { order: 20; margin-top: 10px }
+.btn.logout { background: var(--surface); color: var(--error); border-color: var(--error); box-shadow: var(--shadow) }
+.btn.logout:hover { background: var(--error-soft) }
+.btn.primary.red { background: var(--error); color: #fff }
+/* Telegram — круглая иконка под кнопкой входа */
+.tgunder { justify-items: center }
+.tgbox.compact { justify-items: center }
+.tground { width: 56px; height: 56px; border-radius: 50%; background: #2A9FD8; color: #fff; display: grid; place-items: center; box-shadow: var(--shadow); text-decoration: none }
+.tground svg { width: 28px; height: 28px; margin-left: -2px }
+.tground:hover { filter: brightness(1.08) }
+.switch-auth { text-align: center; margin: 4px 0 0; font-size: 15.5px; color: var(--muted) }
+.switch-auth .link { font-size: 15.5px; padding: 0 }
+.welcome .auth { width: 100%; max-width: 420px; text-align: left; display: grid; gap: 14px; margin-top: 10px }
+/* словарь: меню «…» и лента тем */
+.dict-menu { display: grid; gap: 10px; margin: 0 0 14px; animation: drop .18s ease-out }
+@keyframes drop { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
+#dict-menu-btn[aria-expanded="true"] { background: var(--tile) }
+.topics { display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; margin: 12px calc(-1 * var(--gutter)) 0; padding: 4px var(--gutter) 8px; scroll-padding: 0 var(--gutter);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--gutter), #000 calc(100% - var(--gutter)), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 var(--gutter), #000 calc(100% - var(--gutter)), transparent 100%) }
+.topics::-webkit-scrollbar { display: none }
+.topics button { flex: none; scroll-snap-align: start; white-space: nowrap }
+#dict-topics + .dict-count { margin-top: 4px }
+.dict-count { margin: 10px 0 8px }
+@media (min-width: 960px) { .topics { margin: 12px 0 0; padding: 4px 0 8px; -webkit-mask-image: none; mask-image: none; flex-wrap: wrap } }
+.scard .segm { flex-wrap: nowrap }
+.scard .segm button { flex: 1 1 0; min-width: 0; padding: 0 8px }

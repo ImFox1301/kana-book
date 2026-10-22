@@ -19,8 +19,8 @@
     help: 'M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0 M9 8q1-5 6-2t-3 7 M12 17v1', home: 'M3 10 12 3 21 10 M5 9v12h5v-7h4v7h5V9', lock: 'M6 10h12v12H6z M8 10V6a4 4 0 0 1 8 0v4',
     moon: 'M20 16A10 10 0 0 1 8 3 10 10 0 1 0 20 16', pen: 'M4 16 16 4l4 4L8 20H4z M13 7l4 4', play: 'M8 4l13 8-13 8z', plus: 'M12 3v18 M3 12h18',
     repeat: 'M4 8h14l-4-4 M20 16H6l4 4 M18 8l3 3 M6 16l-3-3', search: 'M16 10a6 6 0 1 1-12 0 6 6 0 0 1 12 0 M15 15l6 6',
-    settings: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M5 19l2-2 M17 7l2-2',
-    sound: 'M4 9h4l5-5v16l-5-5H4z M17 8q5 4 0 8 M20 4q8 8 0 16', upload: 'M12 17V3 M6 9l6-6 6 6 M3 17v5h18v-5', user: 'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0 M4 21v-3a8 8 0 0 1 16 0v3z',
+    settings: 'M12.00 1.40 12.68 1.56 13.32 2.01 13.86 2.63 14.34 3.28 14.78 3.82 15.25 4.15 15.82 4.25 16.51 4.18 17.31 4.06 18.13 4.01 18.90 4.14 19.50 4.50 19.86 5.10 19.99 5.87 19.94 6.69 19.82 7.49 19.75 8.18 19.85 8.75 20.18 9.22 20.72 9.66 21.37 10.14 21.99 10.68 22.44 11.32 22.60 12.00 22.44 12.68 21.99 13.32 21.37 13.86 20.72 14.34 20.18 14.78 19.85 15.25 19.75 15.82 19.82 16.51 19.94 17.31 19.99 18.13 19.86 18.90 19.50 19.50 18.90 19.86 18.13 19.99 17.31 19.94 16.51 19.82 15.82 19.75 15.25 19.85 14.78 20.18 14.34 20.72 13.86 21.37 13.32 21.99 12.68 22.44 12.00 22.60 11.32 22.44 10.68 21.99 10.14 21.37 9.66 20.72 9.22 20.18 8.75 19.85 8.18 19.75 7.49 19.82 6.69 19.94 5.87 19.99 5.10 19.86 4.50 19.50 4.14 18.90 4.01 18.13 4.06 17.31 4.18 16.51 4.25 15.82 4.15 15.25 3.82 14.78 3.28 14.34 2.63 13.86 2.01 13.32 1.56 12.68 1.40 12.00 1.56 11.32 2.01 10.68 2.63 10.14 3.28 9.66 3.82 9.22 4.15 8.75 4.25 8.18 4.18 7.49 4.06 6.69 4.01 5.87 4.14 5.10 4.50 4.50 5.10 4.14 5.87 4.01 6.69 4.06 7.49 4.18 8.18 4.25 8.75 4.15 9.22 3.82 9.66 3.28 10.14 2.63 10.68 2.01 11.32 1.56z M15.6 12a3.6 3.6 0 1 1-7.2 0 3.6 3.6 0 0 1 7.2 0',
+    sound: 'M4 9h4l5-5v16l-5-5H4z M17 8q5 4 0 8 M20 4q8 8 0 16', upload: 'M12 17V3 M6 9l6-6 6 6 M3 17v5h18v-5', bell: 'M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z M10 21h4', user: 'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0 M4 21v-3a8 8 0 0 1 16 0v3z',
     wave: 'M2 12h2 M6 8v8 M10 3v18 M14 6v12 M18 9v6 M22 12h1', chev: 'M9 5l7 7-7 7', trash: 'M4 7h16 M9 7V4h6v3 M6 7l1 14h10l1-14',
     undo: 'M9 14 4 9l5-5 M4 9h10a6 6 0 0 1 0 12h-3', skip: 'M5 5l8 7-8 7z M17 5v14', sign: 'M3 4h18v11H3z M12 15v6 M8 21h8 M7 9h10', blocks: 'M3 4h7v6H3z M14 4h7v6h-7z M3 14h18v6H3z',
   };
@@ -92,9 +92,20 @@
   let answers = store.get('answers', []);
 
   // ---------- настройки ----------
-  const def = { script: 'h', rows: { h: ['a', 'ka', 'sa'], k: ['a', 'ka', 'sa'] }, topics: null, wfilter: 'all', count: 20, mode: 'draw', sys: 'ru', len: 1, abcScript: 'h', abcMode: 'listen', abcSel: { h: [], k: [] }, reps: 5, ghost: true, voice: 'm', goal: { min: 30, cards: 50 }, onboarded: false, vibrate: true, simScript: 'h', simSel: { h: null, k: null }, simCount: 20 };
+  const def = { script: 'h', rows: { h: ['a', 'ka', 'sa'], k: ['a', 'ka', 'sa'] }, topics: null, wfilter: 'all', count: 20, mode: 'draw', sys: 'ru', len: 1, abcScript: 'h', abcMode: 'listen', abcSel: { h: [], k: [] }, reps: 5, ghost: true, voice: 'm', goal: { min: 30, cards: 50 }, onboarded: false, vibrate: true, simScript: 'h', simSel: { h: null, k: null }, simCount: 20, theme: 'system' };
   const S = Object.assign({}, def, store.get('settings', {}));
   const save = () => store.set('settings', S);
+  // тема: как на устройстве (по умолчанию), светлая или тёмная; хранится в настройках — на устройстве, а с аккаунтом и в аккаунте
+  const darkMq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function applyTheme(animate) {
+    const t = S.theme === 'light' || S.theme === 'dark' ? S.theme : null, root = document.documentElement;
+    if (animate) { root.classList.add('theme-anim'); setTimeout(() => root.classList.remove('theme-anim'), 400); }
+    if (t) root.dataset.theme = t; else delete root.dataset.theme;
+    const dark = t ? t === 'dark' : !!(darkMq && darkMq.matches);
+    document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', dark ? '#0B1724' : '#F8F5F0'));
+  }
+  if (darkMq && darkMq.addEventListener) darkMq.addEventListener('change', () => applyTheme());
+  applyTheme();
 
   function selectedItems() {
     if (S.script === 'w') {
@@ -750,6 +761,14 @@
     }
     if (btn) { btn.classList.remove('playing'); void btn.offsetWidth; btn.classList.add('playing'); }
   }
+  // проба голоса: случайное слово из словаря — у всех встроенных слов есть запись обоими голосами
+  let voiceSample = null;
+  function sampleVoice() {
+    const ws = allWords().filter(w => WORD_AUDIO.has(w.kana));
+    if (!ws.length) return playKana('あ');
+    let w; do { w = ws[Math.floor(Math.random() * ws.length)]; } while (ws.length > 1 && voiceSample && w.kana === voiceSample.kana);
+    voiceSample = w; playWord(w.kana, null, w.kanji);
+  }
   function sayButton(it, label) {
     const isWord = it.kind === 'word' || it.word;
     const kana = it.kana, kanji = it.kanji || (it.w && it.w.kanji);
@@ -794,7 +813,7 @@
         h('button', { type: 'button', 'aria-pressed': String(!selecting), onclick: () => { S.abcMode = 'listen'; save(); renderAbc(); } }, svgIcon('sound'), 'Слушать'),
         h('button', { type: 'button', 'aria-pressed': String(selecting), onclick: () => { S.abcMode = 'select'; save(); renderAbc(); } }, svgIcon('check'), 'Выбрать для прописей')),
       h('div', { class: 'segm', role: 'group', 'aria-label': 'Голос' },
-        ...[['m', 'Мужской голос'], ['f', 'Женский голос']].map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String((S.voice === 'f' ? 'f' : 'm') === v), onclick: () => { S.voice = v; save(); renderAbc(); playKana(conv('あ')); } }, t)))));
+        ...[['m', 'Мужской голос'], ['f', 'Женский голос']].map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String((S.voice === 'f' ? 'f' : 'm') === v), onclick: () => { S.voice = v; save(); renderAbc(); sampleVoice(); } }, t)))));
     el.append(h('p', { class: 'small muted abc-credit' }, 'Озвучка: VOICEVOX:青山龍星 (мужской голос), VOICEVOX:波音リツ (женский голос)'));
     el.append(h('p', { class: 'small muted abc-hint' }, selecting
       ? 'Отметьте знаки или целый ряд — нажмите на подпись ряда слева. Затем выберите число повторений внизу.'
@@ -1002,6 +1021,7 @@
   let beforeAuth = null;
   function show(name) {
     if (!['login', 'register'].includes(current) && ['login', 'register'].includes(name)) beforeAuth = current;
+    if (['login', 'register'].includes(name) && !S.welcomed) { S.welcomed = true; save(); }
     const tab = tabOf(name);
     if (tab && !FLOW) lastOf[tab] = ['quiz', 'result', 'write', 'login', 'register', 'settings'].includes(name) ? lastOf[tab] : name;
     current = name;
@@ -1066,6 +1086,7 @@
     const g = guest();
     $('#dict-guest').hidden = !g;
     $('#dict-panels').hidden = g;
+    $('#dict-menu-btn').hidden = g; if (g) $('#dict-menu').hidden = true;
     const view = ['all', 'fav', 'topics'].includes(S.dictView) ? S.dictView : 'all';
     $('#dict-tabs').replaceChildren(...[['all', 'Все'], ['fav', 'Избранное'], ['topics', 'Темы']].map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(view === v), onclick: () => { S.dictView = v; save(); renderDict(); } }, t)));
     const q = ($('#dict-q').value || '').trim().toLowerCase();
@@ -1073,7 +1094,13 @@
     $('#topics').replaceChildren(...topicsOf(ws).map(t => h('option', { value: t })));
     const tps = topicsOf(ws), topic = tps.includes(S.dictTopic) ? S.dictTopic : tps[0];
     $('#dict-topics').hidden = view !== 'topics';
-    if (view === 'topics') $('#dict-topics').replaceChildren(...tps.map(t => h('button', { type: 'button', 'aria-pressed': String(t === topic), onclick: () => { S.dictTopic = t; save(); renderDict(); } }, t, h('small', {}, String(ws.filter(w => (w.topic || 'Без темы') === t).length)))));
+    if (view === 'topics') {
+      const strip = $('#dict-topics'), x = strip.scrollLeft;
+      strip.replaceChildren(...tps.map(t => h('button', { type: 'button', 'aria-pressed': String(t === topic), onclick: () => { S.dictTopic = t; save(); renderDict(); } }, t, h('small', {}, String(ws.filter(w => (w.topic || 'Без темы') === t).length)))));
+      strip.scrollLeft = x;   // лента тем не прыгает в начало при выборе
+      const on = strip.querySelector('[aria-pressed="true"]');
+      if (on && (on.offsetLeft < strip.scrollLeft || on.offsetLeft + on.offsetWidth > strip.scrollLeft + strip.clientWidth)) on.scrollIntoView({ inline: 'center', block: 'nearest' });
+    }
     const list = $('#wlist'); list.replaceChildren();
     let filt = ws.filter(w => !q || w.kana.includes(q) || (w.kanji || '').includes(q) || w.mean.toLowerCase().includes(q) || displayReading(w.kana, 'ru', w.read).includes(q) || displayReading(w.kana, 'lat', w.read).includes(q));
     if (view === 'fav') filt = filt.filter(w => favs.has(wid(w)));
@@ -1086,6 +1113,10 @@
     $('#samples-info').textContent = `Образцов почерка: ${n}`;
   }
   $('#dict-q').addEventListener('input', renderDict);
+  // меню «…»: импорт и резервная копия
+  $('#dict-menu-btn').onclick = () => { const m = $('#dict-menu'), open = m.hidden; m.hidden = !open; $('#dict-menu-btn').setAttribute('aria-expanded', String(open)); };
+  // лента тем: колесо мыши листает вбок
+  $('#dict-topics').addEventListener('wheel', e => { const el = e.currentTarget; if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) { el.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
   const KANA_RE = /^[ぁ-ゖァ-ーー]+$/;
   $('#add-kana').addEventListener('input', () => {
     const k = $('#add-kana').value.trim();
@@ -1747,6 +1778,11 @@
   // после входа — сразу спросить разрешение: иначе не придут приглашения в друзья.
   // Safari разрешает спросить только по нажатию — тогда на «Сегодня» появится кнопка «Разрешить».
   async function autoPush() {
+    // вход через Telegram подтверждается в другом приложении — спрашиваем, когда человек вернётся сюда
+    if (document.visibilityState !== 'visible') await new Promise(res => {
+      const f = () => { if (document.visibilityState === 'visible') { document.removeEventListener('visibilitychange', f); setTimeout(res, 700); } };
+      document.addEventListener('visibilitychange', f);
+    });
     try { await pushSubscribe(null, true); } catch (e) { console.warn('Уведомления не включились:', e && e.message); }
     PS.checked = false; if (current === 'home') renderHome();
   }
@@ -1785,6 +1821,12 @@
   function remindRow() {
     const logged = !!acct();
     if (!logged) { PS.checked = false; PS.on = false; return []; }   // без аккаунта напоминаний нет
+    const perm = pushSupported() ? Notification.permission : 'unsupported';
+    // согласие на уведомления можно дать и позже, если при входе его не дали
+    const notify = !pushPossible() ? null : perm === 'granted' && PS.sub !== false ? null
+      : h('div', { class: 'set scard switch', id: 'notify-ask' }, h('span', { class: 'tilei' }, I('bell')),
+        h('div', {}, h('div', { class: 'lbl' }, 'Уведомления'), h('div', { class: 'd' }, perm === 'denied' ? 'Запрещены для этого сайта. Разрешите их в настройках браузера (значок слева от адреса или «Настройки сайта»), затем вернитесь сюда.' : 'Разрешите, чтобы узнавать о заявках в друзья и получать напоминания о занятиях.')),
+        perm === 'denied' ? h('span') : h('button', { class: 'btn primary sm', type: 'button', id: 'btn-notify-allow', onclick: async () => { try { await pushSubscribe(null, true); store.set('push-asked', true); } catch (e) { PS.msg = e.message; } renderSettings(); } }, 'Разрешить'));
     const why = !pushSupported() ? (isIOSDevice && !standalone() ? 'На iPhone и iPad напоминания работают в установленном приложении (iOS 16.4 и новее): Safari → «Поделиться» → «На экран Домой».' : 'Этот браузер не поддерживает уведомления.')
         : isIOSDevice && !standalone() ? 'На iPhone и iPad напоминания работают в установленном приложении: Safari → «Поделиться» → «На экран Домой».'
           : 'Раз в день в выбранное время, если цель дня ещё не выполнена.';
@@ -1792,7 +1834,7 @@
     if (can && !PS.checked) pushRefresh().then(() => { if (current === 'settings') renderSettings(); });
     const row = h('div', { class: 'set scard switch' }, h('span', { class: 'tilei' }, I('clock')), h('div', {}, h('div', { class: 'lbl' }, PS.on ? `Напоминание в ${PS.time}` : 'Напоминания о занятиях'), h('div', { class: 'd' }, why)),
       toggle('set-notify', PS.on, v => v ? pushEnable() : pushDisable(), !can || PS.busy));
-    const out = [row];
+    const out = [notify, row].filter(Boolean);
     if (can && PS.on) {
       const t = h('input', { type: 'time', id: 'remind-time', value: PS.time, step: 900, 'aria-label': 'Время напоминания' });
       t.addEventListener('change', () => { if (/^\d\d:\d\d$/.test(t.value)) pushTime(t.value); });
@@ -1814,8 +1856,9 @@
       guest() ? null : grp('Ежедневная цель', segm('Минут в день', GOAL_MIN.map(v => [v, v + ' мин']), g.min, v => setGoal('min', v)), 'Считается время в уроках, квизах и прописях.'),
       guest() ? null : grp('Карточек и прописей в день', segm('Карточек в день', GOAL_CARDS.map(v => [v, String(v)]), g.cards, v => setGoal('cards', v)),
         'Каждый ответ в квизе и каждая попытка в прописях. Цель выполнена, когда набраны и минуты, и карточки.'),
+      card('moon', 'Тема', segm('Тема', [['system', 'Системная'], ['light', 'Светлая'], ['dark', 'Тёмная']], ['light', 'dark'].includes(S.theme) ? S.theme : 'system', v => { S.theme = v; save(); applyTheme(true); renderSettings(); }), 'Системная — как на устройстве. ' + (acct() ? 'Выбор запоминается в аккаунте' : 'Выбор запоминается на этом устройстве')),
       card('help', 'Транскрипция', segm('Транскрипция', [['ru', 'Кириллица'], ['lat', 'Латиница']], S.sys, v => { S.sys = v; save(); renderSettings(); })),
-      card('sound', 'Голос озвучки', segm('Голос', [['m', 'Мужской'], ['f', 'Женский']], S.voice === 'f' ? 'f' : 'm', v => { S.voice = v; save(); renderSettings(); playKana('あ'); }), 'VOICEVOX:青山龍星 и VOICEVOX:波音リツ'),
+      card('sound', 'Голос озвучки', segm('Голос', [['m', 'Мужской'], ['f', 'Женский']], S.voice === 'f' ? 'f' : 'm', v => { S.voice = v; save(); sampleVoice(); renderSettings(); }), voiceSample ? `Прозвучало: ${voiceSample.kana} — ${voiceSample.mean}` : 'VOICEVOX:青山龍星 и VOICEVOX:波音リツ'),
       card('pen', 'Проверка письма', segm('Строгость', [[0, 'Строго'], [1, 'Обычно'], [2, 'Мягко']], S.len, v => { S.len = v; save(); renderSettings(); })),
       h('div', { class: 'set scard switch' }, h('span', { class: 'tilei' }, I('wave')), h('div', {}, h('div', { class: 'lbl' }, 'Вибрация'), h('div', { class: 'd' }, 'Тактильный отклик')),
         toggle('set-vibrate', S.vibrate && canBuzz(), v => { S.vibrate = v; save(); buzz(true); }, !canBuzz())),
@@ -1862,7 +1905,7 @@
     ring.innerHTML = `<svg viewBox="0 0 200 200"><circle class="tr" cx="100" cy="100" r="86"/><circle class="fg" cx="100" cy="100" r="86" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct / 100)}"/></svg>`;
     ring.append(h('div', { class: 'c' }, h('b', {}, pct + '%'), h('span', {}, 'Общий прогресс')));
     const per = ['week', 'month', 'all'].includes(S.progPer) ? S.progPer : 'week';
-    const bars = h('div', { class: 'bars' + (per === 'month' ? ' dense' : '') });
+    const bars = h('div', { class: 'bars' + (per === 'week' ? '' : ' dense') });
     const cols = [];
     if (per === 'all') {
       const byM = {};
@@ -1873,7 +1916,7 @@
       for (let i = nd - 1; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); cols.push([per === 'week' ? WEEKDAYS[d.getDay()] : (i % 5 === 0 ? String(d.getDate()) : ''), dayTotals(dayKey(d.getTime())).min]); }
     }
     const max = Math.max(1, ...cols.map(c => c[1]));
-    for (const [lbl, v] of cols) bars.append(h('div', { title: `${v} мин` }, h('i', { class: v ? '' : 'zero', style: `height:${Math.max(4, v / max * 100)}%` }), h('span', {}, lbl)));
+    cols.forEach(([lbl, v], i) => bars.append(h('div', { class: 'col', title: `${lbl || ''} ${v} мин`.trim() }, h('div', { class: 'bw' }, h('i', { class: v ? '' : 'zero', style: `height:${Math.max(3, v / max * 100)}%` })), h('span', {}, per === 'all' && i % 2 ? '' : lbl))));
     let secs = 0; for (const id in activity) secs += activity[id].s || 0;
     const hrs = Math.floor(secs / 3600), mins = Math.floor(secs % 3600 / 60);
     const learned = Object.values(kanaStats()).filter(x => x.length >= 2 && x.reduce((a, b) => a + b, 0) / x.length >= 0.85).length;
@@ -2030,16 +2073,18 @@
     const d = FR.data;
     if (!d) { if (!FR.loading) loadFriends(); el.append(h('p', { class: 'muted small' }, 'Загружаю…')); return; }
     const person = p => h('span', { style: 'display:flex;gap:12px;align-items:center' }, avatarEl(p.name, p.avatar), h('span', {}, h('b', {}, p.name), h('span', { class: 'small muted' }, ' @' + p.username)));
-    el.append(h('h2', { class: 'h2' }, d.friends.length ? `Ваши друзья · ${d.friends.length}` : 'Ваши друзья'));
-    if (!d.friends.length) el.append(h('div', { class: 'sheet empty' }, h('b', {}, 'Пока никого'), h('p', {}, 'Пригласите друга ссылкой — заниматься вместе веселее, а серию дней подряд будет жалко прерывать.')));
-    el.append(h('div', { class: 'friends' }, ...d.friends.map(friendCard)));
-    if (d.incoming.length) el.append(h('h2', { class: 'h2' }, `Приглашения · ${d.incoming.length}`), h('div', { class: 'sheet', id: 'incoming' },
+    // заявки — первыми: на этот экран ведёт уведомление «хочет добавить вас в друзья»
+    if (d.incoming.length) el.append(h('h2', { class: 'h2' }, `Заявки в друзья · ${d.incoming.length}`), h('div', { class: 'sheet invite-card', id: 'incoming' },
       ...d.incoming.map(p => h('div', { class: 'freq' }, person(p),
         h('span', { class: 'row' }, h('button', { class: 'btn primary', type: 'button', onclick: () => friendAct('accept', p.id) }, 'Принять'),
           h('button', { class: 'btn ghost', type: 'button', onclick: () => friendAct('decline', p.id) }, 'Отклонить'))))));
+    el.append(h('h2', { class: 'h2' }, d.friends.length ? `Ваши друзья · ${d.friends.length}` : 'Ваши друзья'));
+    if (!d.friends.length) el.append(h('div', { class: 'sheet empty' }, h('b', {}, 'Пока никого'), h('p', {}, 'Пригласите друга ссылкой — заниматься вместе веселее, а серию дней подряд будет жалко прерывать.')));
+    el.append(h('div', { class: 'friends' }, ...d.friends.map(friendCard)));
     if (d.outgoing.length) el.append(h('h2', { class: 'h2' }, 'Ждут ответа'), h('div', { class: 'sheet' },
       ...d.outgoing.map(p => h('div', { class: 'freq' }, person(p),
         h('button', { class: 'link', type: 'button', onclick: () => friendAct('cancel', p.id) }, 'Отменить')))));
+    if (FR.focusIncoming) { FR.focusIncoming = false; const inc = $('#incoming'); if (inc) setTimeout(() => inc.scrollIntoView({ block: 'center', behavior: 'smooth' }), 50); }
   }
   function updateTabs() {
     const ok = hasFriends();
@@ -2052,7 +2097,10 @@
   function renderOnboard() {
     const el = $('#screen-onboard'); el.replaceChildren();
     if (guest()) {
-      // первый запуск: войти, создать аккаунт или заниматься без него
+      // первый запуск: сразу форма входа; регистрация — ссылкой «Создать», можно и без аккаунта
+      const auth = h('div', { class: 'auth', id: 'welcome-auth' });
+      const fill = () => { if (current !== 'onboard' || !guest()) return; if (window.KanaSync) window.KanaSync.renderAuthPage(auth, 'login', { embedded: true }); else setTimeout(fill, 30); };
+      setTimeout(fill, 0);
       el.append(h('div', { class: 'welcome' },
         h('h1', { class: 'wt' }, 'Добро пожаловать'),
         h('div', { class: 'pic', role: 'img', 'aria-label': 'Фудзи и сакура' }),
@@ -2060,11 +2108,9 @@
           h('div', { class: 'logo' }, 'KANA'),
           h('p', { class: 'tag' }, 'Японский ближе, чем кажется'),
           h('p', { class: 'sub2' }, 'Кана, слова и практика каждый день'),
-          h('div', { class: 'btns' },
-            h('button', { class: 'btn primary', type: 'button', id: 'btn-welcome-register', onclick: () => { S.welcomed = true; save(); show('register'); } }, 'Создать аккаунт'),
-            h('button', { class: 'btn ghost', type: 'button', id: 'btn-welcome-login', onclick: () => { S.welcomed = true; save(); show('login'); } }, 'Войти')),
+          auth,
           h('button', { class: 'link', type: 'button', id: 'btn-guest', onclick: () => { S.welcomed = true; save(); show('home'); } }, 'Продолжить без аккаунта'),
-          h('p', { class: 'small muted', style: 'max-width:34ch;margin:4px 0 0' }, 'Без аккаунта прогресс не сохраняется. С аккаунтом — уроки, цель дня, повторение, напоминания и друзья на всех устройствах.'))));
+          h('p', { class: 'small muted', style: 'max-width:34ch;margin:0' }, 'Без аккаунта прогресс не сохраняется. С аккаунтом — уроки, цель дня, повторение, напоминания и друзья на всех устройствах.'))));
       return;
     }
     const g = Object.assign({}, def.goal, S.goal);
@@ -2148,7 +2194,7 @@
       store.set('words', userWords); store.set('deleted', [...deleted]); store.set('samples', samples); store.set('settings', S); store.set('answers', answers);
       store.set('lessons', lessonsDone); store.set('activity', activity); store.set('favs', [...favs]);
       applying = false;
-      loadSamples();
+      loadSamples(); applyTheme();
       ({ setup: renderSetup, dict: renderDict, me: renderMe, abc: renderAbc, home: renderHome, lessons: renderLessons, lesson: renderLesson, practice: renderPractice, similar: renderSimilar, reading: renderReading, builder: renderBuilder })[current]?.();
       renderStreak();
     },
@@ -2174,10 +2220,16 @@
       history.replaceState(null, '', location.pathname);
       return show(acct() ? 'friends' : 'register');
     }
-    if (hash === '#friends') { history.replaceState(null, '', location.pathname); if (hasFriends()) return show('friends'); }
+    if (hash === '#friends') { history.replaceState(null, '', location.pathname); if (hasFriends()) { FR.focusIncoming = true; FR.data = null; show('friends'); return; } }
     if (initial) show(FR.pendingInvite && hasFriends() ? 'friends' : guest() ? (S.welcomed || S.onboarded ? 'home' : 'onboard') : (S.onboarded ? 'home' : 'onboard'));
   }
   window.addEventListener('hashchange', () => route(false));
+  // нажали на уведомление, когда приложение уже открыто
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => {
+    if (!e.data || e.data.type !== 'open') return;
+    const hash = new URL(e.data.url, location.origin).hash;
+    if (hash) { if (location.hash === hash) route(false); else location.hash = hash; }
+  });
   // новые заявки в друзья — отметка на вкладке
   setInterval(() => { if (hasFriends() && document.visibilityState === 'visible') loadFriends(); }, 120000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && hasFriends()) loadFriends(); });
