@@ -17,6 +17,7 @@
 Запуск:
     .venv/bin/python tools/make_audio.py .voicevox            # всё заново
     .venv/bin/python tools/make_audio.py .voicevox --missing  # только новые слова
+    .venv/bin/python tools/make_audio.py .voicevox --voice=m  # только один голос
 
 Результат: assets/audio/<голос>/<хирагана>.mp3 (катакана использует те же файлы — звучание одинаковое)
 и assets/audio/words/<голос>/<слово>.mp3 для стартового словаря.
@@ -159,7 +160,21 @@ def encode(x, sr, path):
         subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", tmp.name, "-ac", "1", "-ar", "24000",
                         "-codec:a", "libmp3lame", "-b:a", "64k", str(path)], check=True)
 
+ONLY_VOICE = next((a.split("=")[1] for a in sys.argv if a.startswith("--voice=")), None)   # --voice=m — только один голос
+
+# Растягивать гласную нельзя: модель не умеет ровно тянуть звук и повторяет куски гласной со сдвигом —
+# слышно как «наложение» звука на самого себя. Для мужского голоса проверено на слух: естественная длина,
+# самые короткие гласные — не больше чем ×1,3; слова — с обычной скоростью. Женский голос пока по-старому.
+NATURAL = {"m"}
+SPEED = {"m": 1.0, "f": 0.9}
+
+def kana_length(key, mora):
+    if key in NATURAL:
+        return max(mora.vowel_length, min(mora.vowel_length * 1.3, 0.12))
+    return max(mora.vowel_length, 0.32 if mora.vowel == "N" else 0.30)   # гласная дольше, чем в беглой речи
+
 for key, (vvm, style) in VOICES.items():
+    if ONLY_VOICE and key != ONLY_VOICE: continue
     with VoiceModelFile.open(str(vv / "vvms" / vvm)) as m:
         syn.load_voice_model(m)
     wout = root / "assets" / "audio" / "words" / key
@@ -167,7 +182,7 @@ for key, (vvm, style) in VOICES.items():
     for kana in words:
         if ONLY_MISSING and (wout / f"{kana}.mp3").exists(): continue
         aq = natural_vowels(word_query(kana, style))
-        aq.speed_scale = 0.9                      # чуть медленнее обычной речи
+        aq.speed_scale = SPEED[key]
         aq.pre_phoneme_length, aq.post_phoneme_length = 0.06, 0.20
         x, sr = sf.read(io.BytesIO(syn.synthesis(aq, style)), dtype="float64")
         encode(finish(x, sr), sr, wout / f"{kana}.mp3")
@@ -179,7 +194,7 @@ for key, (vvm, style) in VOICES.items():
         k = to_kata(hira); k = SAME.get(k, k)
         aq = syn.create_audio_query_from_kana(k + "'", style)   # один слог с ударением — ровный, отчётливый
         mora = aq.accent_phrases[0].moras[0]
-        mora.vowel_length = max(mora.vowel_length, 0.32 if mora.vowel == "N" else 0.30)   # гласная дольше, чем в беглой речи
+        mora.vowel_length = kana_length(key, mora)
         aq.pre_phoneme_length, aq.post_phoneme_length = 0.06, 0.20
         x, sr = sf.read(io.BytesIO(syn.synthesis(aq, style)), dtype="float64")
         encode(finish(x, sr), sr, out / f"{hira}.mp3")

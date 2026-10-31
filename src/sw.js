@@ -1,7 +1,7 @@
 // Service worker KANA. VERSION и ASSETS подставляет build.py при каждой сборке.
 const VERSION = '__VERSION__';
 const CACHE = 'kana-' + VERSION;
-const TTS_CACHE = 'tts-v4';   // не зависит от версии приложения — переживает обновления
+const TTS_CACHE = 'tts-v5';   // не зависит от версии приложения — переживает обновления
 const ASSETS = __ASSETS__;
 
 self.addEventListener('install', event => {

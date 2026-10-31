@@ -28,7 +28,8 @@ VV = Path(os.environ.get("VOICEVOX_DIR", "/opt/voicevox"))
 CACHE = Path(os.environ.get("CACHE_DIR", "/cache"))
 RATE_PER_MIN = int(os.environ.get("RATE_PER_MIN", "30"))
 VOICES = {"m": ("15.vvm", 13), "f": ("3.vvm", 9)}     # VOICEVOX:青山龍星, VOICEVOX:波音リツ
-VERSION = "2"                                         # меняется при смене голоса или настроек — новый кэш
+SPEED = {13: 1.0, 9: 0.9}                             # мужской — обычная скорость: замедление даёт «наложение» звука
+VERSION = "5"                                         # меняется при смене голоса или настроек — новый кэш
 
 KANA = re.compile(r"^[ぁ-ゖァ-ヺーー]{1,30}$")
 KANJI_TEXT = re.compile(r"^[ぁ-ゖァ-ヺー々一-鿿]{1,30}$")
@@ -64,7 +65,7 @@ def synth(kana, kanji, style):
             if moras(alt) == moras(plain):
                 aq = alt
         natural_vowels(aq)
-        aq.speed_scale = 0.9
+        aq.speed_scale = SPEED.get(style, 0.9)
         aq.pre_phoneme_length, aq.post_phoneme_length = 0.06, 0.20
         wav = syn.synthesis(aq, style)
     x, sr = sf.read(io.BytesIO(wav), dtype="float64")
