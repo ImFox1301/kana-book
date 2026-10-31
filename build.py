@@ -13,7 +13,7 @@ dist.mkdir()
 shutil.copytree(assets / "fonts", dist / "fonts")
 shutil.copytree(assets / "icons", dist / "icons")
 shutil.copytree(assets / "img", dist / "img")         # иллюстрации: Фудзи, пагода, тории, Токио
-shutil.copytree(assets / "audio", dist / "audio")
+shutil.copytree(assets / "audio", dist / "audio", ignore=lambda d, names: [n for n in names if n == "f"])   # пока только мужской голос
 shutil.copytree(assets / "pdf", dist / "pdf")         # шрифты для PDF (TTF)
 shutil.copytree(assets / "vendor", dist / "vendor")   # pdf-lib, fontkit — загружаются при первом PDF   # озвучка каны (tools/make_audio.py)
 

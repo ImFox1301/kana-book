@@ -870,10 +870,12 @@
 
   // ---------- азбука: таблицы, озвучка, прописи ----------
   const audioCache = {};
+  // пока один голос: женский синтез звучал плохо, живых мужских записей нет (S.voice больше не используется)
+  const VOICE = 'm';
   function playKana(kana, cell) {
     const key = toHira(kana);
     if (!window.KANA_PWA) return;   // озвучка есть только в собранной версии
-    const voice = S.voice === 'f' ? 'f' : 'm';
+    const voice = VOICE;
     let a = audioCache[voice + key];
     if (!a) { a = audioCache[voice + key] = new Audio('audio/' + voice + '/' + encodeURIComponent(key) + '.mp3'); a.preload = 'auto'; }
     try { a.currentTime = 0; } catch (e) { }
@@ -886,7 +888,7 @@
   const WORD_AUDIO = new Set(window.WORD_AUDIO || []);
   const KANJI_RE = /^[\u3041-\u3096\u30a1-\u30fa\u30fc\u3005\u4e00-\u9fff]{1,30}$/;
   function ttsUrl(kana, kanji, voice) {
-    return '/api/tts?v=' + (voice || (S.voice === 'f' ? 'f' : 'm')) + '&t=' + encodeURIComponent(kana) + (kanji && KANJI_RE.test(kanji) ? '&k=' + encodeURIComponent(kanji) : '');
+    return '/api/tts?v=' + (voice || VOICE) + '&t=' + encodeURIComponent(kana) + (kanji && KANJI_RE.test(kanji) ? '&k=' + encodeURIComponent(kanji) : '');
   }
   function prefetchWord(kana, kanji) { if (window.KANA_PWA && !WORD_AUDIO.has(kana)) fetch(ttsUrl(kana, kanji)).catch(() => { }); }
   function speakDevice(kana) {
@@ -902,7 +904,7 @@
   try { speechSynthesis.onvoiceschanged = () => { if (current === 'dict') renderDict(); }; } catch (e) { }
   function canSay(kana) { return WORD_AUDIO.has(kana) || !!window.KANA_PWA || ('speechSynthesis' in window && hasJaVoice()); }
   function playWord(kana, btn, kanji) {
-    const voice = S.voice === 'f' ? 'f' : 'm';
+    const voice = VOICE;
     const builtin = WORD_AUDIO.has(kana);
     if (!builtin && !window.KANA_PWA) { speakDevice(kana); }
     else {
@@ -968,9 +970,8 @@
       h('div', { class: 'segm', role: 'group', 'aria-label': 'Нажатие на знак' },
         h('button', { type: 'button', 'aria-pressed': String(!selecting), onclick: () => { S.abcMode = 'listen'; save(); renderAbc(); } }, svgIcon('sound'), 'Слушать'),
         h('button', { type: 'button', 'aria-pressed': String(selecting), onclick: () => { S.abcMode = 'select'; save(); renderAbc(); } }, svgIcon('check'), 'Выбрать для прописей')),
-      h('div', { class: 'segm', role: 'group', 'aria-label': 'Голос' },
-        ...[['m', 'Мужской голос'], ['f', 'Женский голос']].map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String((S.voice === 'f' ? 'f' : 'm') === v), onclick: () => { S.voice = v; save(); renderAbc(); sampleVoice(); } }, t)))));
-    el.append(h('p', { class: 'small muted abc-credit' }, 'Озвучка: VOICEVOX:青山龍星 (мужской голос), VOICEVOX:波音リツ (женский голос)'));
+));
+    el.append(h('p', { class: 'small muted abc-credit' }, 'Озвучка: VOICEVOX:青山龍星'));
     el.append(h('p', { class: 'small muted abc-hint' }, selecting
       ? 'Отметьте знаки или целый ряд — нажмите на подпись ряда слева. Затем выберите число повторений внизу.'
       : 'Нажмите на знак, чтобы услышать его. Подпись ряда слева проигрывает весь ряд.'));
@@ -2027,7 +2028,7 @@
         'Каждый ответ в квизе и каждая попытка в прописях. Цель выполнена, когда набраны и минуты, и карточки.'),
       card('moon', 'Тема', segm('Тема', [['system', 'Системная'], ['light', 'Светлая'], ['dark', 'Тёмная']], ['light', 'dark'].includes(S.theme) ? S.theme : 'system', v => { S.theme = v; if (guest()) store.set('theme-chosen', true); save(); applyTheme(true); renderSettings(); }), 'Системная — как на устройстве. ' + (acct() ? 'Выбор запоминается в аккаунте' : 'Выбор запоминается на этом устройстве')),
       card('help', 'Транскрипция', segm('Транскрипция', [['ru', 'Кириллица'], ['lat', 'Латиница']], S.sys, v => { S.sys = v; save(); renderSettings(); })),
-      card('sound', 'Голос озвучки', segm('Голос', [['m', 'Мужской'], ['f', 'Женский']], S.voice === 'f' ? 'f' : 'm', v => { S.voice = v; save(); sampleVoice(); renderSettings(); }), voiceSample ? `Прозвучало: ${voiceSample.kana} — ${voiceSample.mean}` : 'VOICEVOX:青山龍星 и VOICEVOX:波音リツ'),
+      card('sound', 'Голос озвучки', h('button', { class: 'btn ghost', type: 'button', id: 'btn-voice-sample', onclick: () => { sampleVoice(); setTimeout(renderSettings, 50); } }, I('sound'), 'Прослушать'), voiceSample ? `Прозвучало: ${voiceSample.kana} — ${voiceSample.mean}` : 'VOICEVOX:青山龍星'),
       card('pen', 'Проверка письма', segm('Строгость', [[0, 'Строго'], [1, 'Обычно'], [2, 'Мягко']], S.len, v => { S.len = v; save(); renderSettings(); })),
       h('div', { class: 'set scard switch' }, h('span', { class: 'tilei' }, I('wave')), h('div', {}, h('div', { class: 'lbl' }, 'Вибрация'), h('div', { class: 'd' }, 'Тактильный отклик')),
         toggle('set-vibrate', S.vibrate && canBuzz(), v => { S.vibrate = v; save(); buzz(true); }, !canBuzz())),
@@ -2178,7 +2179,7 @@
         (() => { const c = cta('friends', 'Друзья', friendsLine(), null, () => show('friends'), inc ? 'main' : ''); c.id = 'me-friends'; return c; })()),
       h('div', { class: 'sheet me-set' }, h('div', { class: 'h3' }, 'Настройки'),
         prow('help', 'Транскрипция каны', SYS_NAME[S.sys], openSettings),
-        prow('sound', 'Голос озвучки', VOICE_NAME[S.voice === 'f' ? 'f' : 'm'], openSettings),
+        prow('sound', 'Голос озвучки', VOICE_NAME[VOICE], openSettings),
         prow('pen', 'Проверка письма', LEN_NAME[S.len] || 'Обычно', openSettings),
         prow('clock', 'Напоминания', PS.on ? PS.time : 'выкл.', openSettings)));
   }

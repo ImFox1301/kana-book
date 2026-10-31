@@ -39,9 +39,7 @@ async function draw(page, ch) {
   await page.click('#abc .abc-cell[aria-label^="Прослушать カ"]');
   await page.waitForTimeout(300);
   check(audio.filter(([f]) => f === 'm/か.mp3').length >= 1, 'катакана カ звучит тем же файлом');
-  await page.click('#abc .segm button:has-text("Женский")');
-  await page.click('#abc .abc-cell[aria-label^="Прослушать カ"]'); await page.waitForTimeout(300);
-  check(audio.some(([f, s]) => f === 'f/か.mp3' && s === 200), 'переключение на женский голос');
+  check(await page.locator('#abc .segm button:has-text("Женский")').count() === 0, 'выбора голоса нет — только мужской');
   await page.click('#abc .segm button:has-text("Хирагана")');
 
   // выбор: ряд ка целиком + отдельный знак あ
@@ -88,7 +86,7 @@ async function draw(page, ch) {
   // озвучка слов: словарь и квиз
   await page.click('#tab-dict');
   await page.click('button[aria-label="Прослушать みず"]'); await page.waitForTimeout(400);
-  check(audio.some(([f, s]) => f === 'words/f/みず.mp3' && s === 200), 'в словаре слово みず озвучивается (выбран женский голос)');
+  check(audio.some(([f, s]) => f === 'words/m/みず.mp3' && s === 200), 'в словаре слово みず озвучивается');
   // своё слово озвучивается сервером
   const tts = [];
   page.on('request', r => { if (r.url().includes('/api/tts')) tts.push(decodeURIComponent(r.url())); });
@@ -106,7 +104,7 @@ async function draw(page, ch) {
   await page.click('text=Пропустить');
   await page.click('#card .say'); await page.waitForTimeout(400);
   const w = await page.evaluate(() => __kana.Q.deck[0].kana);
-  check(audio.some(([f]) => f === 'words/f/' + w + '.mp3'), 'после ответа слово можно прослушать: ' + w);
+  check(audio.some(([f]) => f === 'words/m/' + w + '.mp3'), 'после ответа слово можно прослушать: ' + w);
   await page.screenshot({ path: SHOTS + '/word-verdict.png', fullPage: true });
   const twins = await page.evaluate(() => {
     const out = [];
