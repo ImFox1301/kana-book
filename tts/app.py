@@ -28,7 +28,8 @@ VV = Path(os.environ.get("VOICEVOX_DIR", "/opt/voicevox"))
 CACHE = Path(os.environ.get("CACHE_DIR", "/cache"))
 RATE_PER_MIN = int(os.environ.get("RATE_PER_MIN", "30"))
 VOICES = {"m": ("15.vvm", 13), "f": ("3.vvm", 9)}     # VOICEVOX:青山龍星, VOICEVOX:波音リツ
-VERSION = "2"                                         # меняется при смене голоса или настроек — новый кэш
+PITCH = {13: 0.05, 9: 0.0}                            # мужской голос чуть выше: в конце долгих гласных он хрипит
+VERSION = "3"                                         # меняется при смене голоса или настроек — новый кэш
 
 KANA = re.compile(r"^[ぁ-ゖァ-ヺーー]{1,30}$")
 KANJI_TEXT = re.compile(r"^[ぁ-ゖァ-ヺー々一-鿿]{1,30}$")
@@ -56,6 +57,15 @@ def natural_vowels(aq):
     return aq
 
 
+def heavy_start(aq):
+    """Долгий первый слог (ラー, ホー): тон не прыгает посреди одной гласной — как в tools/make_audio.py."""
+    for ap in aq.accent_phrases:
+        ms = ap.moras
+        if len(ms) > 1 and ms[1].consonant is None and ms[1].vowel in ("a", "i", "u", "e", "o", "N") and 0 < ms[0].pitch < ms[1].pitch:
+            ms[0].pitch = ms[1].pitch
+    return aq
+
+
 def synth(kana, kanji, style):
     with lock:
         aq = plain = syn.create_audio_query(kana, style)
@@ -63,8 +73,9 @@ def synth(kana, kanji, style):
             alt = syn.create_audio_query(kanji, style)
             if moras(alt) == moras(plain):
                 aq = alt
-        natural_vowels(aq)
+        heavy_start(natural_vowels(aq))
         aq.speed_scale = 0.9
+        aq.pitch_scale = PITCH.get(style, 0.0)
         aq.pre_phoneme_length, aq.post_phoneme_length = 0.06, 0.20
         wav = syn.synthesis(aq, style)
     x, sr = sf.read(io.BytesIO(wav), dtype="float64")

@@ -98,7 +98,7 @@ async function draw(page, ch) {
   await page.waitForTimeout(300);
   check(tts.some(u => u.includes('t=うさぎ') && u.includes('k=兎')), 'при добавлении слово сразу озвучивается сервером (с иероглифами)');
   await page.click('button[aria-label="Прослушать うさぎ"]'); await page.waitForTimeout(300);
-  check(await page.evaluate(() => caches.has('tts-v2')), 'озвучка своего слова сохранена для офлайна');
+  check(await page.evaluate(() => caches.has('tts-v3')), 'озвучка своего слова сохранена для офлайна');
   await openQuizSetup(page);
   await page.click('.opt:has(.t:text-is("Слова"))'); await page.click('.opt:has(.t:text-is("Обратный перевод"))');
   await page.click('#btn-start');
@@ -108,6 +108,16 @@ async function draw(page, ch) {
   const w = await page.evaluate(() => __kana.Q.deck[0].kana);
   check(audio.some(([f]) => f === 'words/f/' + w + '.mp3'), 'после ответа слово можно прослушать: ' + w);
   await page.screenshot({ path: SHOTS + '/word-verdict.png', fullPage: true });
+  const twins = await page.evaluate(() => {
+    const out = [];
+    for (const [k, mode] of [['ぢ', 'draw'], ['ヅ', 'listen'], ['じ', 'draw']]) {
+      __kana.S.sys = 'ru'; __kana.startQuiz([{ kind: 'kana', kana: k }], 1, { mode });
+      out.push(document.querySelector('#card .tag.twin')?.textContent || '');
+      document.querySelector('#btn-quit').click();
+    }
+    return out.join('|');
+  });
+  check(twins === 'ряд да|ряд да|ряд дза', 'じ/ぢ и ず/づ подписаны рядом в написании и аудировании: ' + twins);
   const deckOk = await page.evaluate(() => {
     const items = 'あいうえおかきくけこ'.split('').map(k => ({ kind: 'kana', kana: k }));
     const cnt = d => { const m = {}; d.forEach(x => m[x.kana] = (m[x.kana] || 0) + 1); return Object.values(m); };

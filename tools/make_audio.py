@@ -153,6 +153,43 @@ def word_query(kana, style):
         print(f"  {text}: чтение {moras(aq)} ≠ {moras(plain)} — беру запись каной", file=sys.stderr)
     return plain
 
+CARRY = {"a": "ア", "i": "イ", "u": "ウ", "e": "エ", "o": "オ", "N": "ン"}
+
+def kana_sound(hira, style, hold=0.30, fade=0.07):
+    """Отдельный слог. Если просто растянуть гласную одиночного слога, модель роняет тон в конце
+    и уходит в скрип (особенно у мужского голоса и коротких «у»/«и»): звучит как «съезжающая»
+    гласная или сбой. Поэтому синтезируем слог с продолжением той же гласной на ровном тоне
+    (ユ'ウウ) и обрезаем через hold секунд после начала гласной с плавным затуханием."""
+    k = to_kata(hira); k = SAME.get(k, k)
+    single = syn.create_audio_query_from_kana(k + "'", style).accent_phrases[0].moras
+    last = single[-1]
+    v = "N" if last.vowel == "N" else last.vowel.lower()
+    aq = syn.create_audio_query_from_kana(k + "'" + CARRY[v] * 2, style)
+    ms = aq.accent_phrases[0].moras
+    n = len(single)
+    for m in ms[n - 1:]: m.pitch = last.pitch                 # ровный тон на уровне одиночного слога
+    for m in ms[n:]: m.vowel, m.vowel_length = v, 0.2
+    ms[n - 1].vowel = v
+    ms[n - 1].vowel_length = max(ms[n - 1].vowel_length, 0.12)
+    aq.pre_phoneme_length, aq.post_phoneme_length = 0.06, 0.10
+    x, sr = sf.read(io.BytesIO(syn.synthesis(aq, style)), dtype="float64")
+    start = aq.pre_phoneme_length + sum((m.consonant_length or 0) + m.vowel_length for m in ms[:n - 1]) + (ms[n - 1].consonant_length or 0)
+    y = x[:int(sr * (start + hold))].copy()
+    f = int(sr * fade); y[-f:] *= np.linspace(1, 0, f) ** 1.5
+    return np.concatenate([y, np.zeros(int(sr * 0.15))]), sr
+
+def heavy_start(aq):
+    """Долгий первый слог (ラー, ホー, スー): Open JTalk ставит первому слогу низкий тон, а продолжению —
+    высокий, и тон прыгает посреди одной гласной. В долгом слоге оба слога звучат на одной высоте."""
+    for ap in aq.accent_phrases:
+        ms = ap.moras
+        if len(ms) > 1 and ms[1].consonant is None and ms[1].vowel in ("a", "i", "u", "e", "o", "N") and 0 < ms[0].pitch < ms[1].pitch:
+            ms[0].pitch = ms[1].pitch
+    return aq
+
+# мужской голос в конце долгих гласных опускается ниже 80 Гц и хрипит — чуть выше тон
+PITCH = {"m": 0.05, "f": 0.0}
+
 def encode(x, sr, path):
     with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
         sf.write(tmp.name, x.astype(np.float32), sr, subtype="PCM_16")
@@ -166,8 +203,9 @@ for key, (vvm, style) in VOICES.items():
     wout.mkdir(parents=True, exist_ok=True)
     for kana in words:
         if ONLY_MISSING and (wout / f"{kana}.mp3").exists(): continue
-        aq = natural_vowels(word_query(kana, style))
+        aq = heavy_start(natural_vowels(word_query(kana, style)))
         aq.speed_scale = 0.9                      # чуть медленнее обычной речи
+        aq.pitch_scale = PITCH[key]
         aq.pre_phoneme_length, aq.post_phoneme_length = 0.06, 0.20
         x, sr = sf.read(io.BytesIO(syn.synthesis(aq, style)), dtype="float64")
         encode(finish(x, sr), sr, wout / f"{kana}.mp3")
@@ -176,12 +214,7 @@ for key, (vvm, style) in VOICES.items():
     out.mkdir(parents=True, exist_ok=True)
     for hira in sounds:
         if ONLY_MISSING and (out / f"{hira}.mp3").exists(): continue
-        k = to_kata(hira); k = SAME.get(k, k)
-        aq = syn.create_audio_query_from_kana(k + "'", style)   # один слог с ударением — ровный, отчётливый
-        mora = aq.accent_phrases[0].moras[0]
-        mora.vowel_length = max(mora.vowel_length, 0.32 if mora.vowel == "N" else 0.30)   # гласная дольше, чем в беглой речи
-        aq.pre_phoneme_length, aq.post_phoneme_length = 0.06, 0.20
-        x, sr = sf.read(io.BytesIO(syn.synthesis(aq, style)), dtype="float64")
+        x, sr = kana_sound(hira, style)
         encode(finish(x, sr), sr, out / f"{hira}.mp3")
     size = sum(p.stat().st_size for p in out.glob("*.mp3"))
     print(f"{key}: {len(sounds)} файлов, {size // 1024} КБ")

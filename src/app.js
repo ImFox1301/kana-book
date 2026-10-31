@@ -465,6 +465,11 @@
     return cv;
   }
 
+  // подпись ряда для одинаково звучащих じ/ぢ, ず/づ (и катаканы)
+  function twinTag(k, sys = Q ? Q.sys : S.sys) {
+    const t = HINTS[toHira(k)];
+    return t ? h('span', { class: 'tag twin', title: 'Звучит так же, как знак из другого ряда' }, t[sys === 'lat' ? 0 : 1]) : null;
+  }
   function renderCard() {
     const it = Q.deck[Q.i];
     $('#q-title').textContent = FLOW && FLOW.lesson ? FLOW.lesson.title : Q.review ? 'Повторение' : Q.track ? Q.track.title : ({ listen: 'Аудирование', sim: 'Похожие знаки', build: 'Соберите фразу', mean: 'Чтение' })[Q.mode] || 'Квиз';
@@ -485,7 +490,7 @@
         isWord ? h('span', { class: 'meaning' }, it.w.mean) : null,
         h('span', { class: 'big' }, readingOf(it, Q.sys)),
         sayButton(it, 'Прослушать'),
-        !isWord && HINTS[toHira(it.kana)] ? h('span', { class: 'tag' }, HINTS[toHira(it.kana)]) : null,
+        !isWord ? twinTag(it.kana) : null,
         isWord ? h('span', { class: 'tag' }, wordScript(it.w) === 'k' ? 'катакана' : 'хирагана') : null,
         !isWord && units.length > 1 ? h('span', { class: 'tag' }, 'два знака: второй — маленький') : null);
       card.append(prompt);
@@ -686,12 +691,13 @@
       const say = h('button', { class: 'iconbtn say big', type: 'button', 'aria-label': 'Прослушать ещё раз', onclick: () => play() }, svgIcon('sound'), 'Ещё раз');
       const play = () => isWord ? playWord(it.kana, say, it.w.kanji) : playKana(it.kana, say);
       prompt.append(h('span', { class: 'lab' }, isWord ? 'Какое слово прозвучало?' : 'Какой знак прозвучал?'), say,
-        h('span', { class: 'tag' }, isWord ? (wordScript(it.w) === 'k' ? 'слово катаканой' : 'слово хираганой') : isKata(it.kana[0]) ? 'катакана' : 'хирагана'));
+        h('span', { class: 'tag' }, isWord ? (wordScript(it.w) === 'k' ? 'слово катаканой' : 'слово хираганой') : isKata(it.kana[0]) ? 'катакана' : 'хирагана'),
+        isWord ? null : twinTag(it.kana));
       setTimeout(play, 150);
     } else if (dir === 'k2r') {
       prompt.append(h('span', { class: 'lab' }, 'Как читается этот знак?'), h('span', { class: 'kana' }, it.kana));
     } else {
-      prompt.append(h('span', { class: 'lab' }, 'Найдите знак'), h('span', { class: 'big' }, readingOf(it, Q.sys)), sayButton(it, 'Прослушать'));
+      prompt.append(h('span', { class: 'lab' }, 'Найдите знак'), h('span', { class: 'big' }, readingOf(it, Q.sys)), sayButton(it, 'Прослушать'), isWord ? null : twinTag(it.kana));
     }
     const asText = dir === 'k2r' || dir === 'mean';
     const label = k => dir === 'mean' ? meaningOf(k) : dir === 'k2r' ? displayReading(k, Q.sys) : k;
@@ -1067,7 +1073,7 @@
       h('div', { class: 'w-model' }, strokeOrder(k), h('span', { class: 'small muted' }, 'нажмите — порядок штрихов')),
       h('div', { class: 'w-info' },
         h('div', { class: 'w-kana' }, k),
-        h('div', { class: 'w-read' }, displayReading(k, S.sys), h('span', { class: 'muted' }, ' · ' + displayReading(k, otherSys(S.sys)))),
+        h('div', { class: 'w-read' }, displayReading(k, S.sys), h('span', { class: 'muted' }, ' · ' + displayReading(k, otherSys(S.sys))), twinTag(k, S.sys)),
         h('button', { class: 'iconbtn w-say', type: 'button', title: 'Произношение', 'aria-label': 'Произношение', onclick: () => playKana(k) }, svgIcon('sound')),
         h('div', { class: 'small muted w-cnt' }, `Знак ${WR.i + 1} из ${WR.kanas.length} · написано ${st.ok} из ${WR.reps}`),
         dots));

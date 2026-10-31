@@ -29,7 +29,8 @@ const ROWS = [
 ];
 const GROUPS = [{ id: 'basic', name: 'Основные' }, { id: 'dakuten', name: 'С дакутэном' }, { id: 'yoon', name: 'Сочетания (ёон)' }];
 // подсказка для одинаково звучащих знаков
-const HINTS = { 'ぢ': 'ряд та', 'づ': 'ряд та', 'じ': 'ряд са', 'ず': 'ряд са' };
+// じ/ぢ и ず/づ звучат одинаково — на карточке подписываем ряд (как в таблице: «дза» и «да»)
+const HINTS = { 'ぢ': ['ряд da', 'ряд да'], 'づ': ['ряд da', 'ряд да'], 'じ': ['ряд za', 'ряд дза'], 'ず': ['ряд za', 'ряд дза'] };
 
 const toHira = s => s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
 const toKata = s => s.replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60));
